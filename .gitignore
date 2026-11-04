@@ -1,0 +1,14 @@
+# OS and editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Dependencies and build output (each app also has its own .gitignore)
+node_modules/
+vendor/
