@@ -17,6 +17,11 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->string('role', 16)->default('owner');
+            $table->string('locale', 5)->default('tr');
+            $table->timestamp('suspended_at')->nullable();
+            $table->timestamp('privacy_accepted_at')->nullable();
+            $table->string('privacy_notice_version', 32)->nullable();
             $table->rememberToken();
             $table->timestamps();
         });

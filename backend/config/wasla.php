@@ -8,6 +8,12 @@ return [
         ->mapWithKeys(fn (string $key) => [$key => env($key)])
         ->all(),
 
+    // Version of the privacy notice owners accept at registration.
+    'privacy_notice_version' => env('PRIVACY_NOTICE_VERSION', '1'),
+
+    // Deep link or page that opens the mobile reset-password screen.
+    'password_reset_url' => env('PASSWORD_RESET_URL', 'wasla://reset-password'),
+
     'tag_base_url' => env('TAG_BASE_URL', 'http://localhost:8000/t'),
 
     'moderation_daily_cap' => (int) env('MODERATION_DAILY_CAP', 1000),

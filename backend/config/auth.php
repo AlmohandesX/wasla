@@ -114,4 +114,9 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    // Emailed verification links stay valid for 24 hours.
+    'verification' => [
+        'expire' => 1440,
+    ],
+
 ];
