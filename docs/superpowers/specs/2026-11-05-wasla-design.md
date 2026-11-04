@@ -21,7 +21,7 @@ A car owner in Turkey buys a sticker with a QR code and NFC tag. A stranger who 
 - Automatic recurring card charges. Renewal is a one-time yearly payment the owner starts.
 - Selling stickers through the app, reseller accounts, or automated invoicing and e-Arşiv integration.
 - Live deployment and app store submission, which are a separate later phase (owner's decision).
-- Phone/SMS verification. Accounts use email and password.
+- Phone/SMS verification. Accounts use email and password, with mandatory email verification at signup (owner's decision).
 - Native in-app NFC reading. NFC tags hold the same URL as the QR code, so the phone opens the public page on its own. Tags are written by the print supplier.
 
 ### Anti-goals: failure even if it technically works
@@ -146,7 +146,8 @@ A `PaymentGateway` interface with drivers per provider. Selection by configurati
 - **Flow:** the app asks the backend to start a renewal, the backend creates a hosted checkout with the provider, the owner pays on the provider's page, and the provider's signed callback extends the subscription.
 - **Rules:** the callback is the only thing that can extend a subscription. It verifies the signature, re-checks the status with the provider, and is idempotent. The app's return is never trusted. No card data touches our servers.
 - **Build order:** iyzico first, then PayTR (builder's call). A fake driver exists for local development and refuses to boot in production.
-- **Billing form (owner's decision):** renewal collects the buyer details the provider requires and passes them on, storing only what the law requires. Each provider's exact required fields are confirmed against its current docs during integration. These may include a national ID number, so they fall under the KVKK notice.
+- **Billing form (owner's decision):** renewal collects the buyer details the provider requires and passes them on, storing only what the law requires. Each provider's exact required fields are confirmed against its current docs during integration.
+- **National ID number (owner's decision):** stored because the accountant is likely to need it on official invoices. It is encrypted at rest, masked in the admin panel, included only in the accountant's sales export, and never logged. Every export is audited. It falls under the KVKK notice, and the lawyer confirms the retention period.
 - **Invoices (owner's decision):** the owner's accountant issues them by hand from an admin export of sales.
 - **Refunds (owner's decision):** handled by an admin by hand, and a refund shortens the subscription. The accountant or lawyer confirms the rules, including any right of withdrawal.
 - **Records:** a `payments` table with provider, reference, amount, currency and status. Admins set the renewal price in TRY.
