@@ -2,16 +2,18 @@
 
 namespace App\Services\Tags;
 
+use App\Exceptions\AdminActionException;
 use App\Exceptions\InvalidReplacementTag;
-use App\Models\AuditLog;
 use App\Models\Tag;
 use App\Models\User;
+use App\Services\Concerns\AuditsAdminActions;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use InvalidArgumentException;
 
 class TagAdminService
 {
+    use AuditsAdminActions;
+
     /** Moves the car and the exact remaining subscription to a fresh tag and permanently revokes the old one. */
     public function replace(Tag $old, Tag $new, User $admin, string $reason): void
     {
@@ -21,12 +23,12 @@ class TagAdminService
             [$lockedOld, $lockedNew] = $this->lockPair($old, $new);
 
             if ($lockedOld->id === $lockedNew->id || $lockedOld->isRevoked() || $lockedOld->car_id === null) {
-                throw new InvalidReplacementTag('The old tag must be linked and not revoked.');
+                throw InvalidReplacementTag::because('old_tag_not_replaceable');
             }
-            // A fresh tag only: anything else would hand out a free year or overwrite someone's tag.
+            // A fresh tag only: anything else would hand out a free year or overwrite someone else's tag.
             if ($lockedNew->car_id !== null || $lockedNew->first_activated_at !== null
                 || $lockedNew->expires_at !== null || $lockedNew->isRevoked()) {
-                throw new InvalidReplacementTag('The replacement tag must be unused.');
+                throw InvalidReplacementTag::because('invalid_replacement');
             }
 
             $carId = $lockedOld->car_id;
@@ -46,7 +48,7 @@ class TagAdminService
                 'expires_at' => $lockedOld->expires_at,
             ])->save();
 
-            $this->audit($admin, 'tag.replace', $lockedOld, $reason, $meta);
+            $this->audit($admin, 'tag.replace', 'tag', $lockedOld->id, $reason, $meta);
 
             $old->setRawAttributes($lockedOld->getAttributes(), true);
             $new->setRawAttributes($lockedNew->getAttributes(), true);
@@ -59,7 +61,7 @@ class TagAdminService
 
         $this->withLockedTag($tag, function (Tag $fresh) use ($admin, $reason) {
             $fresh->forceFill(['revoked_at' => $fresh->revoked_at ?? now()])->save();
-            $this->audit($admin, 'tag.revoke', $fresh, $reason, ['car_id' => $fresh->car_id]);
+            $this->audit($admin, 'tag.revoke', 'tag', $fresh->id, $reason, ['car_id' => $fresh->car_id]);
         });
     }
 
@@ -71,7 +73,7 @@ class TagAdminService
         $this->withLockedTag($tag, function (Tag $fresh) use ($admin, $reason) {
             $carId = $fresh->car_id;
             $fresh->forceFill(['car_id' => null])->save();
-            $this->audit($admin, 'tag.force_release', $fresh, $reason, ['car_id' => $carId]);
+            $this->audit($admin, 'tag.force_release', 'tag', $fresh->id, $reason, ['car_id' => $carId]);
         });
     }
 
@@ -80,12 +82,18 @@ class TagAdminService
         $reason = $this->requireReason($reason);
 
         $this->withLockedTag($tag, function (Tag $fresh) use ($newExpiry, $admin, $reason) {
+            if ($fresh->isRevoked()) {
+                throw AdminActionException::because('tag_revoked');
+            }
             if ($fresh->first_activated_at === null) {
-                throw new \LogicException('Tag has never been activated.');
+                throw AdminActionException::because('tag_never_activated');
+            }
+            if ($newExpiry->lte(now())) {
+                throw AdminActionException::because('expiry_in_past');
             }
             $previous = $fresh->expires_at?->toIso8601String();
             $fresh->forceFill(['expires_at' => $newExpiry->copy()->utc()])->save();
-            $this->audit($admin, 'tag.extend', $fresh, $reason, ['from' => $previous, 'to' => $fresh->expires_at->toIso8601String()]);
+            $this->audit($admin, 'tag.extend', 'tag', $fresh->id, $reason, ['from' => $previous, 'to' => $fresh->expires_at->toIso8601String()]);
         });
     }
 
@@ -105,26 +113,5 @@ class TagAdminService
         $rows = Tag::query()->whereIn('id', [$a->id, $b->id])->orderBy('id')->lockForUpdate()->get()->keyBy('id');
 
         return [$rows[$a->id], $rows[$b->id]];
-    }
-
-    private function requireReason(string $reason): string
-    {
-        $reason = trim($reason);
-        if ($reason === '') {
-            throw new InvalidArgumentException('A reason is required.');
-        }
-
-        return $reason;
-    }
-
-    private function audit(User $admin, string $action, Tag $tag, string $reason, array $meta): void
-    {
-        AuditLog::create([
-            'admin_id' => $admin->id,
-            'action' => $action,
-            'subject_type' => 'tag',
-            'subject_id' => $tag->id,
-            'meta' => $meta + ['reason' => $reason],
-        ]);
     }
 }

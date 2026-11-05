@@ -5,6 +5,7 @@ namespace App\Providers\Filament;
 use App\Filament\Pages\Auth\Login;
 use App\Filament\Resources\TagResource;
 use App\Filament\Resources\UserResource;
+use App\Filament\Support\InitialsAvatarProvider;
 use App\Http\Middleware\SecurityHeaders;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -34,6 +35,8 @@ class AdminPanelProvider extends PanelProvider
             // White surfaces with royal blue as the one accent colour.
             ->colors(['primary' => Color::hex('#4169E1'), 'gray' => Color::Slate])
             ->darkMode(false)
+            // Filament's default avatar and font come from third-party hosts the admin CSP does not allow.
+            ->defaultAvatarProvider(InitialsAvatarProvider::class)
             ->resources([UserResource::class, TagResource::class])
             ->pages([Dashboard::class])
             ->middleware([

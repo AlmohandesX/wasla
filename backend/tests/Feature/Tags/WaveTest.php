@@ -6,6 +6,8 @@ use App\Models\User;
 use App\Models\Wave;
 use App\Services\Tags\TokenGenerator;
 use App\Services\Tags\WaveService;
+use chillerlan\QRCode\Output\QROutputInterface;
+use chillerlan\QRCode\QRCode;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 
@@ -164,4 +166,20 @@ it('sets the wave to failed when the job gives up', function () {
     (new GenerateWaveJob($wave->id))->failed(new RuntimeException('x'));
 
     expect($wave->refresh()->status)->toBe('failed');
+});
+
+it('prints QR codes that decode back to the tag URL', function () {
+    $tag = tagFixture();
+    $url = $tag->publicUrl();
+
+    $png = (new QRCode(WaveService::qrOptions([
+        'outputType' => QROutputInterface::GDIMAGE_PNG,
+        'outputBase64' => false,
+        'scale' => 8,
+    ])))->render($url);
+
+    expect((string) (new QRCode)->readFromBlob($png))->toBe($url);
+
+    // The shipped SVG is produced by the same settings and is a real QR markup.
+    expect((new QRCode(WaveService::qrOptions()))->render($url))->toContain('<svg');
 });

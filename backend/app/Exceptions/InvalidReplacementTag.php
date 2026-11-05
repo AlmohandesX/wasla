@@ -2,4 +2,4 @@
 
 namespace App\Exceptions;
 
-class InvalidReplacementTag extends \DomainException {}
+class InvalidReplacementTag extends AdminActionException {}

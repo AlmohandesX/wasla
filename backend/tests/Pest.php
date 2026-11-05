@@ -27,6 +27,8 @@ function productionEnv(array $overrides = []): array
     ], $overrides);
 }
 
+require_once __DIR__.'/Helpers/auth.php';
+require_once __DIR__.'/Helpers/admin.php';
 require_once __DIR__.'/Helpers/tags.php';
 require_once __DIR__.'/Helpers/payments.php';
 require_once __DIR__.'/Helpers/cars.php';

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
@@ -23,8 +24,7 @@ class MakeAdmin extends Command
 
         $user = User::where('email', $email)->first();
         if ($user) {
-            $user->forceFill(['role' => 'admin', 'suspended_at' => null, 'email_verified_at' => $user->email_verified_at ?? now()])->save();
-            $this->info("{$email} is now an admin.");
+            $this->promote($user);
 
             return self::SUCCESS;
         }
@@ -41,5 +41,33 @@ class MakeAdmin extends Command
         $this->info("Admin {$email} created.");
 
         return self::SUCCESS;
+    }
+
+    private function promote(User $user): void
+    {
+        $wasAdmin = $user->isAdmin();
+
+        if ($user->isSuspended()) {
+            $this->warn('This account was suspended. It is being reinstated.');
+        }
+        if (! $wasAdmin) {
+            $this->warn('This account was an owner. It now has admin access.');
+        }
+
+        $user->forceFill(['role' => 'admin', 'suspended_at' => null, 'email_verified_at' => $user->email_verified_at ?? now()])->save();
+
+        // The command has no acting admin. An existing admin account being re-enabled is its own attribution;
+        // otherwise there is nobody to attribute it to and the warning above is the only record.
+        if ($wasAdmin) {
+            AuditLog::create([
+                'admin_id' => $user->id,
+                'action' => 'user.make_admin_command',
+                'subject_type' => 'user',
+                'subject_id' => $user->id,
+                'meta' => ['source' => 'cli'],
+            ]);
+        }
+
+        $this->info("{$user->email} is now an admin.");
     }
 }

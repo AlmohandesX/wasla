@@ -1,34 +1,20 @@
 <?php
 
+use App\Exceptions\AdminActionException;
 use App\Exceptions\InvalidReplacementTag;
 use App\Exceptions\TagRevoked;
 use App\Models\AuditLog;
-use App\Models\User;
 use App\Services\Tags\SubscriptionService;
 use App\Services\Tags\TagAdminService;
 use App\Services\Tags\TagClaimer;
 use Illuminate\Support\Carbon;
-
-function adminClaimedTag(?User $user = null)
-{
-    $user ??= owner(['email_verified_at' => now()]);
-    $tag = tagFixture();
-    $car = app(TagClaimer::class)->claim($user, $tag->token, carAttrs());
-
-    return [$tag->fresh(), $car, $user];
-}
-
-function adminUserForTags(): User
-{
-    return owner(['role' => 'admin', 'email_verified_at' => now()]);
-}
 
 it('moves the exact expiry and car to the new tag on replace', function () {
     [$old, $car] = adminClaimedTag();
     $old->forceFill(['expires_at' => Carbon::parse('2027-03-04 10:11:12', 'UTC')])->save();
     $new = tagFixture();
 
-    app(TagAdminService::class)->replace($old, $new, adminUserForTags(), 'damaged sticker');
+    app(TagAdminService::class)->replace($old, $new, adminUser(), 'damaged sticker');
 
     $new->refresh();
     expect($new->car_id)->toBe($car->id)
@@ -44,7 +30,7 @@ it('moves the exact expiry and car to the new tag on replace', function () {
 
 it('permanently revokes the old tag on replace', function () {
     [$old] = adminClaimedTag();
-    app(TagAdminService::class)->replace($old, tagFixture(), adminUserForTags(), 'lost');
+    app(TagAdminService::class)->replace($old, tagFixture(), adminUser(), 'lost');
 
     expect($old->fresh()->isRevoked())->toBeTrue();
     expect(fn () => app(TagClaimer::class)->claim(owner(['email' => 'b@example.com']), $old->token, carAttrs()))
@@ -52,11 +38,11 @@ it('permanently revokes the old tag on replace', function () {
 });
 
 it('refuses a replacement tag that was already activated, linked or revoked', function (array $state) {
-    [$old, $car] = adminClaimedTag();
+    [$old] = adminClaimedTag();
     $new = tagFixture($state);
     $before = $old->fresh()->getAttributes();
 
-    expect(fn () => app(TagAdminService::class)->replace($old, $new, adminUserForTags(), 'why'))
+    expect(fn () => app(TagAdminService::class)->replace($old, $new, adminUser(), 'why'))
         ->toThrow(InvalidReplacementTag::class);
 
     expect($old->fresh()->getAttributes())->toBe($before)->and(AuditLog::count())->toBe(0);
@@ -70,7 +56,7 @@ it('refuses a replacement tag that is linked to a car', function () {
     [$old] = adminClaimedTag();
     [$other] = adminClaimedTag();
 
-    expect(fn () => app(TagAdminService::class)->replace($old, $other, adminUserForTags(), 'why'))
+    expect(fn () => app(TagAdminService::class)->replace($old, $other, adminUser(), 'why'))
         ->toThrow(InvalidReplacementTag::class);
     expect($old->fresh()->isRevoked())->toBeFalse();
 });
@@ -79,7 +65,7 @@ it('keeps expiry on force release and leaves the tag claimable', function () {
     [$tag] = adminClaimedTag();
     $expiry = $tag->expires_at;
 
-    app(TagAdminService::class)->forceRelease($tag, adminUserForTags(), 'sold car');
+    app(TagAdminService::class)->forceRelease($tag, adminUser(), 'sold car');
 
     expect($tag->fresh()->car_id)->toBeNull()
         ->and($tag->fresh()->expires_at->equalTo($expiry))->toBeTrue();
@@ -89,8 +75,8 @@ it('keeps expiry on force release and leaves the tag claimable', function () {
 
 it('revokes and extends manually', function () {
     [$tag] = adminClaimedTag();
-    $admin = adminUserForTags();
-    $to = Carbon::parse('2028-01-01 00:00:00', 'Europe/Istanbul');
+    $admin = adminUser();
+    $to = now()->addYears(3)->startOfSecond();
 
     app(TagAdminService::class)->extendManually($tag, $to, $admin, 'goodwill');
     expect($tag->fresh()->expires_at->equalTo($to))->toBeTrue();
@@ -101,8 +87,24 @@ it('revokes and extends manually', function () {
     expect(AuditLog::pluck('action')->all())->toBe(['tag.extend', 'tag.revoke']);
 });
 
+it('refuses to set the expiry of a revoked or never-activated tag, or to a past date', function () {
+    $admin = adminUser();
+    $service = app(TagAdminService::class);
+    [$tag] = adminClaimedTag();
+    $before = $tag->expires_at;
+
+    expect(fn () => $service->extendManually($tag, now()->subDay(), $admin, 'why'))->toThrow(AdminActionException::class);
+    expect(fn () => $service->extendManually(tagFixture(), now()->addYear(), $admin, 'why'))->toThrow(AdminActionException::class);
+
+    $service->revoke($tag, $admin, 'stolen');
+    expect(fn () => $service->extendManually($tag, now()->addYear(), $admin, 'why'))->toThrow(AdminActionException::class);
+
+    expect($tag->fresh()->expires_at->equalTo($before))->toBeTrue()
+        ->and(AuditLog::pluck('action')->all())->toBe(['tag.revoke']);
+});
+
 it('requires a reason and writes an audit record for each action', function () {
-    $admin = adminUserForTags();
+    $admin = adminUser();
     $service = app(TagAdminService::class);
     [$a] = adminClaimedTag();
     [$b] = adminClaimedTag();
@@ -115,7 +117,7 @@ it('requires a reason and writes an audit record for each action', function () {
         fn ($r) => $service->forceRelease($c, $admin, $r),
         fn ($r) => $service->extendManually($d, now()->addYears(2), $admin, $r),
     ] as $run) {
-        expect(fn () => $run('   '))->toThrow(InvalidArgumentException::class);
+        expect(fn () => $run('   '))->toThrow(AdminActionException::class);
     }
     expect(AuditLog::count())->toBe(0)->and($b->fresh()->isRevoked())->toBeFalse();
 

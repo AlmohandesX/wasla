@@ -200,8 +200,37 @@ class RenewalService
             }
 
             $locked->update(['status' => PaymentStatus::Paid, 'paid_at' => now()]);
-            app(SubscriptionService::class)->extendOneYear($locked->tag()->firstOrFail());
+
+            $tag = $this->liveTag($locked->tag_id);
+            if ($tag->isRevoked()) {
+                // Paid, but the tag was revoked with no replacement: nothing to extend. Leave it for an admin. Ids only.
+                $locked->update(['flagged_at' => $locked->flagged_at ?? now(), 'flag_reason' => 'paid_on_revoked_tag']);
+                Log::warning('Payment settled on a revoked tag with no replacement.', [
+                    'provider' => $gateway->name(),
+                    'payment_id' => $locked->id,
+                ]);
+
+                return;
+            }
+
+            app(SubscriptionService::class)->extendOneYear($tag);
+
+            if ($tag->id !== $locked->tag_id) {
+                $locked->update(['flagged_at' => $locked->flagged_at ?? now(), 'flag_reason' => 'settled_on_replacement']);
+            }
         });
+    }
+
+    /** Locks the paid tag and, if an admin replaced it, follows the replacement chain to the tag that is live now. */
+    private function liveTag(int $tagId): Tag
+    {
+        $tag = Tag::query()->lockForUpdate()->findOrFail($tagId);
+
+        for ($hops = 0; $tag->isRevoked() && $tag->replaced_by_tag_id !== null && $hops < 10; $hops++) {
+            $tag = Tag::query()->lockForUpdate()->findOrFail($tag->replaced_by_tag_id);
+        }
+
+        return $tag;
     }
 
     /**

@@ -7,7 +7,7 @@ use App\Models\Tag;
 use App\Models\User;
 use App\Models\Wave;
 use chillerlan\QRCode\Common\EccLevel;
-use chillerlan\QRCode\Output\QRMarkupSVG;
+use chillerlan\QRCode\Output\QROutputInterface;
 use chillerlan\QRCode\QRCode;
 use chillerlan\QRCode\QROptions;
 use Illuminate\Support\Facades\DB;
@@ -118,6 +118,17 @@ class WaveService
         }
     }
 
+    /** The QR settings used for every printed tag; tests render the same settings to a bitmap and decode them. */
+    public static function qrOptions(array $overrides = []): QROptions
+    {
+        return new QROptions($overrides + [
+            'eccLevel' => EccLevel::M,
+            'outputType' => QROutputInterface::MARKUP_SVG,
+            'outputBase64' => false,
+            'addQuietzone' => true,
+        ]);
+    }
+
     /** Streams the zip onto the private disk and returns its path relative to that disk. */
     private function buildPackage(Wave $wave): string
     {
@@ -129,12 +140,7 @@ class WaveService
         $csvPath = $final.'.csv.part';
         @unlink($workZip);
 
-        $qrOptions = new QROptions([
-            'eccLevel' => EccLevel::M,
-            'outputInterface' => QRMarkupSVG::class,
-            'outputBase64' => false,
-            'addQuietzone' => true,
-        ]);
+        $qrOptions = self::qrOptions();
 
         $csv = fopen($csvPath, 'wb');
         fwrite($csv, "serial,url\n");
