@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\BlacklistTerm;
+use App\Models\Car;
 use App\Models\ChatMessage;
 use App\Models\ModerationEvent;
 use App\Services\Chat\ChatService;
@@ -228,12 +229,71 @@ it('reports a message once and keeps the first report time', function () {
     expect($message->fresh()->reported_at->equalTo($first))->toBeTrue();
 });
 
-it('lets the owner block and report on an expired car', function () {
+it('hard stops every chat route on an expired car', function (string $method, string $uri, array $body) {
     $user = owner();
     $thread = chatThread(linkedCar($user, now()->subDay()));
     $message = $thread->messages()->first();
+    $uri = str_replace(['{thread}', '{message}'], [$thread->id, $message->id], $uri);
 
-    $this->getJson("/api/v1/chats/{$thread->id}/messages", bearer($user))->assertOk();
+    $this->json($method, $uri, $body, bearer($user))
+        ->assertStatus(402)->assertJsonPath('code', 'subscription_expired');
+
+    expect($thread->messages()->count())->toBe(1)
+        ->and($thread->fresh()->blocked_at)->toBeNull()
+        ->and($message->fresh()->reported_at)->toBeNull();
+})->with([
+    'messages' => ['GET', '/api/v1/chats/{thread}/messages', []],
+    'send' => ['POST', '/api/v1/chats/{thread}/messages', ['body' => 'hello']],
+    'block' => ['POST', '/api/v1/chats/{thread}/block', []],
+    'report' => ['POST', '/api/v1/messages/{message}/report', []],
+]);
+
+it('leaves threads of expired cars out of the list but keeps unlinked and active ones', function () {
+    $user = owner();
+    $active = chatThread(linkedCar($user));
+    chatThread(linkedCar($user, now()->subDay()));
+    $unlinked = chatThread(Car::create(carAttrs() + ['user_id' => $user->id]));
+
+    $this->getJson('/api/v1/chats', bearer($user))
+        ->assertOk()->assertJsonCount(2, 'data')
+        ->assertJsonFragment(['id' => $active->id])->assertJsonFragment(['id' => $unlinked->id]);
+});
+
+it('blocks replies once the car is unlinked, expired or not', function (bool $expired) {
+    $user = owner();
+    $car = linkedCar($user, $expired ? now()->subDay() : null);
+    $thread = chatThread($car);
+    $car->tag->update(['car_id' => null]);
+
+    $this->postJson("/api/v1/chats/{$thread->id}/messages", ['body' => 'hello'], bearer($user))
+        ->assertForbidden()->assertJsonPath('code', 'chat_unavailable');
+
+    expect($thread->messages()->count())->toBe(1);
+})->with([[true], [false]]);
+
+it('keeps history, block and report for an unlinked car', function () {
+    $user = owner();
+    $car = linkedCar($user);
+    $thread = chatThread($car);
+    $message = $thread->messages()->first();
+    $car->tag->update(['car_id' => null]);
+
+    $this->getJson("/api/v1/chats/{$thread->id}/messages", bearer($user))->assertOk()->assertJsonCount(1, 'data');
     $this->postJson("/api/v1/messages/{$message->id}/report", [], bearer($user))->assertOk();
     $this->postJson("/api/v1/chats/{$thread->id}/block", [], bearer($user))->assertOk();
+});
+
+it('stops a previous owner replying after a transfer', function () {
+    $old = owner();
+    $car = linkedCar($old);
+    $thread = chatThread($car);
+    $tag = $car->tag;
+
+    $this->postJson("/api/v1/cars/{$car->id}/unlink", [], bearer($old))->assertOk();
+    app('auth')->forgetGuards();
+    $this->postJson('/api/v1/tags/claim', ['token' => $tag->token] + carAttrs(), bearer(owner()))->assertCreated();
+    app('auth')->forgetGuards();
+
+    $this->postJson("/api/v1/chats/{$thread->id}/messages", ['body' => 'hello'], bearer($old))
+        ->assertForbidden()->assertJsonPath('code', 'chat_unavailable');
 });

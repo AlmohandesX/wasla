@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\ChatUnavailable;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Chat\BlockThreadRequest;
 use App\Http\Requests\Chat\ReportMessageRequest;
@@ -24,7 +25,10 @@ class ChatController extends Controller
     public function index(Request $request): JsonResponse
     {
         $threads = ChatThread::query()
-            ->whereHas('car', fn ($q) => $q->where('user_id', $request->user()->id))
+            // Hard stop: threads of a car whose tag expired are left out; cars without a tag still list.
+            ->whereHas('car', fn ($q) => $q->where('user_id', $request->user()->id)
+                ->where(fn ($q) => $q->whereDoesntHave('tag')
+                    ->orWhereHas('tag', fn ($t) => $t->where('expires_at', '>', now()))))
             ->with('lastMessage')
             ->withCount(['messages as unread_count' => fn ($q) => $q->where('sender', 'visitor')->whereNull('read_at')])
             ->orderByDesc('updated_at')->orderByDesc('id')
@@ -49,6 +53,11 @@ class ChatController extends Controller
 
     public function send(SendChatMessageRequest $request, ChatThread $thread): JsonResponse
     {
+        // The subscription middleware already answered 402 for an expired tag; here only a missing tag is left.
+        if ($thread->car->tag === null) {
+            throw new ChatUnavailable;
+        }
+
         $message = $this->chat->send($thread, 'owner', $request->validated('body'));
 
         return (new ChatMessageResource($message))->response()->setStatusCode(201);

@@ -27,4 +27,5 @@ return [
     'error_car_not_owned' => 'This car does not belong to your account.',
     'error_subscription_expired' => 'Subscription expired. Please renew to keep using this car.',
     'error_message_blocked' => 'This text is not allowed. Please change it and try again.',
+    'error_chat_unavailable' => 'Chat is not available for this car.',
 ];
