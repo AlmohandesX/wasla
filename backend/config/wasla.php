@@ -44,6 +44,9 @@ return [
 
     'payment_gateway' => env('PAYMENT_GATEWAY', 'fake'),
 
+    // Version of the distance-selling pre-information and contract text a buyer accepts at renewal.
+    'legal_text_version' => env('LEGAL_TEXT_VERSION', '1'),
+
     // Comma separated proxy IPs or CIDRs, or "*" when the VPS sits behind a trusted load balancer only.
     'trusted_proxies' => env('TRUSTED_PROXIES', ''),
 

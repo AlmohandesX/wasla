@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\ClaimController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\DeviceTokenController;
 use App\Http\Controllers\Api\ReminderController;
+use App\Http\Controllers\Api\RenewalController;
 use App\Http\Controllers\Api\StatusController;
 use App\Http\Controllers\Api\TransferController;
 use Illuminate\Support\Facades\Route;
@@ -43,6 +44,10 @@ Route::prefix('v1')->group(function () {
 
         // Spans cars; it leaves out threads of expired cars itself.
         Route::get('chats', [ChatController::class, 'index'])->middleware('throttle:reads');
+
+        // Outside car.subscription on purpose: an expired car must be able to renew.
+        Route::post('cars/{car}/renewals', [RenewalController::class, 'store'])->middleware('throttle:payment-start');
+        Route::get('renewals/{payment}', [RenewalController::class, 'show'])->middleware('throttle:reads');
 
         // Hard stop: a car with an expired tag gets 402 subscription_expired on all of these.
         Route::middleware('car.subscription')->group(function () {

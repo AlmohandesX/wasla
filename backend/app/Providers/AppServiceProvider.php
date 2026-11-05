@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Services\Moderation\ModerationProvider;
 use App\Services\Moderation\OpenAiModerationProvider;
+use App\Services\Payments\GatewayManager;
+use App\Services\Payments\PaymentGateway;
 use App\Support\ProductionGuard;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -23,6 +25,8 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(ModerationProvider::class, OpenAiModerationProvider::class);
+        $this->app->singleton(GatewayManager::class);
+        $this->app->bind(PaymentGateway::class, fn ($app) => $app->make(GatewayManager::class)->driver());
     }
 
     /**
@@ -70,6 +74,12 @@ class AppServiceProvider extends ServiceProvider
 
         // Owner polling reads chats often; separate from the 30/min write limit.
         RateLimiter::for('reads', fn (Request $request) => Limit::perMinute(120)->by($request->user()?->getAuthIdentifier() ?: $request->ip()));
+
+        // Starting a payment opens a hosted checkout at the provider: 5 a minute and 20 an hour per user.
+        RateLimiter::for('payment-start', fn (Request $request) => [
+            Limit::perMinute(5)->by('pay:'.($request->user()?->getAuthIdentifier() ?: $request->ip())),
+            Limit::perHour(20)->by('pay-h:'.($request->user()?->getAuthIdentifier() ?: $request->ip())),
+        ]);
 
         RateLimiter::for('scan', fn (Request $request) => Limit::perMinute(60)->by($request->ip()));
 

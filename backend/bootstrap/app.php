@@ -44,6 +44,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'message' => __('wasla.error_'.$e->errorCode),
         ], $e->status));
 
+        // The national ID is never flashed to a session, and BillingDetails masks it in dumps and traces.
+        $exceptions->dontFlash(['billing_national_id']);
+
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );

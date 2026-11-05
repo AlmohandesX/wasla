@@ -17,6 +17,12 @@ class CarPolicy
         return $car->user_id === $user->id;
     }
 
+    /** Renewing stays open to the owner of an expired car. */
+    public function renew(User $user, Car $car): bool
+    {
+        return $car->user_id === $user->id;
+    }
+
     public function delete(User $user, Car $car): bool
     {
         return $car->user_id === $user->id;
