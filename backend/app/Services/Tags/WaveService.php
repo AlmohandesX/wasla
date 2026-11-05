@@ -2,6 +2,7 @@
 
 namespace App\Services\Tags;
 
+use App\Exceptions\AdminActionException;
 use App\Jobs\GenerateWaveJob;
 use App\Models\Tag;
 use App\Models\User;
@@ -72,9 +73,29 @@ class WaveService
             ->update(['sold_at' => now()]);
     }
 
+    /**
+     * Marks the tags between two serials of one wave sold. Serials sort as text, which is only right inside a wave
+     * (the sequence is fixed width), so a malformed, reversed or cross-wave range is refused rather than matching nothing.
+     *
+     * @throws AdminActionException
+     */
     public function markSerialRangeSold(string $fromSerial, string $toSerial): int
     {
-        return Tag::query()->whereBetween('serial', [$fromSerial, $toSerial])->whereNull('sold_at')
+        $from = strtoupper(trim($fromSerial));
+        $to = strtoupper(trim($toSerial));
+
+        $pattern = '/^(W\d{3,})-(\d{6})$/D';
+        if (! preg_match($pattern, $from, $a) || ! preg_match($pattern, $to, $b)) {
+            throw AdminActionException::because('serial_invalid');
+        }
+        if ($a[1] !== $b[1]) {
+            throw AdminActionException::because('serial_range_waves');
+        }
+        if ($a[2] > $b[2]) {
+            throw AdminActionException::because('serial_range_order');
+        }
+
+        return Tag::query()->whereBetween('serial', [$from, $to])->whereNull('sold_at')
             ->update(['sold_at' => now()]);
     }
 

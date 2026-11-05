@@ -3,8 +3,14 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Pages\Auth\Login;
+use App\Filament\Pages\Settings;
+use App\Filament\Resources\BlacklistTermResource;
+use App\Filament\Resources\ModerationEventResource;
+use App\Filament\Resources\PaymentResource;
+use App\Filament\Resources\ReportedMessageResource;
 use App\Filament\Resources\TagResource;
 use App\Filament\Resources\UserResource;
+use App\Filament\Resources\WaveResource;
 use App\Filament\Support\InitialsAvatarProvider;
 use App\Http\Middleware\SecurityHeaders;
 use Filament\Http\Middleware\Authenticate;
@@ -37,8 +43,11 @@ class AdminPanelProvider extends PanelProvider
             ->darkMode(false)
             // Filament's default avatar and font come from third-party hosts the admin CSP does not allow.
             ->defaultAvatarProvider(InitialsAvatarProvider::class)
-            ->resources([UserResource::class, TagResource::class])
-            ->pages([Dashboard::class])
+            ->resources([
+                UserResource::class, TagResource::class, WaveResource::class, PaymentResource::class,
+                BlacklistTermResource::class, ModerationEventResource::class, ReportedMessageResource::class,
+            ])
+            ->pages([Dashboard::class, Settings::class])
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

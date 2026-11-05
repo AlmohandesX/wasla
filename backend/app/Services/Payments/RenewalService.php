@@ -3,6 +3,7 @@
 namespace App\Services\Payments;
 
 use App\Enums\PaymentStatus;
+use App\Exceptions\AdminActionException;
 use App\Exceptions\PaymentUnavailable;
 use App\Exceptions\RenewalNoTag;
 use App\Exceptions\RenewalPriceUnavailable;
@@ -10,6 +11,7 @@ use App\Models\Payment;
 use App\Models\Setting;
 use App\Models\Tag;
 use App\Models\User;
+use App\Services\Concerns\AuditsAdminActions;
 use App\Services\Tags\SubscriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +20,8 @@ use Throwable;
 
 class RenewalService
 {
+    use AuditsAdminActions;
+
     public const CURRENCY = 'TRY';
 
     public const PRICE_SETTING = 'renewal_price_kurus';
@@ -214,10 +218,62 @@ class RenewalService
             }
 
             app(SubscriptionService::class)->extendOneYear($tag);
+            $locked->update(['extended_tag_id' => $tag->id]);
 
             if ($tag->id !== $locked->tag_id) {
                 $this->flag($locked, 'settled_on_replacement', $gateway);
             }
+        });
+    }
+
+    /**
+     * Records a refund decision in WASLA only; the money is returned in the provider's panel. Shortens the tag that
+     * settlement actually extended (the replacement, if any), and nothing when settlement extended nothing.
+     *
+     * @throws AdminActionException when the reason is empty or the payment is not Paid (checked under the row lock)
+     */
+    public function markRefunded(Payment $payment, User $admin, string $reason): void
+    {
+        $reason = $this->requireReason($reason);
+
+        DB::transaction(function () use ($payment, $admin, $reason) {
+            $locked = Payment::query()->lockForUpdate()->findOrFail($payment->id);
+
+            if ($locked->status !== PaymentStatus::Paid) {
+                throw AdminActionException::because('payment_not_refundable');
+            }
+
+            $locked->update(['status' => PaymentStatus::Refunded, 'refunded_at' => now()]);
+
+            $shortened = null;
+            if ($locked->extended_tag_id !== null) {
+                $tag = Tag::query()->find($locked->extended_tag_id);
+                if ($tag?->expires_at !== null) {
+                    app(SubscriptionService::class)->shortenOneYear($tag);
+                    $shortened = $tag->id;
+                }
+            }
+
+            $this->audit($admin, 'payment.refund', 'payment', $locked->id, $reason, ['shortened_tag_id' => $shortened]);
+        });
+
+        $payment->refresh();
+    }
+
+    /** Marks a flag as looked at. The flag itself stays as first written. */
+    public function markFlagReviewed(Payment $payment, User $admin, string $reason): void
+    {
+        $reason = $this->requireReason($reason);
+
+        DB::transaction(function () use ($payment, $admin, $reason) {
+            $locked = Payment::query()->lockForUpdate()->findOrFail($payment->id);
+
+            if ($locked->flag_reason === null || $locked->flag_reviewed_at !== null) {
+                throw AdminActionException::because('flag_not_reviewable');
+            }
+
+            $locked->update(['flag_reviewed_at' => now(), 'flag_reviewed_by' => $admin->id]);
+            $this->audit($admin, 'payment.flag_review', 'payment', $locked->id, $reason, ['flag_reason' => $locked->flag_reason]);
         });
     }
 

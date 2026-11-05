@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminDownloadController;
 use App\Http\Controllers\FakeGatewayController;
 use App\Http\Controllers\PaymentCallbackController;
 use App\Http\Controllers\VerifyEmailController;
@@ -52,6 +53,12 @@ Route::prefix('t/{token}/chat')
         Route::post('messages/{message}/report', [VisitorChatController::class, 'report'])
             ->whereNumber('message')->middleware('throttle:chat-write')->name('chat.report');
     });
+
+// Admin-only downloads (wave packages, sales CSV). Same session as the panel; the controller refuses anyone who cannot open it.
+Route::prefix('admin/downloads')->middleware('throttle:api')->group(function () {
+    Route::get('waves/{wave}/package', [AdminDownloadController::class, 'package'])->whereNumber('wave')->name('admin.waves.package');
+    Route::get('payments/export', [AdminDownloadController::class, 'sales'])->name('admin.payments.export');
+});
 
 // Payment provider callback: the only thing that can extend a subscription. From the provider's server or, for iyzico,
 // the owner's browser, so no session, cookies or CSRF token; the driver's verification and a status re-check are the authentication.
