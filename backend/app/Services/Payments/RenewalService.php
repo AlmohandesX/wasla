@@ -124,7 +124,18 @@ class RenewalService
             return;
         }
 
-        $remote = $gateway->fetchStatus($callback->reference);
+        try {
+            $remote = $gateway->fetchStatus($callback->reference);
+        } catch (Throwable $e) {
+            // A verified callback for a payment we hold, unsettled for now. Ids and class only, never the message.
+            Log::error('Payment status check failed.', [
+                'provider' => $gateway->name(),
+                'payment_id' => $payment->id,
+                'exception' => $e::class,
+            ]);
+
+            throw $e;
+        }
 
         try {
             $this->settle($payment, $remote, $gateway);
@@ -144,6 +155,17 @@ class RenewalService
             // Paid and refunded are final here. A failed payment may still turn paid: the provider has taken
             // the money, and a late success beats an earlier failure.
             if (! in_array($locked->status, [PaymentStatus::Pending, PaymentStatus::Failed], true)) {
+                return;
+            }
+
+            if ($remote->status === PaymentStatus::Refunded) {
+                // Money came and went before we settled, so nothing extends. Leave it for an admin. Ids only.
+                $locked->update(['flagged_at' => $locked->flagged_at ?? now(), 'flag_reason' => 'refunded_at_provider']);
+                Log::warning('Payment callback for a payment the provider has refunded.', [
+                    'provider' => $gateway->name(),
+                    'payment_id' => $locked->id,
+                ]);
+
                 return;
             }
 

@@ -44,7 +44,7 @@ use RuntimeException;
  * Could not confirm from the docs (all fail closed; see the live-sandbox step in the task report):
  * - That the checkout opens as a full page. The docs only show the URL as an iframe src, and we redirect the owner to it.
  * - The inquiry's amount format. The docs show both "10,8" and "0.76", so either separator is read as decimal lira.
- * - The shape of "returns" when empty (documented as an array in one table and a string in another).
+ * - The shape of "returns" (documented as an array in one table and a string in another). Unrecognized values get a retry.
  * - Whether IPv6 is accepted: user_ip allows 39 characters but is labelled ipv4.
  * - The callback URL is set in the merchant panel, not per request, and no doc page read here describes that screen.
  */
@@ -158,7 +158,7 @@ class PaytrGateway implements PaymentGateway
             'paytr_token' => self::sign($merchantId.$reference.$salt, $key),
         ]);
 
-        $data = $response->serverError() ? null : Kurus::decodeJson($response->body(), ['payment_amount', 'payment_total']);
+        $data = $response->serverError() ? null : Kurus::decodeJson($response->body(), ['payment_amount', 'payment_total', 'returns']);
 
         return match ($data['status'] ?? null) {
             'success' => $this->statusFromPayment($data),
@@ -177,9 +177,8 @@ class PaytrGateway implements PaymentGateway
     {
         $currency = is_string($data['currency'] ?? null) ? $data['currency'] : '';
         $currency = $currency === 'TL' ? 'TRY' : $currency;
-        $returns = $data['returns'] ?? null;
 
-        if ($returns !== null && $returns !== [] && $returns !== '' && $returns !== '0') {
+        if (self::hasRefund($data['returns'] ?? null)) {
             return new ProviderPaymentStatus(PaymentStatus::Refunded, 0, $currency);
         }
 
@@ -192,6 +191,23 @@ class PaytrGateway implements PaymentGateway
             ?? throw new RuntimeException('PayTR reported an amount that could not be read exactly.');
 
         return new ProviderPaymentStatus(PaymentStatus::Paid, $kurus, $currency);
+    }
+
+    /** Records or a positive amount are a refund, and nothing or a zero amount is none. Anything else asks for a retry rather than a guess. */
+    private static function hasRefund(mixed $returns): bool
+    {
+        if (empty($returns)) {
+            return false;
+        }
+
+        if (is_array($returns)) {
+            return true;
+        }
+
+        $kurus = Kurus::fromDecimal($returns)
+            ?? throw new RuntimeException('PayTR reported refunds that could not be read.');
+
+        return $kurus > 0;
     }
 
     private function statusFromError(array $data, string $reference): ProviderPaymentStatus

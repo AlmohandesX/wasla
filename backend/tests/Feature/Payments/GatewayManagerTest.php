@@ -7,6 +7,8 @@ use App\Services\Payments\GatewayManager;
 use App\Services\Payments\Kurus;
 use App\Services\Payments\UnknownPaymentGateway;
 use App\Support\ProductionGuard;
+use Illuminate\Support\Facades\Log;
+use Mockery\Exception\InvalidCountException;
 
 it('builds the real drivers by name', function () {
     expect(app(GatewayManager::class)->driver('iyzico'))->toBeInstanceOf(IyzicoGateway::class)
@@ -43,7 +45,7 @@ it('reads provider decimals without floats', function (mixed $text, ?int $kurus)
 })->with([
     ['799.00000000', 79900], ['799', 79900], ['799,05', 79905], ['0.07', 7], ['0.29', 29], ['1.1', 110], ['19.99', 1999],
     ['799.005', null], ['1.234,56', null], ['-1', null], ['', null], ['abc', null], ['99999999999999999999', null],
-    [799.0, null], [null, null], [[['1']], null],
+    ["799\n", null], ["799.00\n", null], [799.0, null], [null, null], [[['1']], null],
 ]);
 
 it('keeps JSON number amounts as text', function () {
@@ -53,4 +55,13 @@ it('keeps JSON number amounts as text', function () {
         ->and($data['note'])->toBe('"price":1')->and($data['other'])->toBe(1.5)
         ->and(Kurus::decodeJson('not json', ['price']))->toBeNull()
         ->and(Kurus::decodeJson('"text"', ['price']))->toBeNull();
+});
+
+it('has a log leak assertion that fails when only one of several calls leaks', function () {
+    Log::spy();
+    Log::warning('clean');
+    Log::error('clean', ['context' => 'secret-value']);
+
+    assertNotLogged('not-there');
+    expect(fn () => assertNotLogged('secret-value'))->toThrow(InvalidCountException::class);
 });

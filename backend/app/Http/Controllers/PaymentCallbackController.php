@@ -25,15 +25,21 @@ class PaymentCallbackController extends Controller
             app(RenewalService::class)->handleCallback($gateway, $request);
         } catch (InvalidCallback) {
             // One answer for every refusal, so nothing says whether a reference exists.
-            return response('Invalid callback.', 400);
+            return $this->refusal($request, 'Invalid callback.', 400);
         } catch (Throwable $e) {
             // Class only: a provider or driver message could carry request data. 503 makes the provider retry.
             Log::error('Payment callback could not be processed.', ['provider' => $provider, 'exception' => $e::class]);
 
-            return response('Try again later.', 503);
+            return $this->refusal($request, 'Try again later.', 503);
         }
 
         return $gateway->callbackResponse();
+    }
+
+    /** iyzico's callback is the owner's browser, so anything but a JSON webhook gets the translated page. The status stays. */
+    private function refusal(Request $request, string $plain, int $status): Response
+    {
+        return $request->isJson() ? response($plain, $status) : response()->view('payments.return', [], $status);
     }
 
     /** Where the provider sends the owner's browser afterwards. It reads nothing and changes nothing. */

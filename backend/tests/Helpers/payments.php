@@ -6,6 +6,7 @@ use App\Models\Setting;
 use App\Services\Payments\BillingDetails;
 use App\Services\Payments\CheckoutRequest;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 const IYZICO_TEST_KEY = 'sandbox-made-up-api-key';
 const IYZICO_TEST_SECRET = 'sandbox-made-up-secret';
@@ -66,4 +67,18 @@ function renewThroughApi(string $gateway)
         'billing_name' => 'Ayse Yilmaz', 'billing_address' => 'Moda Cad. No 5', 'billing_city' => 'Istanbul',
         'billing_national_id' => GATEWAY_TEST_TCKN, 'billing_phone' => '05550000001', 'legal_accepted' => true,
     ]);
+}
+
+/** Fails if any log call, at any level, contains one of the texts. Needs Log::spy(). */
+function assertNotLogged(string ...$texts): void
+{
+    $leaks = function ($message = '', $context = []) use ($texts) {
+        $line = json_encode([$message, $context]);
+
+        return array_filter($texts, fn (string $text) => str_contains($line, $text)) !== [];
+    };
+
+    foreach (['debug', 'info', 'notice', 'warning', 'error', 'critical', 'alert', 'emergency'] as $level) {
+        Log::shouldNotHaveReceived($level, $leaks);
+    }
 }

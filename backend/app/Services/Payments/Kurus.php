@@ -13,7 +13,7 @@ final class Kurus
     /** Null for anything that is not an exact, non-negative amount: nothing is rounded or guessed. */
     public static function fromDecimal(mixed $value): ?int
     {
-        if (! is_string($value) || ! preg_match('/^(\d{1,12})(?:[.,](\d+))?$/', $value, $m)) {
+        if (! is_string($value) || ! preg_match('/^(\d{1,12})(?:[.,](\d+))?$/D', $value, $m)) {
             return null;
         }
 

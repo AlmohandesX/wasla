@@ -3,6 +3,7 @@
 use App\Enums\PaymentStatus;
 use App\Models\Payment;
 use App\Models\Tag;
+use App\Services\Payments\BillingDetails;
 use App\Services\Payments\Drivers\IyzicoGateway;
 use App\Services\Payments\InvalidCallback;
 use App\Services\Payments\PaymentGatewayNotConfigured;
@@ -185,7 +186,8 @@ it('takes a provider timeout on the existing payment_unavailable path', function
 
     $res->assertStatus(502)->assertJsonPath('code', 'payment_unavailable');
     expect($res->getContent())->not->toContain(GATEWAY_TEST_TCKN);
-    Log::shouldHaveReceived('warning')->withArgs(fn ($m, $c = []) => ! str_contains(json_encode([$m, $c]), GATEWAY_TEST_TCKN));
+    Log::shouldHaveReceived('warning');
+    assertNotLogged(GATEWAY_TEST_TCKN);
 });
 
 it('stores the provider token as the payment reference', function () {
@@ -341,13 +343,19 @@ it('flags a paid amount that differs from the recorded one', function () {
     expect($payment->fresh()->status)->toBe(PaymentStatus::Pending)->and($payment->fresh()->flag_reason)->toBe('amount_mismatch');
 });
 
+it('answers 503 so a retry is possible when the provider times out', function () {
+    $payment = gatewayPayment('iyzico', IYZICO_TEST_TOKEN);
+    Http::fake(fn () => throw new ConnectionException('timed out'));
+
+    iyzicoCallback()->assertStatus(503);
+
+    expect($payment->fresh()->status)->toBe(PaymentStatus::Pending);
+});
+
 it('answers 503 so a retry is possible when the provider is down', function () {
     $payment = gatewayPayment('iyzico', IYZICO_TEST_TOKEN);
     iyzicoFakeRetrieve('Bad gateway', 502);
 
-    iyzicoCallback()->assertStatus(503);
-
-    Http::fake(fn () => throw new ConnectionException('timed out'));
     iyzicoCallback()->assertStatus(503);
 
     expect($payment->fresh()->status)->toBe(PaymentStatus::Pending);
@@ -371,6 +379,97 @@ it('logs neither provider text nor billing data when a callback is refused', fun
 
     iyzicoCallback()->assertStatus(400);
 
-    Log::shouldHaveReceived('warning')->withArgs(fn ($m, $c = []) => ! str_contains(json_encode([$m, $c]), GATEWAY_TEST_TCKN)
-        && ! str_contains(json_encode([$m, $c]), 'Made up'));
+    Log::shouldHaveReceived('warning');
+    assertNotLogged(GATEWAY_TEST_TCKN, 'Made up');
+});
+
+describe('what the owner sees and what a webhook sees', function () {
+    it('shows the translated return page to a browser, keeping the status', function (int $providerStatus, int $expected) {
+        gatewayPayment('iyzico', IYZICO_TEST_TOKEN);
+        iyzicoFakeRetrieve($providerStatus === 200 ? iyzicoRetrieveBody([], str_repeat('0', 64)) : 'Bad gateway', $providerStatus);
+
+        iyzicoCallback()->assertStatus($expected)
+            ->assertSee(__('wasla.payment_return_title'))
+            ->assertDontSee('Invalid callback.')->assertDontSee('Try again later.');
+    })->with(['refused' => [200, 400], 'provider down' => [502, 503]]);
+
+    it('keeps a plain answer for a JSON webhook', function (int $providerStatus, int $expected, string $text) {
+        gatewayPayment('iyzico', IYZICO_TEST_TOKEN);
+        iyzicoFakeRetrieve($providerStatus === 200 ? iyzicoRetrieveBody([], str_repeat('0', 64)) : 'Bad gateway', $providerStatus);
+
+        expect($this->postJson('/payments/callback/iyzico', ['token' => IYZICO_TEST_TOKEN])->assertStatus($expected)->getContent())
+            ->toBe($text);
+    })->with(['refused' => [200, 400, 'Invalid callback.'], 'provider down' => [502, 503, 'Try again later.']]);
+});
+
+describe('an ordinary decline', function () {
+    it('marks the payment failed from a signed FAILURE, whatever the top level status says', function () {
+        $payment = gatewayPayment('iyzico', IYZICO_TEST_TOKEN);
+        $body = str_replace('"status": "success"', '"status": "failure"', iyzicoRetrieveBody(['paymentStatus' => 'FAILURE']));
+        iyzicoFakeRetrieve($body);
+
+        iyzicoCallback()->assertOk();
+
+        expect($payment->fresh()->status)->toBe(PaymentStatus::Failed);
+    });
+
+    it('refuses a FAILURE that is not correctly signed', function () {
+        $payment = gatewayPayment('iyzico', IYZICO_TEST_TOKEN);
+        $body = str_replace('"status": "success"', '"status": "failure"', iyzicoRetrieveBody(['paymentStatus' => 'FAILURE'], str_repeat('0', 64)));
+        iyzicoFakeRetrieve($body);
+
+        iyzicoCallback()->assertStatus(400);
+
+        expect($payment->fresh()->status)->toBe(PaymentStatus::Pending);
+    });
+});
+
+it('treats an iyzico auth or system error as our outage, not a bad token', function (mixed $code) {
+    Log::spy();
+    $payment = gatewayPayment('iyzico', IYZICO_TEST_TOKEN);
+    iyzicoFakeRetrieve(json_encode(['status' => 'failure', 'errorCode' => $code, 'errorMessage' => 'Made up text']), 401);
+
+    iyzicoCallback()->assertStatus(503);
+
+    Log::shouldHaveReceived('error')->withArgs(fn ($m, $c = []) => ($c['error_code'] ?? null) === (string) $code);
+    assertNotLogged('Made up');
+    expect($payment->fresh()->status)->toBe(PaymentStatus::Pending);
+})->with(['system' => '1', 'system 2' => '2', 'bad signature' => '1000', 'merchant' => '1002', 'header' => '1009', 'as a number' => 1001]);
+
+it('logs the payment id when the status check fails on a verified callback', function () {
+    Log::spy();
+    $payment = gatewayPayment('iyzico', IYZICO_TEST_TOKEN);
+    Http::fakeSequence('*')->push(iyzicoRetrieveBody())->push('Bad gateway', 502);
+
+    iyzicoCallback()->assertStatus(503);
+
+    Log::shouldHaveReceived('error')->withArgs(fn ($m, $c = []) => ($c['payment_id'] ?? null) === $payment->id);
+});
+
+it('never sends an empty name part when the name has odd spaces', function () {
+    Http::fake(['*' => Http::response(iyzicoInitBody())]);
+    $nbsp = "\u{00A0}";
+
+    $this->iyzico->startCheckout(checkoutRequest([
+        'billing' => new BillingDetails($nbsp.'Ayşe'.$nbsp.'Yılmaz'.$nbsp, 'A', 'B', GATEWAY_TEST_TCKN, '+905550000001'),
+    ]));
+
+    Http::assertSent(function (ClientRequest $r) {
+        $buyer = json_decode($r->body(), true)['buyer'];
+
+        return $buyer['name'] === 'Ayşe' && $buyer['surname'] === 'Yılmaz';
+    });
+});
+
+it('refuses a name that is only one word once odd spaces are ignored', function () {
+    Http::fake();
+
+    try {
+        $this->iyzico->startCheckout(checkoutRequest([
+            'billing' => new BillingDetails("Ayşe\u{00A0}", 'A', 'B', GATEWAY_TEST_TCKN, '+905550000001'),
+        ]));
+        $this->fail('Expected an exception');
+    } catch (RuntimeException) {
+        Http::assertNothingSent();
+    }
 });

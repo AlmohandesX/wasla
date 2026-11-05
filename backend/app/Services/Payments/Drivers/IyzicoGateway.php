@@ -28,6 +28,7 @@ use RuntimeException;
  * - https://docs.iyzico.com/en/getting-started/preliminaries/authentication/hmacsha256-auth.md
  * - https://docs.iyzico.com/en/advanced/response-signature-validation
  * - https://docs.iyzico.com/en/advanced/webhook.md
+ * - https://docs.iyzico.com/en/add-ons/error-codes.md
  *
  * Required buyer fields: id, name, surname, identityNumber, email, gsmNumber, registrationAddress, city, country.
  * Also required: price, paidPrice, callbackUrl, billingAddress (address, contactName, city, country) and basketItems
@@ -47,8 +48,9 @@ use RuntimeException;
  *
  * Could not confirm from the docs (all fail closed; see the live-sandbox step in the task report):
  * - paymentStatus values. Only SUCCESS appears, in a sample; FAILURE is from memory, and anything else stays pending.
- * - Whether a failed payment's retrieve answers status=success with a signature. If not, it is refused as an invalid
- *   callback and the payment stays pending.
+ * - Whether a failed payment's retrieve carries a signature. A signed FAILURE is failed whatever the top level status
+ *   says; an unsigned one is refused as an invalid callback and the payment stays pending.
+ * - Which error code means an unknown token. The docs list none, so only system and authentication codes count as ours.
  * - How a null paymentId enters the signature. Treated as empty, as the docs' JavaScript join does.
  * - The sandbox API URL appears only inside a sample response, not in a stated reference.
  * - The docs conflict on shippingAddress (required by schema, not for VIRTUAL items by text). We send it.
@@ -63,6 +65,9 @@ class IyzicoGateway implements PaymentGateway
 
     private const COUNTRY = 'Turkey';
 
+    /** System (1, 2) and authentication (1000-1009) errors: our keys or iyzico itself, not a bad token. A retry can succeed. */
+    private const OUR_SIDE_ERRORS = ['1', '2', '1000', '1001', '1002', '1003', '1004', '1005', '1006', '1007', '1008', '1009'];
+
     /** Amount keys in iyzico answers; see Kurus::decodeJson. */
     private const AMOUNT_KEYS = ['price', 'paidPrice'];
 
@@ -74,7 +79,7 @@ class IyzicoGateway implements PaymentGateway
     public function startCheckout(CheckoutRequest $request): CheckoutSession
     {
         $billing = $request->billing;
-        $parts = preg_split('/\s+/u', trim($billing->name));
+        $parts = preg_split('/\s+/u', $billing->name, -1, PREG_SPLIT_NO_EMPTY);
         $surname = array_pop($parts);
         $amount = Kurus::toDecimal($request->amountKurus);
         $address = ['contactName' => $billing->name, 'city' => $billing->city, 'country' => self::COUNTRY, 'address' => $billing->address];
@@ -193,12 +198,9 @@ class IyzicoGateway implements PaymentGateway
             throw new RuntimeException('iyzico did not answer the payment query.');
         }
 
-        if (($data['status'] ?? null) !== 'success') {
-            // The code alone, for diagnosis: errorMessage could echo buyer data.
-            $code = $data['errorCode'] ?? null;
-            Log::warning('iyzico refused a payment query.', ['error_code' => is_string($code) && ctype_alnum($code) ? $code : null]);
-
-            throw new InvalidCallback('Invalid iyzico callback.');
+        // A decline can carry a top level failure. Its paymentStatus still counts, once the signature below checks out.
+        if (($data['status'] ?? null) !== 'success' && ($data['paymentStatus'] ?? null) !== 'FAILURE') {
+            $this->refuseQuery($data);
         }
 
         if (($data['token'] ?? null) !== $token || ! $this->signatureMatches($data['signature'] ?? null, [
@@ -215,6 +217,23 @@ class IyzicoGateway implements PaymentGateway
         }
 
         return $data;
+    }
+
+    /** The code alone, for diagnosis: errorMessage could echo buyer data. */
+    private function refuseQuery(array $data): never
+    {
+        $code = is_scalar($data['errorCode'] ?? null) ? (string) $data['errorCode'] : '';
+        $context = ['error_code' => ctype_alnum($code) ? $code : null];
+
+        if (in_array($code, self::OUR_SIDE_ERRORS, true)) {
+            Log::error('iyzico could not authenticate or serve a payment query.', $context);
+
+            throw new RuntimeException('iyzico did not answer the payment query.');
+        }
+
+        Log::warning('iyzico refused a payment query.', $context);
+
+        throw new InvalidCallback('Invalid iyzico callback.');
     }
 
     private function post(string $path, array $payload): \Illuminate\Http\Client\Response

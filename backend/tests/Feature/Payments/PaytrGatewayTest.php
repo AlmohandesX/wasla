@@ -316,7 +316,83 @@ it('logs neither provider text nor billing data', function () {
 
     $this->post('/payments/callback/paytr', paytrCallbackFields())->assertStatus(503);
 
-    Log::shouldHaveReceived('error')->withArgs(fn ($m, $c = []) => ! str_contains(json_encode([$m, $c]), 'Made up')
-        && ! str_contains(json_encode([$m, $c]), GATEWAY_TEST_TCKN));
+    Log::shouldHaveReceived('error');
+    assertNotLogged(GATEWAY_TEST_TCKN, 'Made up');
     expect($payment->fresh()->status)->toBe(PaymentStatus::Pending);
+});
+
+it('does not read an empty returns value as a refund', function (mixed $returns) {
+    paytrFakeStatus(paytrStatusBody(['returns' => $returns]));
+
+    $remote = $this->paytr->fetchStatus(GATEWAY_TEST_REFERENCE);
+
+    expect($remote->status)->toBe(PaymentStatus::Paid)->and($remote->paidAmountKurus)->toBe(79900);
+})->with([
+    'null' => [null], 'empty array' => [[]], 'empty string' => [''], 'zero' => [0], 'false' => [false],
+    'text zero' => ['0'], 'text zero decimal' => ['0.00'], 'comma zero' => ['0,00'], 'number zero decimal' => [0.0],
+]);
+
+it('reads an empty returns JSON number exactly', function () {
+    paytrFakeStatus(str_replace('"returns": []', '"returns": 0.00', paymentFixture('paytr/status-success')));
+
+    expect($this->paytr->fetchStatus(GATEWAY_TEST_REFERENCE)->status)->toBe(PaymentStatus::Paid);
+});
+
+it('reads records or a positive amount in returns as a refund', function (mixed $returns) {
+    paytrFakeStatus(paytrStatusBody(['returns' => $returns]));
+
+    expect($this->paytr->fetchStatus(GATEWAY_TEST_REFERENCE)->status)->toBe(PaymentStatus::Refunded);
+})->with(['records' => [[[['return_amount' => '799.00']]]], 'text amount' => ['799.00'], 'number' => [799], 'small' => ['0.01']]);
+
+it('asks for a retry on a returns value it does not recognize', function (mixed $returns) {
+    paytrFakeStatus(paytrStatusBody(['returns' => $returns]));
+
+    $this->paytr->fetchStatus(GATEWAY_TEST_REFERENCE);
+})->with(['dash' => ['-'], 'text' => ['none'], 'true' => [true], 'negative' => ['-5']])
+    ->throws(RuntimeException::class);
+
+it('leaves a trail when a pending payment is already refunded at the provider', function () {
+    Log::spy();
+    $payment = gatewayPayment('paytr', GATEWAY_TEST_REFERENCE);
+    $before = Tag::find($payment->tag_id)->expires_at->toDateTimeString();
+    paytrFakeStatus(paytrStatusBody(['returns' => '799.00']));
+
+    $this->post('/payments/callback/paytr', paytrCallbackFields())->assertOk();
+
+    expect($payment->fresh()->status)->toBe(PaymentStatus::Pending)
+        ->and($payment->fresh()->flagged_at)->not->toBeNull()
+        ->and($payment->fresh()->flag_reason)->toBe('refunded_at_provider')
+        ->and(Tag::find($payment->tag_id)->expires_at->toDateTimeString())->toBe($before);
+    Log::shouldHaveReceived('warning')->withArgs(fn ($m, $c = []) => ($c['payment_id'] ?? null) === $payment->id);
+});
+
+it('asks for a retry through the route on an unrecognized returns value', function () {
+    $payment = gatewayPayment('paytr', GATEWAY_TEST_REFERENCE);
+    paytrFakeStatus(paytrStatusBody(['returns' => '-']));
+
+    $this->post('/payments/callback/paytr', paytrCallbackFields())->assertStatus(503);
+
+    expect($payment->fresh()->status)->toBe(PaymentStatus::Pending);
+});
+
+it('marks a signed failed callback failed through the route, and answers OK', function () {
+    $payment = gatewayPayment('paytr', GATEWAY_TEST_REFERENCE);
+    paytrFakeStatus(paymentFixture('paytr/status-not-found'));
+
+    $response = $this->post('/payments/callback/paytr', paytrCallbackFields(['status' => 'failed', 'total_amount' => '0']))->assertOk();
+
+    expect($response->getContent())->toBe('OK')->and($payment->fresh()->status)->toBe(PaymentStatus::Failed);
+});
+
+it('lets a later paid callback beat an earlier failed one', function () {
+    $payment = gatewayPayment('paytr', GATEWAY_TEST_REFERENCE);
+    $before = Tag::find($payment->tag_id)->expires_at;
+    Http::fakeSequence('*')->push(paymentFixture('paytr/status-not-found'))->push(paymentFixture('paytr/status-success'));
+    $this->post('/payments/callback/paytr', paytrCallbackFields(['status' => 'failed', 'total_amount' => '0']))->assertOk();
+    expect($payment->fresh()->status)->toBe(PaymentStatus::Failed);
+
+    $this->post('/payments/callback/paytr', paytrCallbackFields())->assertOk();
+
+    expect($payment->fresh()->status)->toBe(PaymentStatus::Paid)
+        ->and(Tag::find($payment->tag_id)->expires_at->toDateTimeString())->toBe($before->copy()->addYear()->toDateTimeString());
 });

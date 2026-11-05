@@ -493,3 +493,26 @@ it('passes the buyer id to the gateway', function () {
 
     expect($seen[0])->toBe((string) $user->id);
 });
+
+it('passes a foreign phone number on through the route, and refuses a Turkish landline in any spelling', function () {
+    $user = verifiedOwner();
+    $car = linkedCar($user);
+    $seen = new ArrayObject;
+    $this->app->instance(PaymentGateway::class, new class($seen) extends FakeGateway
+    {
+        public function __construct(private ArrayObject $seen) {}
+
+        public function startCheckout(CheckoutRequest $request): CheckoutSession
+        {
+            $this->seen[] = $request->billing->phone;
+
+            return parent::startCheckout($request);
+        }
+    });
+
+    startRenewal($user, $car, ['billing_phone' => '+49 170 1234567'])->assertCreated();
+    startRenewal($user, $car, ['billing_phone' => '+90 212 555 00 00'])
+        ->assertUnprocessable()->assertJsonPath('errors.billing_phone.0', __('wasla.invalid_billing_phone'));
+
+    expect($seen->getArrayCopy())->toBe(['+491701234567']);
+});
