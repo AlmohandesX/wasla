@@ -303,3 +303,21 @@ it('rate limits writes to 30 per minute per user', function () {
     }
     $this->putJson("/api/v1/cars/{$car->id}/chats-paused", ['paused' => true], $headers)->assertStatus(429);
 });
+
+it('treats a null or empty car_id as a new car and keeps model and plate', function () {
+    $user = owner();
+
+    foreach ([null, ''] as $carId) {
+        $tag = tagFixture();
+        $this->postJson('/api/v1/tags/claim', ['token' => $tag->token, 'car_id' => $carId] + carAttrs(), bearer($user))
+            ->assertCreated()->assertJsonPath('model', 'Renault Clio')->assertJsonPath('linked', true);
+    }
+});
+
+it('requires model and plate when car_id is null', function () {
+    $tag = tagFixture();
+
+    $this->postJson('/api/v1/tags/claim', ['token' => $tag->token, 'car_id' => null], bearer(owner()))
+        ->assertUnprocessable()->assertJsonValidationErrors(['model', 'plate']);
+    expect($tag->refresh()->car_id)->toBeNull();
+});
