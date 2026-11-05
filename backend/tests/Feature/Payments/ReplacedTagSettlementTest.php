@@ -67,3 +67,55 @@ it('keeps a payment on a revoked tag with no replacement paid, extends nothing a
         ->and($tag->fresh()->expires_at->equalTo($expiry))->toBeTrue();
     Log::shouldHaveReceived('warning')->withArgs(fn ($m, $c = []) => ($c['payment_id'] ?? null) === $payment->id)->once();
 });
+
+it('follows a two-hop replacement chain to the live tag', function () {
+    [$first, , $user] = adminClaimedTag();
+    $payment = paymentForTag($first, $user->id);
+    $second = tagFixture();
+    $third = tagFixture();
+    $admin = adminUser();
+    app(TagAdminService::class)->replace($first, $second, $admin, 'one');
+    app(TagAdminService::class)->replace($second, $third, $admin, 'two');
+    $expiry = $third->fresh()->expires_at;
+
+    payCallback($payment);
+
+    expect($third->fresh()->expires_at->equalTo($expiry->copy()->addYear()))->toBeTrue()
+        ->and($second->fresh()->expires_at->equalTo($expiry))->toBeTrue()
+        ->and($payment->fresh()->flag_reason)->toBe('settled_on_replacement');
+});
+
+it('extends nothing when the replacement was itself revoked', function () {
+    [$old, , $user] = adminClaimedTag();
+    $payment = paymentForTag($old, $user->id);
+    $new = tagFixture();
+    $admin = adminUser();
+    app(TagAdminService::class)->replace($old, $new, $admin, 'damaged');
+    app(TagAdminService::class)->revoke($new, $admin, 'stolen');
+    $expiry = $new->fresh()->expires_at;
+
+    payCallback($payment);
+
+    expect($payment->fresh()->status)->toBe(PaymentStatus::Paid)
+        ->and($payment->fresh()->flag_reason)->toBe('paid_on_revoked_tag')
+        ->and($new->fresh()->expires_at->equalTo($expiry))->toBeTrue();
+});
+
+it('never replaces an earlier flag, and logs the one it could not record', function () {
+    [$old, , $user] = adminClaimedTag();
+    $payment = paymentForTag($old, $user->id);
+    app(TagAdminService::class)->replace($old, tagFixture(), adminUser(), 'damaged');
+
+    // First delivery: wrong amount, flagged and left pending.
+    FakeGateway::setOutcome($payment->reference, PaymentStatus::Paid, 1);
+    test()->post('/payments/callback/fake', ['reference' => $payment->reference, 'signature' => FakeGateway::sign($payment->reference)])->assertOk();
+    expect($payment->fresh()->flag_reason)->toBe('amount_mismatch');
+
+    Log::spy();
+    payCallback($payment); // correct amount arrives later
+
+    $payment->refresh();
+    expect($payment->status)->toBe(PaymentStatus::Paid)->and($payment->flag_reason)->toBe('amount_mismatch');
+    Log::shouldHaveReceived('warning')->withArgs(fn ($m, $c = []) => ($c['payment_id'] ?? null) === $payment->id
+        && ($c['skipped_flag'] ?? null) === 'settled_on_replacement')->once();
+});

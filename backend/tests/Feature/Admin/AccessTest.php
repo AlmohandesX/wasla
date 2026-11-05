@@ -83,18 +83,22 @@ it('counts email spelling variants against the same account lock', function () {
     $admin = adminUser(['email' => 'boss@example.com']);
 
     // A zero-width variant matches the account under the column collation, but the form rejects it before any lookup.
-    adminLogin("bo\u{200D}ss@example.com")->assertHasErrors();
+    adminLogin("bo\u{200D}ss@example.com")->assertHasErrors(['data.email' => 'email']);
     expect(auth()->check())->toBeFalse();
 
-    // A case variant passes the form and shares the account counter with the exact address.
-    foreach (range(1, 3) as $i) {
+    // A sharp-s variant passes the email rule and equals the address under the collation: it never logs in
+    // (even with the right password) and its failure counts against the real account.
+    adminLogin("bo\u{DF}@example.com", PW)->assertHasErrors(['data.email']);
+    expect(auth()->check())->toBeFalse();
+
+    // A case variant also shares the account counter with the exact address: 1 + 2 + 2 = 5 failures.
+    foreach (range(1, 2) as $i) {
         adminLogin('BOSS@Example.com', 'wrong-password-'.$i)->assertHasErrors(['data.email']);
     }
     foreach (range(1, 2) as $i) {
         adminLogin($admin->email, 'wrong-password-'.$i)->assertHasErrors(['data.email']);
     }
 
-    adminLogin('Boss@example.com')->assertHasErrors(['data.email']);
     adminLogin($admin->email)->assertHasErrors(['data.email']);
     expect(auth()->check())->toBeFalse();
 });
@@ -181,16 +185,16 @@ describe('a replayed Livewire update', function () {
         livewireReplay($this->snapshot)->assertOk();
     });
 
-    it('is refused for a suspended admin, an owner and a guest', function (?callable $who) {
+    it('is refused for a suspended admin, an owner and a guest', function (?callable $who, int $status) {
         if ($who) {
             $this->actingAs($who());
         }
         $response = livewireReplay($this->snapshot);
 
-        expect($response->status())->not->toBe(200);
+        expect($response->status())->toBe($status);
     })->with([
-        'suspended admin' => [fn () => adminUser(['email' => 's@example.com', 'suspended_at' => now()])],
-        'owner' => [fn () => owner(['email' => 'o@example.com', 'email_verified_at' => now()])],
-        'guest' => [null],
+        'suspended admin' => [fn () => adminUser(['email' => 's@example.com', 'suspended_at' => now()]), 403],
+        'owner' => [fn () => owner(['email' => 'o@example.com', 'email_verified_at' => now()]), 403],
+        'guest' => [null, 401],
     ]);
 });

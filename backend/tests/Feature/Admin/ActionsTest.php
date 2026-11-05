@@ -132,10 +132,32 @@ it('loads the login page without third-party hosts and with its assets present',
 
     expect($html)->not->toContain('fonts.bunny.net')->not->toContain('ui-avatars.com');
 
-    preg_match_all('#(?:href|src)="([^"]+\.(?:css|js))(?:\?[^"]*)?"#', $html, $m);
-    $local = collect($m[1])->map(fn ($u) => parse_url($u, PHP_URL_PATH))->filter(fn ($p) => str_starts_with($p, '/css/filament') || str_starts_with($p, '/js/filament'));
-    expect($local)->not->toBeEmpty();
-    foreach ($local as $path) {
-        expect(public_path(ltrim($path, '/')))->toBeFile();
+    // Vendor writes the font stylesheet href with a backslash on Windows; browsers read it as a slash, so normalise it.
+    preg_match_all('#(?:href|src)="([^"]+)"#', $html, $m);
+    $paths = collect($m[1])->map(fn ($u) => parse_url(str_replace('\\', '/', $u), PHP_URL_PATH))
+        ->filter(fn ($p) => preg_match('#^/(css|js|fonts)/filament|livewire#', (string) $p))->unique();
+
+    expect($paths->filter(fn ($p) => str_starts_with($p, '/fonts/')))->not->toBeEmpty()
+        ->and($paths->filter(fn ($p) => str_contains($p, 'livewire')))->not->toBeEmpty();
+    foreach ($paths as $path) {
+        if (str_contains($path, 'livewire')) {
+            $this->get($path)->assertOk();
+        } else {
+            expect(public_path(ltrim($path, '/')))->toBeFile();
+        }
     }
+});
+
+it('gives the admin login page the Livewire script and update config, and keeps strict pages free of Livewire', function () {
+    $this->app['auth']->forgetGuards();
+
+    $admin = $this->get('/admin/login')->assertOk()->getContent();
+    expect($admin)->toContain('data-update-uri')->toContain('data-csrf');
+    preg_match('#<script[^>]+src="([^"]*livewire[^"]*\.js)[^"]*"#', $admin, $m);
+    expect($m[1] ?? null)->not->toBeNull();
+    $this->get(parse_url($m[1], PHP_URL_PATH))->assertOk();
+
+    $strict = $this->get('/');
+    expect($strict->getContent())->not->toContain('livewire')->not->toContain('wire:')
+        ->and($strict->headers->get('Content-Security-Policy'))->not->toContain('unsafe-inline');
 });

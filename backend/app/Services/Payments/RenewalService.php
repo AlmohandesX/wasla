@@ -160,7 +160,7 @@ class RenewalService
 
             if ($remote->status === PaymentStatus::Refunded) {
                 // Money came and went before we settled, so nothing extends. Leave it for an admin. Ids only.
-                $locked->update(['flagged_at' => $locked->flagged_at ?? now(), 'flag_reason' => 'refunded_at_provider']);
+                $this->flag($locked, 'refunded_at_provider', $gateway);
                 Log::warning('Payment callback for a payment the provider has refunded.', [
                     'provider' => $gateway->name(),
                     'payment_id' => $locked->id,
@@ -189,7 +189,7 @@ class RenewalService
 
             if ($reason !== null) {
                 // Money moved but not as asked: leave it for an admin. Ids only, never billing data.
-                $locked->update(['flagged_at' => $locked->flagged_at ?? now(), 'flag_reason' => $reason]);
+                $this->flag($locked, $reason, $gateway);
                 Log::warning('Payment callback does not match the recorded payment.', [
                     'provider' => $gateway->name(),
                     'payment_id' => $locked->id,
@@ -204,7 +204,7 @@ class RenewalService
             $tag = $this->liveTag($locked->tag_id);
             if ($tag->isRevoked()) {
                 // Paid, but the tag was revoked with no replacement: nothing to extend. Leave it for an admin. Ids only.
-                $locked->update(['flagged_at' => $locked->flagged_at ?? now(), 'flag_reason' => 'paid_on_revoked_tag']);
+                $this->flag($locked, 'paid_on_revoked_tag', $gateway);
                 Log::warning('Payment settled on a revoked tag with no replacement.', [
                     'provider' => $gateway->name(),
                     'payment_id' => $locked->id,
@@ -216,9 +216,26 @@ class RenewalService
             app(SubscriptionService::class)->extendOneYear($tag);
 
             if ($tag->id !== $locked->tag_id) {
-                $locked->update(['flagged_at' => $locked->flagged_at ?? now(), 'flag_reason' => 'settled_on_replacement']);
+                $this->flag($locked, 'settled_on_replacement', $gateway);
             }
         });
+    }
+
+    /** The first flag wins: a later one is logged, never written over it. */
+    private function flag(Payment $payment, string $reason, PaymentGateway $gateway): void
+    {
+        if ($payment->flag_reason !== null) {
+            Log::warning('Payment already flagged; later flag not recorded.', [
+                'provider' => $gateway->name(),
+                'payment_id' => $payment->id,
+                'existing_flag' => $payment->flag_reason,
+                'skipped_flag' => $reason,
+            ]);
+
+            return;
+        }
+
+        $payment->update(['flagged_at' => $payment->flagged_at ?? now(), 'flag_reason' => $reason]);
     }
 
     /** Locks the paid tag and, if an admin replaced it, follows the replacement chain to the tag that is live now. */
