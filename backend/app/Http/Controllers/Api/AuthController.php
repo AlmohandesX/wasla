@@ -42,8 +42,17 @@ class AuthController extends Controller
 
     public function login(LoginRequest $request): JsonResponse
     {
-        $email = $request->string('email')->toString();
+        $normalized = mb_strtolower(trim($request->string('email')->toString()));
         $ip = (string) $request->ip();
+
+        // The column collation treats some different strings as equal (zero-width characters,
+        // accents). Throttle on the stored address so those variants share one counter, and
+        // only accept an exact lowercase match as the account.
+        $user = User::where('email', $normalized)->first();
+        $email = $user ? mb_strtolower($user->email) : $normalized;
+        if ($user && $email !== $normalized) {
+            $user = null;
+        }
 
         if ($this->throttle->tooManyAttempts($email, $ip)) {
             $retryAfter = $this->throttle->availableIn($email, $ip);
@@ -55,10 +64,8 @@ class AuthController extends Controller
             ], 429)->header('Retry-After', (string) $retryAfter);
         }
 
-        $user = User::where('email', mb_strtolower(trim($email)))->first();
-
-        // Always run one hash check so unknown emails cost the same as wrong passwords.
-        $valid = Hash::check($request->input('password'), $user?->password ?? Hash::make(Str::random(16)));
+        // Exactly one hash check on both paths; unknown emails check against a fixed dummy hash.
+        $valid = Hash::check($request->input('password'), $user?->password ?? $this->dummyHash());
 
         if (! $user || ! $valid) {
             $this->throttle->hit($email, $ip);
@@ -131,6 +138,14 @@ class AuthController extends Controller
         }
 
         return response()->json(['message' => __('wasla.verification_sent')]);
+    }
+
+    /** Computed once per process at the configured cost. */
+    private function dummyHash(): string
+    {
+        static $hash = null;
+
+        return $hash ??= Hash::make('wasla-dummy-password');
     }
 
     /** @return array{token: string, user: array<string, mixed>} */

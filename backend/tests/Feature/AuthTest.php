@@ -1,7 +1,10 @@
 <?php
 
 use App\Models\User;
-use Illuminate\Auth\Notifications\VerifyEmail;
+use App\Notifications\QueuedResetPassword;
+use App\Notifications\QueuedVerifyEmail;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\URL;
 
@@ -154,7 +157,7 @@ it('sends a verification email on registration', function () {
 
     register()->assertCreated();
 
-    Notification::assertSentTo(User::where('email', 'ayse@example.com')->first(), VerifyEmail::class);
+    Notification::assertSentTo(User::where('email', 'ayse@example.com')->first(), QueuedVerifyEmail::class);
 });
 
 it('rejects owner routes with 403 email_not_verified until verified', function () {
@@ -214,4 +217,76 @@ it('logs out by revoking the current token', function () {
     $this->withHeader('Authorization', "Bearer {$token}")->postJson('/api/v1/auth/logout')->assertNoContent();
 
     expect($user->tokens()->count())->toBe(0);
+});
+
+it('keeps the account locked for email variants that match under the column collation', function () {
+    $user = owner(['email' => 'ayse@example.com']);
+    $variant = "ay\u{200D}se@example.com";
+
+    foreach (range(1, 5) as $i) {
+        login($user->email, 'wrong-password', "10.0.3.{$i}")->assertUnauthorized();
+    }
+
+    login($variant, PW, '10.0.3.99')->assertStatus(429);
+});
+
+it('does not log in with a collation-equal email variant', function () {
+    owner(['email' => 'ayse@example.com']);
+
+    login("ay\u{200D}se@example.com")->assertUnauthorized()->assertJsonPath('code', 'invalid_credentials');
+});
+
+it('locks for a full 15 minutes counted from the fifth failure', function () {
+    $user = owner();
+
+    foreach (range(1, 4) as $i) {
+        login($user->email, 'wrong-password')->assertUnauthorized();
+        $this->travel(1)->minutes();
+    }
+    $this->travel(10)->minutes();
+    login($user->email, 'wrong-password')->assertUnauthorized();
+
+    $this->travel(2)->minutes();
+    login($user->email)->assertStatus(429);
+
+    $this->travel(14)->minutes();
+    login($user->email)->assertOk();
+});
+
+it('runs exactly one password hash check for an unknown email', function () {
+    login('warmup@example.com', 'x', '10.0.4.1')->assertUnauthorized();
+
+    Hash::partialMock()->shouldNotReceive('make');
+    Hash::shouldReceive('check')->once()->andReturn(false);
+
+    login('nobody@example.com', 'x', '10.0.4.2')->assertUnauthorized();
+});
+
+it('queues the password reset mail and only sends it to a known address', function () {
+    Notification::fake();
+    $user = owner();
+
+    $this->postJson('/api/v1/auth/forgot-password', ['email' => $user->email])->assertOk();
+    $this->postJson('/api/v1/auth/forgot-password', ['email' => 'nobody@example.com'])->assertOk();
+
+    Notification::assertSentTo($user, QueuedResetPassword::class, fn ($n) => $n instanceof ShouldQueue);
+    Notification::assertCount(1);
+});
+
+it('queues the verification mail on registration', function () {
+    Notification::fake();
+
+    register()->assertCreated();
+
+    Notification::assertSentTo(User::where('email', 'ayse@example.com')->first(), QueuedVerifyEmail::class, fn ($n) => $n instanceof ShouldQueue);
+});
+
+it('serves the confirmation page without inline styles', function () {
+    $user = owner(['email_verified_at' => null]);
+    $url = URL::temporarySignedRoute('verification.verify', now()->addHours(24), ['id' => $user->id, 'hash' => sha1($user->email)]);
+
+    $response = $this->get($url)->assertOk()->assertDontSee('<style', false)->assertSee('css/auth.css', false);
+
+    expect($response->headers->get('Content-Security-Policy'))->toContain("style-src 'self';")
+        ->and(public_path('css/auth.css'))->toBeFile();
 });
