@@ -3,6 +3,7 @@
 namespace App\Services\Chat;
 
 use App\Enums\ModerationDecision;
+use App\Events\ChatMessageCreated;
 use App\Exceptions\MessageBlocked;
 use App\Models\ChatMessage;
 use App\Models\ChatThread;
@@ -34,6 +35,7 @@ class ChatService
             'moderation_status' => $result->decision === ModerationDecision::AllowFlagged ? 'flagged' : 'passed',
         ]);
         $thread->touch();
+        ChatMessageCreated::dispatch($message);
 
         return $message;
     }

@@ -27,5 +27,7 @@ return [
     'error_car_not_owned' => 'Bu araç hesabınıza ait değil.',
     'error_subscription_expired' => 'Abonelik süresi doldu. Bu aracı kullanmaya devam etmek için lütfen yenileyin.',
     'error_message_blocked' => 'Bu metne izin verilmiyor. Lütfen değiştirip tekrar deneyin.',
-    'error_chat_unavailable' => 'Bu araç için sohbet kullanılamıyor.',
+    'error_chat_unavailable' => 'Sohbet kullanılamıyor.',
+    'error_chats_paused' => 'Sahibi şu an yeni mesaj kabul etmiyor.',
+    'error_rate_limited' => 'Çok fazla mesaj gönderildi. Birkaç dakika bekleyip tekrar deneyin.',
 ];

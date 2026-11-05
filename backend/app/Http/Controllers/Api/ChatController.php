@@ -53,8 +53,8 @@ class ChatController extends Controller
 
     public function send(SendChatMessageRequest $request, ChatThread $thread): JsonResponse
     {
-        // The subscription middleware already answered 402 for an expired tag; here only a missing tag is left.
-        if ($thread->car->tag === null) {
+        // The subscription middleware already answered 402 for an expired tag; here a missing tag or a block on the thread is left.
+        if ($thread->car->tag === null || $thread->isBlocked()) {
             throw new ChatUnavailable;
         }
 

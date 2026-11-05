@@ -154,3 +154,50 @@ body {
 @media (prefers-reduced-motion: no-preference) {
     .action, .reveal { transition: background-color 0.15s; }
 }
+
+/* Chat */
+.notice { margin: 0 0 1.5rem; }
+
+.thread { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.75rem; }
+
+.bubble { max-width: 85%; padding: 0.625rem 0.875rem; border-radius: 0.75rem; }
+.bubble p { margin: 0; white-space: pre-wrap; }
+.bubble .meta { display: block; margin-bottom: 0.125rem; font-size: 0.8125rem; font-weight: 700; }
+.bubble.mine { align-self: flex-end; background: var(--blue-dark); color: #fff; }
+.bubble.theirs { align-self: flex-start; background: var(--wash); border: 1px solid var(--line); }
+.bubble.theirs .meta { color: var(--muted); }
+
+.report {
+    margin-top: 0.25rem;
+    min-height: 2.75rem;
+    padding: 0 0.5rem;
+    border: 0;
+    background: none;
+    color: var(--blue-dark);
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 700;
+    text-decoration: underline;
+    cursor: pointer;
+}
+.report[disabled] { color: var(--muted); text-decoration: none; cursor: default; }
+
+.composer { margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem; }
+.composer[hidden], .empty[hidden] { display: none; }
+.field { font-weight: 700; font-size: 0.9375rem; }
+.composer textarea {
+    width: 100%;
+    min-height: 5.5rem;
+    padding: 0.75rem;
+    border: 2px solid var(--line);
+    border-radius: 0.75rem;
+    color: var(--ink);
+    font: inherit;
+    resize: vertical;
+}
+.composer textarea:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; border-color: var(--blue); }
+.composer .action[disabled] { background: var(--muted); cursor: progress; }
+.consent { display: flex; gap: 0.75rem; align-items: flex-start; font-size: 0.9375rem; }
+.consent input { flex: none; width: 1.5rem; height: 1.5rem; margin-top: 0.125rem; accent-color: var(--blue-dark); }
+
+.back { display: inline-flex; align-items: center; min-height: 2.75rem; margin-top: 1.5rem; color: var(--blue-dark); font-weight: 700; }

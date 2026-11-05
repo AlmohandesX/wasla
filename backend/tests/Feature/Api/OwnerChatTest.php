@@ -297,3 +297,14 @@ it('stops a previous owner replying after a transfer', function () {
     $this->postJson("/api/v1/chats/{$thread->id}/messages", ['body' => 'hello'], bearer($old))
         ->assertForbidden()->assertJsonPath('code', 'chat_unavailable');
 });
+
+it('refuses an owner reply to a thread they blocked', function () {
+    $user = owner();
+    $thread = chatThread(linkedCar($user));
+    app(ChatService::class)->block($thread);
+
+    $this->postJson("/api/v1/chats/{$thread->id}/messages", ['body' => 'Hala yaziyorum'], bearer($user))
+        ->assertForbidden()
+        ->assertJsonPath('code', 'chat_unavailable');
+    expect($thread->messages()->count())->toBe(1);
+});

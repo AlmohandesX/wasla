@@ -75,6 +75,11 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('contact-reveal', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));
 
+        // Visitor chat: one open page polls 12 times a minute, so 60 leaves room for a shared IP.
+        RateLimiter::for('chat-read', fn (Request $request) => Limit::perMinute(60)->by($request->ip()));
+
+        RateLimiter::for('chat-write', fn (Request $request) => Limit::perMinute(20)->by($request->ip()));
+
         RateLimiter::for('auth', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));
 
         RateLimiter::for('forgot-password', fn (Request $request) => [

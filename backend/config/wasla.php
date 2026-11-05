@@ -33,6 +33,15 @@ return [
         'daily_cap' => (int) env('MODERATION_DAILY_CAP', 5000),
     ],
 
+    'chat' => [
+        // Adds a consent checkbox to the visitor chat. Visitors who decline get blacklist-only moderation.
+        'consent_required' => (bool) env('CHAT_CONSENT_REQUIRED', false),
+        'messages_per_window' => 10,
+        'window_minutes' => 10,
+        'new_threads_per_hour' => 3,
+        'cookie_days' => 30,
+    ],
+
     'payment_gateway' => env('PAYMENT_GATEWAY', 'fake'),
 
     // Comma separated proxy IPs or CIDRs, or "*" when the VPS sits behind a trusted load balancer only.

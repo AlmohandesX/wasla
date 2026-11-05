@@ -22,6 +22,10 @@ return Application::configure(basePath: dirname(__DIR__))
             SecurityHeaders::class,
         ]);
 
+        // The visitor cookie is a random 256-bit bearer token that the server only stores hashed; encrypting it
+        // would add nothing and tie visitor sessions to APP_KEY rotation.
+        $middleware->encryptCookies(except: ['wasla_visitor']);
+
         $middleware->alias([
             'not.suspended' => EnsureNotSuspended::class,
             'verified' => EnsureEmailVerified::class,
