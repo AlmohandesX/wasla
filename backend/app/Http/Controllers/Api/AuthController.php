@@ -64,8 +64,9 @@ class AuthController extends Controller
             ], 429)->header('Retry-After', (string) $retryAfter);
         }
 
-        // Exactly one hash check on both paths; unknown emails check against a fixed dummy hash.
-        $valid = Hash::check($request->input('password'), $user?->password ?? $this->dummyHash());
+        // Exactly one hash check on both paths. Unknown emails check against a constant bcrypt hash
+        // (no hashing during the request), so timing does not reveal whether an email exists.
+        $valid = Hash::check($request->input('password'), $user?->password ?? config('wasla.dummy_password_hash'));
 
         if (! $user || ! $valid) {
             $this->throttle->hit($email, $ip);
@@ -138,14 +139,6 @@ class AuthController extends Controller
         }
 
         return response()->json(['message' => __('wasla.verification_sent')]);
-    }
-
-    /** Computed once per process at the configured cost. */
-    private function dummyHash(): string
-    {
-        static $hash = null;
-
-        return $hash ??= Hash::make('wasla-dummy-password');
     }
 
     /** @return array{token: string, user: array<string, mixed>} */

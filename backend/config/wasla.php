@@ -14,6 +14,10 @@ return [
     // Deep link or page that opens the mobile reset-password screen.
     'password_reset_url' => env('PASSWORD_RESET_URL', 'wasla://reset-password'),
 
+    // Constant bcrypt hash (cost 12) checked when a login email is unknown, so timing matches a
+    // wrong password. Keep its cost equal to BCRYPT_ROUNDS (12 in production).
+    'dummy_password_hash' => '$2y$12$sjwYX806TjRZVVezGsnvZuD0epZoDxEfxQoCnRZid8R5qiiSDsEua',
+
     'tag_base_url' => env('TAG_BASE_URL', 'http://localhost:8000/t'),
 
     'moderation_daily_cap' => (int) env('MODERATION_DAILY_CAP', 1000),

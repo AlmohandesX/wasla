@@ -254,8 +254,6 @@ it('locks for a full 15 minutes counted from the fifth failure', function () {
 });
 
 it('runs exactly one password hash check for an unknown email', function () {
-    login('warmup@example.com', 'x', '10.0.4.1')->assertUnauthorized();
-
     Hash::partialMock()->shouldNotReceive('make');
     Hash::shouldReceive('check')->once()->andReturn(false);
 
