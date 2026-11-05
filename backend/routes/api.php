@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CarController;
+use App\Http\Controllers\Api\CarPhotoController;
 use App\Http\Controllers\Api\ClaimController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\StatusController;
@@ -28,6 +29,7 @@ Route::prefix('v1')->group(function () {
         // Always reachable, including for a car whose subscription expired.
         Route::get('cars', [CarController::class, 'index']);
         Route::get('cars/{car}', [CarController::class, 'show']);
+        Route::get('cars/{car}/photo', [CarPhotoController::class, 'show']);
         Route::post('cars/{car}/unlink', [TransferController::class, 'unlink'])->middleware('throttle:writes');
 
         Route::post('tags/claim', ClaimController::class)->middleware('throttle:claim');
@@ -42,6 +44,9 @@ Route::prefix('v1')->group(function () {
             Route::put('cars/{car}/chats-paused', [StatusController::class, 'chatsPaused'])->middleware('throttle:writes');
             Route::put('cars/{car}/status', [StatusController::class, 'set'])->middleware('throttle:writes');
             Route::delete('cars/{car}/status', [StatusController::class, 'clear'])->middleware('throttle:writes');
+
+            Route::post('cars/{car}/photo', [CarPhotoController::class, 'store'])->middleware('throttle:writes');
+            Route::delete('cars/{car}/photo', [CarPhotoController::class, 'destroy'])->middleware('throttle:writes');
 
             Route::get('cars/{car}/contacts', [ContactController::class, 'index']);
             Route::post('cars/{car}/contacts', [ContactController::class, 'store'])->middleware('throttle:writes');

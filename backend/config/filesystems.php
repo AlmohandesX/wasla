@@ -38,6 +38,15 @@ return [
             'report' => false,
         ],
 
+        // Private owner car photos, small files. Never linked or served by URL.
+        'photos' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/photos'),
+            'visibility' => 'private',
+            'throw' => false,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
