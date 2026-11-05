@@ -602,3 +602,15 @@ it('does not hand the open payment id to someone else', function () {
     $res = startRenewal($newcomer, $other->refresh())->assertStatus(409)->assertJsonPath('code', 'renewal_pending');
     expect($res->json('payment_id'))->toBeNull()->and($res->json('checkout_expires_at'))->not->toBeNull();
 });
+
+it('also gives the seconds left on the open checkout, so the app need not trust its own clock', function () {
+    $user = verifiedOwner();
+    $car = linkedCar($user);
+
+    $start = startRenewal($user, $car)->assertCreated();
+    expect($start->json('data.checkout_expires_in'))->toBeInt()->toBeGreaterThan(1790)->toBeLessThanOrEqual(1800);
+
+    $this->travel(10)->minutes();
+    $refused = startRenewal($user, $car)->assertStatus(409);
+    expect($refused->json('checkout_expires_in'))->toBeInt()->toBeGreaterThan(1180)->toBeLessThanOrEqual(1200);
+});

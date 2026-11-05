@@ -40,6 +40,7 @@ jest.mock('../../api/cars', () => ({
 
 const VALID_ID = '10000000146';
 const future = () => new Date(Date.now() + 25 * 60_000).toISOString();
+const IN = 25 * 60;
 
 function input(tree: ReturnType<typeof create>, label: string): ReactTestInstance {
   return tree.root.findAll((n) => n.props.accessibilityLabel === label && typeof n.props.onChangeText === 'function')[0];
@@ -69,7 +70,7 @@ beforeEach(() => {
 });
 
 test('the national ID is masked, sent once, and cleared from state afterwards', async () => {
-  mockStartRenewal.mockResolvedValue({ id: 9, status: 'pending', redirect_url: 'http://192.168.1.20:8000/fake-gateway/checkout/W1', checkout_expires_at: future() });
+  mockStartRenewal.mockResolvedValue({ id: 9, status: 'pending', redirect_url: 'http://192.168.1.20:8000/fake-gateway/checkout/W1', checkout_expires_at: future(), checkout_expires_in: IN });
   mockPoll.mockResolvedValue('paid');
   let tree!: ReturnType<typeof create>;
   await act(async () => {
@@ -107,7 +108,7 @@ test('an invalid national ID is refused before any request', async () => {
 });
 
 test('an unsafe checkout address is never opened and the owner can check the payment', async () => {
-  mockStartRenewal.mockResolvedValue({ id: 9, status: 'pending', redirect_url: 'http://evil.example.com/pay', checkout_expires_at: future() });
+  mockStartRenewal.mockResolvedValue({ id: 9, status: 'pending', redirect_url: 'http://evil.example.com/pay', checkout_expires_at: future(), checkout_expires_in: IN });
   let tree!: ReturnType<typeof create>;
   await act(async () => {
     tree = create(<Renew />);
@@ -118,7 +119,7 @@ test('an unsafe checkout address is never opened and the owner can check the pay
 });
 
 test('a pending result says the payment is being confirmed and offers another check, never failure', async () => {
-  mockStartRenewal.mockResolvedValue({ id: 9, status: 'pending', redirect_url: 'http://192.168.1.20:8000/fake-gateway/checkout/W1', checkout_expires_at: future() });
+  mockStartRenewal.mockResolvedValue({ id: 9, status: 'pending', redirect_url: 'http://192.168.1.20:8000/fake-gateway/checkout/W1', checkout_expires_at: future(), checkout_expires_in: IN });
   mockPoll.mockResolvedValue('pending');
   let tree!: ReturnType<typeof create>;
   await act(async () => {
@@ -170,11 +171,11 @@ test('a double tap starts only one payment', async () => {
     void press();
   });
   expect(mockStartRenewal).toHaveBeenCalledTimes(1);
-  await act(async () => resolve({ id: 9, status: 'pending', redirect_url: 'http://192.168.1.20:8000/fake-gateway/checkout/W1', checkout_expires_at: future() }));
+  await act(async () => resolve({ id: 9, status: 'pending', redirect_url: 'http://192.168.1.20:8000/fake-gateway/checkout/W1', checkout_expires_at: future(), checkout_expires_in: IN }));
 });
 
 test('leaving and coming back shows the pending screen for the same payment, with no second start', async () => {
-  mockStartRenewal.mockResolvedValue({ id: 9, status: 'pending', redirect_url: 'http://192.168.1.20:8000/fake-gateway/checkout/W1', checkout_expires_at: future() });
+  mockStartRenewal.mockResolvedValue({ id: 9, status: 'pending', redirect_url: 'http://192.168.1.20:8000/fake-gateway/checkout/W1', checkout_expires_at: future(), checkout_expires_in: IN });
   mockPoll.mockResolvedValue('pending');
   let tree!: ReturnType<typeof create>;
   await act(async () => {
@@ -200,7 +201,7 @@ test('leaving and coming back shows the pending screen for the same payment, wit
 });
 
 test('a 409 renewal_pending polls the payment it names and never opens a second checkout', async () => {
-  mockStartRenewal.mockRejectedValue(new ApiError(409, 'renewal_pending', 'x', { paymentId: 42, checkoutExpiresAt: future() }));
+  mockStartRenewal.mockRejectedValue(new ApiError(409, 'renewal_pending', 'x', { paymentId: 42, checkoutExpiresAt: future(), checkoutExpiresIn: IN }));
   mockPoll.mockResolvedValue('paid');
   let tree!: ReturnType<typeof create>;
   await act(async () => {
@@ -218,7 +219,7 @@ test('returning to the app restarts the poll with a fresh deadline while the pay
     handler = cb;
     return { remove: jest.fn() };
   }) as never);
-  mockStartRenewal.mockResolvedValue({ id: 9, status: 'pending', redirect_url: 'http://192.168.1.20:8000/fake-gateway/checkout/W1', checkout_expires_at: future() });
+  mockStartRenewal.mockResolvedValue({ id: 9, status: 'pending', redirect_url: 'http://192.168.1.20:8000/fake-gateway/checkout/W1', checkout_expires_at: future(), checkout_expires_in: IN });
   mockPoll.mockResolvedValueOnce('pending'); // the poll after the browser call
   let tree!: ReturnType<typeof create>;
   await act(async () => {
@@ -297,7 +298,7 @@ describe('an abandoned checkout', () => {
   });
 
   test('a 409 without a payment id shows a wait message with the time left, and no check button', async () => {
-    mockStartRenewal.mockRejectedValue(new ApiError(409, 'renewal_pending', 'x', { checkoutExpiresAt: new Date(Date.now() + 12 * 60_000 + 5000).toISOString() }));
+    mockStartRenewal.mockRejectedValue(new ApiError(409, 'renewal_pending', 'x', { checkoutExpiresIn: 12 * 60 + 5 }));
     let tree!: ReturnType<typeof create>;
     await act(async () => {
       tree = create(<Renew />);
@@ -306,5 +307,88 @@ describe('an abandoned checkout', () => {
     expect(mockPoll).not.toHaveBeenCalled();
     expect(textOf(tree)).toContain('13 dakika');
     expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Tekrar kontrol et')).toHaveLength(0);
+  });
+});
+
+describe('a phone with the wrong clock', () => {
+  const URL = 'http://192.168.1.20:8000/fake-gateway/checkout/W1';
+  const realNow = Date.now;
+  afterEach(() => {
+    Date.now = realNow;
+  });
+
+  async function startWith(response: Record<string, unknown>) {
+    mockStartRenewal.mockResolvedValue({ id: 9, status: 'pending', redirect_url: URL, ...response });
+    mockPoll.mockResolvedValue('pending');
+    let tree!: ReturnType<typeof create>;
+    await act(async () => {
+      tree = create(<Renew />);
+    });
+    await fillAndSubmit(tree);
+    return tree;
+  }
+  const label = (tree: ReturnType<typeof create>, l: string) =>
+    tree.root.findAll((n) => n.props.accessibilityLabel === l && n.props.onPress);
+
+  test('hours slow: a checkout the server says is over is over, not "payable for hours"', async () => {
+    const server = realNow();
+    Date.now = () => server - 3 * 3600_000;
+    const tree = await startWith({
+      checkout_expires_at: new Date(server - 1000).toISOString(), // absolute time looks like 3 h in the future to this phone
+      checkout_expires_in: 0,
+    });
+    expect(label(tree, 'Yeni ödeme başlat')).toHaveLength(1);
+    expect(label(tree, 'Ödeme sayfasını tekrar aç')).toHaveLength(0);
+  });
+
+  test('hours fast: a checkout the server says is still payable can be reopened', async () => {
+    const server = realNow();
+    Date.now = () => server + 5 * 3600_000;
+    const tree = await startWith({
+      checkout_expires_at: new Date(server + 20 * 60_000).toISOString(), // absolute time looks 5 h in the past
+      checkout_expires_in: 20 * 60,
+    });
+    expect(label(tree, 'Ödeme sayfasını tekrar aç')).toHaveLength(1);
+    expect(label(tree, 'Yeni ödeme başlat')).toHaveLength(0);
+  });
+});
+
+describe('a screen left open', () => {
+  afterEach(() => jest.useRealTimers());
+
+  test('flips to "Start a new payment" at the expiry boundary without any interaction', async () => {
+    jest.useFakeTimers();
+    mockStartRenewal.mockResolvedValue({
+      id: 9, status: 'pending', redirect_url: 'http://192.168.1.20:8000/fake-gateway/checkout/W1', checkout_expires_in: 90,
+    });
+    mockPoll.mockResolvedValue('pending');
+    let tree!: ReturnType<typeof create>;
+    await act(async () => {
+      tree = create(<Renew />);
+    });
+    await fillAndSubmit(tree);
+    const startNew = () => tree.root.findAll((n) => n.props.accessibilityLabel === 'Yeni ödeme başlat' && n.props.onPress);
+    expect(startNew()).toHaveLength(0);
+    await act(async () => {
+      jest.advanceTimersByTime(91_000);
+    });
+    expect(startNew()).toHaveLength(1);
+  });
+
+  test('the boundary timer is cleared when the screen goes away', async () => {
+    jest.useFakeTimers();
+    mockStartRenewal.mockResolvedValue({
+      id: 9, status: 'pending', redirect_url: 'http://192.168.1.20:8000/fake-gateway/checkout/W1', checkout_expires_in: 90,
+    });
+    mockPoll.mockResolvedValue('pending');
+    let tree!: ReturnType<typeof create>;
+    await act(async () => {
+      tree = create(<Renew />);
+    });
+    await fillAndSubmit(tree);
+    const before = jest.getTimerCount();
+    act(() => tree.unmount());
+    // The boundary timer was pending before and is gone after.
+    expect(jest.getTimerCount()).toBeLessThan(before);
   });
 });

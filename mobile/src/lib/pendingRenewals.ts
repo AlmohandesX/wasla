@@ -7,15 +7,16 @@ export type PendingRenewal = {
   /** Null when the open checkout belongs to someone else (the server does not say whose it is). */
   paymentId: number | null;
   checkoutUrl: string | null;
-  /** Epoch ms from the server's checkout_expires_at. After it the checkout can no longer be paid. */
+  /** Phone-clock epoch ms at which the checkout stops being payable: the moment the answer arrived plus the
+   * seconds the server said were left, so a wrong phone clock does not matter. */
   expiresAt: number;
 };
 
 const inProgress = new Map<number, PendingRenewal>();
 
-export function parseExpiry(iso: string | null | undefined): number {
-  const ms = iso ? Date.parse(iso) : NaN;
-  return Number.isNaN(ms) ? 0 : ms; // unknown counts as already over, so it can never trap the owner
+/** Call when the server's answer arrives. Unknown counts as already over, so it can never trap the owner. */
+export function expiryFromSeconds(secondsLeft: number | null | undefined): number {
+  return typeof secondsLeft === 'number' && Number.isFinite(secondsLeft) ? Date.now() + Math.max(0, secondsLeft) * 1000 : 0;
 }
 
 export function rememberPending(carId: number, entry: PendingRenewal): void {

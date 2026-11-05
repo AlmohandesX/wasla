@@ -16,7 +16,7 @@ import { t, useLocale } from '../../../../src/i18n';
 import { isFullName, isValidBillingPhone, isValidTckn } from '../../../../src/lib/billing';
 import { isAllowedCheckoutUrl } from '../../../../src/lib/checkoutUrl';
 import { formatDate } from '../../../../src/lib/format';
-import { forgetPending, isOver, parseExpiry, pendingFor, rememberPending } from '../../../../src/lib/pendingRenewals';
+import { forgetPending, expiryFromSeconds, isOver, pendingFor, rememberPending } from '../../../../src/lib/pendingRenewals';
 import { pollPayment } from '../../../../src/lib/pollPayment';
 import { colors, fontSize, radius, spacing } from '../../../../src/theme';
 
@@ -141,6 +141,17 @@ export default function Renew() {
     return () => subscription.remove();
   }, [check]);
 
+  // Re-render at the moment the checkout lapses, so a screen left open offers a new payment on time.
+  const [, setTick] = useState(0);
+  const watched = pendingFor(carId);
+  const watchedUntil = watched?.expiresAt ?? 0;
+  useEffect(() => {
+    const wait = watchedUntil - Date.now();
+    if (!watchedUntil || wait <= 0) return;
+    const timer = setTimeout(() => setTick((n) => n + 1), wait + 50);
+    return () => clearTimeout(timer);
+  }, [watchedUntil, phase]);
+
   const openCheckout = async (url: string) => {
     if (!isAllowedCheckoutUrl(url, getApiBaseUrl(), __DEV__)) {
       setNotice(t('renew.badUrl'));
@@ -194,7 +205,7 @@ export default function Renew() {
       rememberPending(carId, {
         paymentId: started.id,
         checkoutUrl: started.redirect_url,
-        expiresAt: parseExpiry(started.checkout_expires_at),
+        expiresAt: expiryFromSeconds(started.checkout_expires_in),
       });
       checkoutUrl.current = started.redirect_url;
       url = started.redirect_url;
@@ -207,7 +218,7 @@ export default function Renew() {
         rememberPending(carId, {
           paymentId: error.paymentId ?? null,
           checkoutUrl: null,
-          expiresAt: parseExpiry(error.checkoutExpiresAt),
+          expiresAt: expiryFromSeconds(error.checkoutExpiresIn),
         });
         setPhase('pending');
       } else {

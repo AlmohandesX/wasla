@@ -208,3 +208,31 @@ test('signing out forgets any payment in progress', async () => {
   });
   expect(pendingFor(5)).toBeNull();
 });
+
+test('account deletion forgets any payment in progress', async () => {
+  await setToken('t');
+  fetchMock.mockResolvedValueOnce(reply(200, USER));
+  await mount();
+  rememberPending(5, { paymentId: 9, checkoutUrl: null, expiresAt: Date.now() + 60000 });
+  fetchMock.mockResolvedValueOnce(reply(204));
+  await act(async () => {
+    await session.deleteAccount('secret-pass');
+  });
+  expect(pendingFor(5)).toBeNull();
+});
+
+test('a different user signing in does not inherit a payment in progress', async () => {
+  await mount();
+  fetchMock.mockResolvedValueOnce(reply(200, { token: 'a', user: USER }));
+  await act(async () => {
+    await session.signIn('ada@example.com', 'pw-pw-pw-pw');
+  });
+  rememberPending(5, { paymentId: 9, checkoutUrl: null, expiresAt: Date.now() + 60000 });
+  expect(pendingFor(5)).not.toBeNull();
+  // The token is replaced by a new login as another user without a sign-out in between.
+  fetchMock.mockResolvedValueOnce(reply(200, { token: 'b', user: { ...USER, id: 2, email: 'bo@example.com' } }));
+  await act(async () => {
+    await session.signIn('bo@example.com', 'pw-pw-pw-pw');
+  });
+  expect(pendingFor(5)).toBeNull();
+});

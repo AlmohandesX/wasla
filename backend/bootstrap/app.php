@@ -50,7 +50,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'message' => __('wasla.error_'.$e->errorCode),
             // Lets the app pick up the checkout that is already open instead of starting another.
             ...($e instanceof RenewalPending
-                ? ['payment_id' => $e->paymentId, 'checkout_expires_at' => $e->opensUntil->toIso8601String()]
+                ? ['payment_id' => $e->paymentId, 'checkout_expires_at' => $e->opensUntil->toIso8601String(), 'checkout_expires_in' => $e->secondsLeft()]
                 : []),
         ], $e->status));
 

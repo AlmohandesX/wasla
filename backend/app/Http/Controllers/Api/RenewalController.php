@@ -26,6 +26,7 @@ class RenewalController extends Controller
             ...(new PaymentResource($payment))->resolve($request),
             'redirect_url' => $session->redirectUrl,
             'checkout_expires_at' => $payment->created_at->copy()->addMinutes((int) config('wasla.checkout_lifetime_minutes'))->toIso8601String(),
+            'checkout_expires_in' => max(0, (int) now()->diffInSeconds($payment->created_at->copy()->addMinutes((int) config('wasla.checkout_lifetime_minutes')), false)),
         ]], 201);
     }
 
