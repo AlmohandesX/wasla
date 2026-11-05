@@ -26,6 +26,18 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Wasla needs the camera to scan the QR code on your tag."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Wasla needs your photos so you can add a picture of your car."
+        }
       ]
     ],
     "experiments": {

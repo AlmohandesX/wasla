@@ -5,7 +5,7 @@ function configError(): ApiError {
 }
 
 /** localhost and private-network addresses: the only places plain http is acceptable. */
-function isLocalHost(host: string): boolean {
+export function isLocalHost(host: string): boolean {
   if (host === 'localhost' || host === '[::1]' || host.endsWith('.local')) return true;
   const m = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
   if (!m) return false;
@@ -36,4 +36,12 @@ export function resolveApiBaseUrl(raw: string | undefined, isDev: boolean): stri
 export function getApiBaseUrl(): string {
   // Must stay a literal property access so Expo can inline it into the bundle.
   return resolveApiBaseUrl(process.env.EXPO_PUBLIC_API_URL, __DEV__);
+}
+
+/** EXPO_PUBLIC_TAG_BASE_URL is the printed tag prefix and already ends in /t, so a tag URL is `<base>/<token>`. */
+export function getTagBaseUrl(): string {
+  // Must stay a literal property access so Expo can inline it into the bundle.
+  const raw = process.env.EXPO_PUBLIC_TAG_BASE_URL;
+  if (!raw) throw configError();
+  return raw;
 }
