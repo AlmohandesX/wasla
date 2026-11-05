@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdminDownloadController;
 use App\Http\Controllers\FakeGatewayController;
 use App\Http\Controllers\PaymentCallbackController;
+use App\Http\Controllers\ResetPasswordPageController;
 use App\Http\Controllers\VerifyEmailController;
 use App\Http\Controllers\Visitor\ScanController;
 use App\Http\Controllers\Visitor\VisitorChatController;
@@ -23,6 +24,14 @@ Route::get('/', function () {
 Route::get('/email/verify/{id}/{hash}', VerifyEmailController::class)
     ->middleware(['signed', 'throttle:auth'])
     ->name('verification.verify');
+
+// Where the password reset email leads. Keeps the web group: the form needs a session for its CSRF token.
+// Locale, noindex and no-store come from VisitorPageHeaders; the controller adds Referrer-Policy: no-referrer so the
+// token in the URL never reaches another site.
+Route::middleware([VisitorPageHeaders::class, 'throttle:auth'])->group(function () {
+    Route::get('/reset-password', [ResetPasswordPageController::class, 'show'])->name('password.reset');
+    Route::post('/reset-password', [ResetPasswordPageController::class, 'update'])->name('password.update');
+});
 
 // Public scan page. Deliberately session-less: neutral and unclaimed pages must set no cookie at all, and the
 // web group sends a session and an XSRF cookie. The reveal POST is protected by RejectCrossSiteRequest instead of

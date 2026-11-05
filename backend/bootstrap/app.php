@@ -5,6 +5,7 @@ use App\Http\Middleware\EnsureCarSubscriptionActive;
 use App\Http\Middleware\EnsureEmailVerified;
 use App\Http\Middleware\EnsureNotSuspended;
 use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\SetApiLocale;
 use App\Support\RedactNationalId;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -27,6 +28,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // The visitor cookie is a random 256-bit bearer token that the server only stores hashed; encrypting it
         // would add nothing and tie visitor sessions to APP_KEY rotation.
         $middleware->encryptCookies(except: ['wasla_visitor']);
+
+        $middleware->api(prepend: [SetApiLocale::class]);
 
         $middleware->alias([
             'not.suspended' => EnsureNotSuspended::class,

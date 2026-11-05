@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { apiRequest } from '../../src/api/client';
-import { ApiError, fieldError } from '../../src/api/errors';
+import { ApiError, fieldError, toApiError } from '../../src/api/errors';
 import { Button } from '../../src/components/Button';
 import { ErrorBanner } from '../../src/components/ErrorBanner';
 import { LinkText } from '../../src/components/LinkText';
@@ -27,7 +27,7 @@ export default function ForgotPassword() {
       await apiRequest('auth/forgot-password', { method: 'POST', auth: false, body: { email: email.trim() } });
       setSent(true);
     } catch (e) {
-      setError(e instanceof ApiError ? e : null);
+      setError(toApiError(e));
     } finally {
       setBusy(false);
     }

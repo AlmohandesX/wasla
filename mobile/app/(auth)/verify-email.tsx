@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { apiRequest } from '../../src/api/client';
-import { ApiError } from '../../src/api/errors';
+import { ApiError, toApiError } from '../../src/api/errors';
 import { useSession } from '../../src/auth/session';
 import { Button } from '../../src/components/Button';
 import { ErrorBanner } from '../../src/components/ErrorBanner';
@@ -27,7 +27,7 @@ export default function VerifyEmail() {
       // A verified user is moved to the app by the route guard; otherwise say so.
       if (!me.email_verified) setNotice(t('verify.stillUnverified'));
     } catch (e) {
-      setError(e instanceof ApiError ? e : null);
+      setError(toApiError(e));
     } finally {
       setChecking(false);
     }
@@ -41,7 +41,7 @@ export default function VerifyEmail() {
       await apiRequest('auth/email/resend', { method: 'POST' });
       setNotice(t('verify.resent'));
     } catch (e) {
-      setError(e instanceof ApiError ? e : null);
+      setError(toApiError(e));
     } finally {
       setResending(false);
     }

@@ -1,7 +1,7 @@
 import { ApiError } from '../errors';
 import { apiRequest, setSessionHandlers } from '../client';
 import { resolveApiBaseUrl } from '../config';
-import { getToken, setToken } from '../../auth/token';
+import { clearToken, getToken, setToken } from '../../auth/token';
 
 const mockStore = new Map<string, string>();
 jest.mock('expo-secure-store', () => ({
@@ -32,8 +32,9 @@ async function failure(promise: Promise<unknown>): Promise<ApiError> {
   throw new Error('expected the request to fail');
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   mockStore.clear();
+  await clearToken();
   jest.clearAllMocks();
   fetchMock.mockReset();
   process.env.EXPO_PUBLIC_API_URL = 'http://192.168.1.20:8000';
@@ -193,4 +194,55 @@ describe('resolveApiBaseUrl', () => {
     expect(() => resolveApiBaseUrl('ftp://x', true)).toThrow(ApiError);
     expect(() => resolveApiBaseUrl('not a url', true)).toThrow(ApiError);
   });
+});
+
+test('a 402 without a code falls back to subscription_expired', async () => {
+  await setToken('t');
+  fetchMock.mockResolvedValue(reply(402, { message: 'Payment Required' }));
+  const e = await failure(apiRequest('cars/1', { method: 'PATCH', body: {} }));
+  expect(e.status).toBe(402);
+  expect(e.code).toBe('subscription_expired');
+});
+
+test('a 403 account_suspended on an authenticated call signs out with the reason', async () => {
+  await setToken('t');
+  fetchMock.mockResolvedValue(reply(403, { code: 'account_suspended', message: 'x' }));
+  const e = await failure(apiRequest('me'));
+  expect(e.code).toBe('account_suspended');
+  expect(await getToken()).toBeNull();
+  expect(onUnauthorized).toHaveBeenCalledWith('account_suspended');
+});
+
+test('a 403 account_suspended at login (no token) only reports the error', async () => {
+  fetchMock.mockResolvedValue(reply(403, { code: 'account_suspended', message: 'x' }));
+  const e = await failure(apiRequest('auth/login', { method: 'POST', auth: false, body: {} }));
+  expect(e.code).toBe('account_suspended');
+  expect(onUnauthorized).not.toHaveBeenCalled();
+});
+
+test('a new token written but not yet persisted is not cleared by a late 401', async () => {
+  await setToken('old');
+  // Persisting the new token takes a while; the in-memory token must already be the new one.
+  const SecureStore = require('expo-secure-store');
+  SecureStore.setItemAsync.mockImplementationOnce(
+    (k: string, v: string) => new Promise<void>((r) => setTimeout(() => { mockStore.set(k, v); r(); }, 30)),
+  );
+  fetchMock.mockImplementation(async () => {
+    void setToken('new');
+    return reply(401, { message: 'Unauthenticated.' });
+  });
+  await apiRequest('me').catch(() => undefined);
+  await new Promise((r) => setTimeout(r, 60));
+  expect(await getToken()).toBe('new');
+  expect(onUnauthorized).not.toHaveBeenCalled();
+});
+
+test('a 2xx that is not JSON is an invalid_response error, but a 204 is fine', async () => {
+  fetchMock.mockResolvedValueOnce({ ...reply(200), text: async () => '<html>captive portal</html>' });
+  const e = await failure(apiRequest('me'));
+  expect(e.code).toBe('invalid_response');
+  fetchMock.mockResolvedValueOnce(reply(200));
+  expect((await failure(apiRequest('me'))).code).toBe('invalid_response');
+  fetchMock.mockResolvedValueOnce(reply(204));
+  await expect(apiRequest('auth/logout', { method: 'POST' })).resolves.toBeUndefined();
 });

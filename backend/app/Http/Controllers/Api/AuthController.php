@@ -11,20 +11,22 @@ use App\Http\Requests\Auth\ResendVerificationRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Models\User;
 use App\Services\Auth\LoginThrottle;
-use Illuminate\Auth\Events\PasswordReset;
+use App\Services\Auth\PasswordResetter;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
     private const TOKEN_DAYS = 90;
 
-    public function __construct(private readonly LoginThrottle $throttle) {}
+    public function __construct(
+        private readonly LoginThrottle $throttle,
+        private readonly PasswordResetter $resetter,
+    ) {}
 
     public function register(RegisterRequest $request): JsonResponse
     {
@@ -111,16 +113,7 @@ class AuthController extends Controller
 
     public function resetPassword(ResetPasswordRequest $request): JsonResponse
     {
-        $status = Password::reset(
-            $request->only('email', 'password', 'token'),
-            function (User $user, string $password) {
-                $user->forceFill(['password' => $password, 'remember_token' => Str::random(60)])->save();
-                $user->tokens()->delete();
-                event(new PasswordReset($user));
-            },
-        );
-
-        if ($status !== Password::PASSWORD_RESET) {
+        if (! $this->resetter->reset($request->input('email'), $request->input('token'), $request->input('password'))) {
             return response()->json([
                 'code' => 'invalid_reset_token',
                 'message' => __('wasla.invalid_reset_token'),

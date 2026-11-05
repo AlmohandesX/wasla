@@ -11,8 +11,9 @@ return [
     // Version of the privacy notice owners accept at registration.
     'privacy_notice_version' => env('PRIVACY_NOTICE_VERSION', '1'),
 
-    // Deep link or page that opens the mobile reset-password screen.
-    'password_reset_url' => env('PASSWORD_RESET_URL', 'wasla://reset-password'),
+    // Page the reset email links to. The default is the web page on this server (works from any mail app and
+    // without the app installed); it offers an "open the app" link to wasla://reset-password.
+    'password_reset_url' => env('PASSWORD_RESET_URL') ?: rtrim((string) env('APP_URL', 'http://localhost'), '/').'/reset-password',
 
     // Constant bcrypt hash (cost 12) checked when a login email is unknown, so timing matches a
     // wrong password. Keep its cost equal to BCRYPT_ROUNDS (12 in production).

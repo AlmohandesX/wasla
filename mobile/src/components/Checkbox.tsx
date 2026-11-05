@@ -13,6 +13,7 @@ export function Checkbox({ label, checked, onChange, error }: Props) {
         accessibilityRole="checkbox"
         accessibilityState={{ checked }}
         accessibilityLabel={label}
+        accessibilityHint={error}
         onPress={() => onChange(!checked)}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}

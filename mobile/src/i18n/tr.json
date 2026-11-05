@@ -50,5 +50,16 @@
   "errors.validation_failed": "Girdiğin bilgileri kontrol et.",
   "errors.server_error": "Sunucuda bir sorun oluştu. Biraz sonra tekrar dene.",
   "errors.unauthenticated": "Oturumun sona erdi. Tekrar giriş yap.",
-  "errors.unknown": "Bir sorun oluştu. Tekrar dene."
+  "errors.unknown": "Bir sorun oluştu. Tekrar dene.",
+  "boot.signOut": "Çıkış yap",
+  "reset.title": "Yeni şifre",
+  "reset.intro": "Hesabın için yeni bir şifre belirle.",
+  "reset.password": "Yeni şifre",
+  "reset.confirm": "Yeni şifre (tekrar)",
+  "reset.mismatch": "Şifreler eşleşmiyor.",
+  "reset.submit": "Şifreyi güncelle",
+  "reset.done": "Şifren güncellendi. Yeni şifrenle giriş yapabilirsin.",
+  "reset.incomplete": "Bu bağlantı eksik. E-postadaki bağlantının tamamına dokun veya yeni bir bağlantı iste.",
+  "reset.requestNew": "Yeni bağlantı iste",
+  "errors.invalid_reset_token": "Şifre sıfırlama bağlantısı geçersiz veya süresi dolmuş."
 }

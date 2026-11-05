@@ -71,6 +71,11 @@ export function networkError(): ApiError {
   return new ApiError(0, 'network_error', messageFor('network_error'));
 }
 
+/** Whatever a screen caught, as an ApiError it can show (anything unexpected becomes the generic message). */
+export function toApiError(error: unknown): ApiError {
+  return error instanceof ApiError ? error : new ApiError(0, 'unknown', t('errors.unknown'));
+}
+
 /** First message for a field, for display under an input. */
 export function fieldError(error: unknown, field: string): string | undefined {
   return error instanceof ApiError ? error.fields?.[field]?.[0] : undefined;

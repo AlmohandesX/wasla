@@ -1,11 +1,12 @@
 import { Stack } from 'expo-router';
 
+import { accessFor } from '../../src/auth/guard';
 import { useSession } from '../../src/auth/session';
 
 export default function AuthLayout() {
-  const { user } = useSession();
-  const signedOut = !user;
-  const needsVerification = !!user && !user.email_verified;
+  const access = accessFor(useSession());
+  const signedOut = access === 'auth';
+  const needsVerification = access === 'verify';
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

@@ -2,7 +2,7 @@ import { Link } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { ApiError, fieldError } from '../../src/api/errors';
+import { ApiError, fieldError, toApiError } from '../../src/api/errors';
 import { useSession } from '../../src/auth/session';
 import { Button } from '../../src/components/Button';
 import { Checkbox } from '../../src/components/Checkbox';
@@ -35,7 +35,7 @@ export default function Register() {
     try {
       await register({ name, email, password, consent });
     } catch (e) {
-      setError(e instanceof ApiError ? e : null);
+      setError(toApiError(e));
     } finally {
       setBusy(false);
     }

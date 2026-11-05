@@ -23,6 +23,7 @@ export function TextField({ label, error, hint, secureTextEntry, ...input }: Pro
         <TextInput
           {...input}
           accessibilityLabel={label}
+          accessibilityHint={error ?? hint}
           secureTextEntry={isPassword && !revealed}
           onFocus={(e) => {
             setFocused(true);

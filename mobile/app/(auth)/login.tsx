@@ -1,8 +1,8 @@
-import { Link } from 'expo-router';
+import { Link, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { ApiError, fieldError } from '../../src/api/errors';
+import { ApiError, fieldError, messageFor, toApiError } from '../../src/api/errors';
 import { useSession } from '../../src/auth/session';
 import { Button } from '../../src/components/Button';
 import { ErrorBanner } from '../../src/components/ErrorBanner';
@@ -14,7 +14,8 @@ import { LinkText } from '../../src/components/LinkText';
 
 export default function Login() {
   useLocale();
-  const { signIn } = useSession();
+  const { signIn, signedOutReason } = useSession();
+  const { reset } = useLocalSearchParams<{ reset?: string }>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<ApiError | null>(null);
@@ -26,7 +27,7 @@ export default function Login() {
     try {
       await signIn(email, password);
     } catch (e) {
-      setError(e instanceof ApiError ? e : null);
+      setError(toApiError(e));
     } finally {
       setBusy(false);
     }
@@ -35,7 +36,8 @@ export default function Login() {
   return (
     <Screen title={t('login.title')}>
       <LanguageSwitch />
-      <ErrorBanner message={error && !error.fields ? error.message : null} />
+      <ErrorBanner tone="info" message={reset === '1' && !error ? t('reset.done') : null} />
+      <ErrorBanner message={error ? (error.fields ? null : error.message) : signedOutReason ? messageFor(signedOutReason) : null} />
       <TextField
         label={t('field.email')}
         value={email}

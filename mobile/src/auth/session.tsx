@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { apiRequest, setSessionHandlers } from '../api/client';
-import { ApiError } from '../api/errors';
+import { ApiError, toApiError } from '../api/errors';
 import { getLocale, loadLocale } from '../i18n';
 import { clearToken, getToken, setToken } from './token';
 
@@ -23,6 +23,8 @@ export type Session = {
   ready: boolean;
   /** Set when the saved session could not be checked because the server was unreachable. */
   bootError: ApiError | null;
+  /** Why the owner was signed out without asking to be (shown on the sign-in screen), or null. */
+  signedOutReason: 'unauthenticated' | 'account_suspended' | null;
   signIn: (email: string, password: string) => Promise<void>;
   register: (input: { name: string; email: string; password: string; consent: boolean }) => Promise<void>;
   signOut: () => Promise<void>;
@@ -38,10 +40,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [bootError, setBootError] = useState<ApiError | null>(null);
   const [bootAttempt, setBootAttempt] = useState(0);
+  const [signedOutReason, setSignedOutReason] = useState<Session['signedOutReason']>(null);
 
   useEffect(() => {
     setSessionHandlers({
-      onUnauthorized: () => setUser(null),
+      onUnauthorized: (reason) => {
+        setUser(null);
+        setSignedOutReason(reason);
+      },
       onEmailNotVerified: () => setUser((u) => (u ? { ...u, email_verified: false } : u)),
     });
     return () => setSessionHandlers({});
@@ -58,9 +64,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         }
         if (!cancelled) setBootError(null);
       } catch (e) {
-        // A 401 has already signed out. Anything else leaves the token alone so a flaky network
-        // does not log the owner out.
-        if (!cancelled && e instanceof ApiError && e.code !== 'unauthenticated') setBootError(e);
+        // A rejected token or a suspended account has already been signed out (the token is gone), so the
+        // sign-in screen shows. Anything else leaves the token alone so a flaky network does not log the owner out.
+        if (!cancelled && (await getToken())) setBootError(toApiError(e));
       } finally {
         if (!cancelled) setReady(true);
       }
@@ -72,6 +78,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const start = useCallback(async (session: SessionResponse) => {
     await setToken(session.token);
+    setSignedOutReason(null);
+    setBootError(null);
     setUser(session.user);
   }, []);
 
@@ -107,14 +115,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     try {
-      // Revoke the token on the server when we can; signing out locally must not depend on it.
-      if (await getToken()) await apiRequest<void>('auth/logout', { method: 'POST', timeoutMs: 5000 });
+      // Revoke the token on the server when we can; signing out locally must not depend on it. With no
+      // user (the boot error screen) there is nothing to revoke and the server may be unreachable.
+      if (user && (await getToken())) await apiRequest<void>('auth/logout', { method: 'POST', timeoutMs: 5000 });
     } catch {
       // Ignored on purpose.
     }
     await clearToken();
+    setSignedOutReason(null);
+    setBootError(null);
     setUser(null);
-  }, []);
+  }, [user]);
 
   const refresh = useCallback(async () => {
     const me = await apiRequest<User>('me');
@@ -128,8 +139,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<Session>(
-    () => ({ user, ready, bootError, signIn, register, signOut, refresh, retryBoot }),
-    [user, ready, bootError, signIn, register, signOut, refresh, retryBoot],
+    () => ({ user, ready, bootError, signedOutReason, signIn, register, signOut, refresh, retryBoot }),
+    [user, ready, bootError, signedOutReason, signIn, register, signOut, refresh, retryBoot],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

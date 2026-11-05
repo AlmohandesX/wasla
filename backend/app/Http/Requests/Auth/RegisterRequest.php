@@ -19,6 +19,11 @@ class RegisterRequest extends FormRequest
         }
     }
 
+    public function attributes(): array
+    {
+        return ['privacy_consent' => __('wasla.attr_privacy_consent')];
+    }
+
     public function rules(): array
     {
         return [

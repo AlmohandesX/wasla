@@ -50,5 +50,16 @@
   "errors.validation_failed": "Check the details you entered.",
   "errors.server_error": "Something went wrong on the server. Try again shortly.",
   "errors.unauthenticated": "Your session has ended. Sign in again.",
-  "errors.unknown": "Something went wrong. Try again."
+  "errors.unknown": "Something went wrong. Try again.",
+  "boot.signOut": "Sign out",
+  "reset.title": "New password",
+  "reset.intro": "Choose a new password for your account.",
+  "reset.password": "New password",
+  "reset.confirm": "New password (again)",
+  "reset.mismatch": "The passwords do not match.",
+  "reset.submit": "Update password",
+  "reset.done": "Your password has been updated. You can sign in with the new one.",
+  "reset.incomplete": "This link is incomplete. Tap the whole link in the email, or request a new one.",
+  "reset.requestNew": "Request a new link",
+  "errors.invalid_reset_token": "The password reset link is invalid or has expired."
 }
