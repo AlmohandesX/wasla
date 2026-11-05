@@ -24,6 +24,8 @@ return [
     'error_tag_revoked' => 'Bu etiket artık geçerli değil.',
     'error_tag_already_claimed' => 'Bu etiket başka bir hesaba bağlı.',
     'error_car_already_linked' => 'Bu araç zaten bir etikete bağlı.',
+    'error_invalid_password' => 'Şifre hatalı.',
+    'error_admin_account_protected' => 'Yönetici hesapları buradan silinemez.',
     'error_car_not_owned' => 'Bu araç hesabınıza ait değil.',
     'error_subscription_expired' => 'Abonelik süresi doldu. Bu aracı kullanmaya devam etmek için lütfen yenileyin.',
     'error_message_blocked' => 'Bu metne izin verilmiyor. Lütfen değiştirip tekrar deneyin.',

@@ -24,6 +24,8 @@ return [
     'error_tag_revoked' => 'This tag is no longer valid.',
     'error_tag_already_claimed' => 'This tag is already linked to another account.',
     'error_car_already_linked' => 'This car is already linked to a tag.',
+    'error_invalid_password' => 'The password is incorrect.',
+    'error_admin_account_protected' => 'Admin accounts cannot be deleted here.',
     'error_car_not_owned' => 'This car does not belong to your account.',
     'error_subscription_expired' => 'Subscription expired. Please renew to keep using this car.',
     'error_message_blocked' => 'This text is not allowed. Please change it and try again.',

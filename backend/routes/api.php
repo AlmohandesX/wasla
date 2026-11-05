@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CarController;
 use App\Http\Controllers\Api\CarPhotoController;
@@ -26,6 +27,10 @@ Route::prefix('v1')->group(function () {
         Route::get('me', [AuthController::class, 'me']);
         Route::post('auth/logout', [AuthController::class, 'logout']);
         Route::post('auth/email/resend', [AuthController::class, 'resend'])->middleware('throttle:resend-verification');
+
+        // Outside owner (works before verification) and outside car.subscription (works after expiry).
+        // A suspended owner is refused by not.suspended: support handles those so abuse evidence is kept.
+        Route::delete('account', [AccountController::class, 'destroy'])->middleware('throttle:account-delete');
     });
 
     // Owner routes: signed in, not suspended, email verified.

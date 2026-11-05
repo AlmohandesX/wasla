@@ -100,6 +100,12 @@ class AppServiceProvider extends ServiceProvider
             Limit::perHour(10)->by('fp-ip:'.$request->ip()),
         ]);
 
+        // Every attempt counts, wrong or right, so a stolen token cannot guess the password: 3 a minute, 5 an hour.
+        RateLimiter::for('account-delete', fn (Request $request) => [
+            Limit::perMinute(3)->by('acct-del:'.($request->user()?->getAuthIdentifier() ?: $request->ip())),
+            Limit::perHour(5)->by('acct-del-h:'.($request->user()?->getAuthIdentifier() ?: $request->ip())),
+        ]);
+
         RateLimiter::for('resend-verification', fn (Request $request) => Limit::perMinute(3)
             ->by($request->user()?->getAuthIdentifier() ?: $request->ip()));
     }
