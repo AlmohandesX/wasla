@@ -172,3 +172,18 @@ it('rate limits scan page requests', function () {
     }
     $this->get("/t/{$tag->token}")->assertStatus(429);
 });
+
+it('shows only the plain neutral copy and no tag data on a neutral page', function () {
+    $tag = scanTag(['default_message' => 'Gizli mesaj XYZ', 'status_text' => 'Gizli durum QRS', 'status_expires_at' => now()->addHour()]);
+    scanContact($tag, 'Gizli Etiket');
+    $tag->car->update(['stealth_enabled' => true]);
+
+    foreach (['en-GB,en;q=0.8' => 'This tag is not active', '' => 'Bu etiket etkin değil'] as $lang => $title) {
+        $html = $this->get("/t/{$tag->token}", ['Accept-Language' => $lang])->assertOk()->getContent();
+
+        expect($html)->toContain($title)
+            ->not->toContain('34 ABC 123')->not->toContain('Mehmet')->not->toContain('Yilmaz')
+            ->not->toContain('Gizli')->not->toContain($tag->token)->not->toContain('5321234567')
+            ->not->toContain('cannot be reached')->not->toContain('ulaşılamıyor');
+    }
+});
