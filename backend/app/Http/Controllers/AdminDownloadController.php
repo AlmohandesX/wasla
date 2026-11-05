@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Wave;
+use App\Services\Concerns\AuditsAdminActions;
 use App\Services\Payments\SalesExporter;
 use Filament\Facades\Filament;
 use Illuminate\Http\Request;
@@ -13,6 +14,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 /** Admin-only file downloads. Neither file has a public URL: both are read on demand behind the admin check. */
 class AdminDownloadController extends Controller
 {
+    use AuditsAdminActions;
+
     public function package(Request $request, Wave $wave): StreamedResponse
     {
         $this->authorizeAdmin($request);
@@ -20,7 +23,10 @@ class AdminDownloadController extends Controller
         $disk = Storage::disk('local');
         abort_unless($wave->status === 'ready' && $wave->package_path !== null && $disk->exists($wave->package_path), 404);
 
-        return $disk->download($wave->package_path, sprintf('wave-%03d.zip', $wave->number));
+        // The zip holds every tag's token, so each download leaves a trail.
+        $this->audit($request->user(), 'wave.package_download', 'wave', $wave->id, 'package download');
+
+        return $disk->download($wave->package_path, sprintf('wave-%03d.zip', $wave->number), ['Cache-Control' => 'no-store, private']);
     }
 
     public function sales(Request $request, SalesExporter $exporter): StreamedResponse

@@ -76,6 +76,7 @@ return [
         'to' => 'To serial',
         'range_marked' => ':count tags marked sold.',
         'download' => 'Download package',
+        'statuses' => ['generating' => 'Generating', 'ready' => 'Ready', 'failed' => 'Failed'],
     ],
 
     'payments' => [
@@ -93,14 +94,19 @@ return [
         'flag_reviewed_at' => 'Flag reviewed',
         'national_id' => 'National ID',
         'refund' => 'Refund',
-        'refund_confirm' => "This records the refund in WASLA and takes one year off the extended tag. It does not return any money: refund the customer in the provider's panel.",
-        'refunded' => 'Refund recorded.',
+        'refund_confirm' => "This records the refund in WASLA only. If this payment extended a tag, that tag loses one year. It does not return any money: refund the customer in the provider's panel.",
+        'refunded' => 'Refund recorded. Tag shortened: :tag.',
+        'no_tag' => 'none',
         'mark_reviewed' => 'Mark flag reviewed',
         'flag_reviewed' => 'Flag marked reviewed.',
         'unreviewed_flags' => 'Unreviewed flags',
         'export' => 'Export sales (CSV)',
         'export_from' => 'From (Istanbul date)',
         'export_to' => 'To (Istanbul date)',
+        'flags' => [
+            'amount_mismatch' => 'Amount mismatch', 'currency_mismatch' => 'Currency mismatch', 'refunded_at_provider' => 'Refunded at provider',
+            'paid_on_revoked_tag' => 'Paid on revoked tag', 'settled_on_replacement' => 'Settled on replacement tag', 'settlement_failed' => 'Settlement failed',
+        ],
         'statuses' => ['pending' => 'Pending', 'paid' => 'Paid', 'failed' => 'Failed', 'refunded' => 'Refunded'],
     ],
 
@@ -127,9 +133,10 @@ return [
         'source' => 'Source',
         'reason' => 'Reason',
         'thread' => 'Thread',
-        'user' => 'User',
         'created_at' => 'When',
         'reviewed_at' => 'Reviewed',
+        'surfaces' => ['chat' => 'Chat', 'status' => 'Status message', 'default_message' => 'Default message', 'contact_label' => 'Contact label'],
+        'sources' => ['blacklist' => 'Blacklist', 'provider' => 'Provider', 'fallback' => 'Fallback'],
         'unreviewed' => 'Unreviewed',
         'mark_reviewed' => 'Mark reviewed',
         'reviewed' => 'Marked reviewed.',
@@ -145,6 +152,7 @@ return [
         'body' => 'Message',
         'thread' => 'Thread',
         'status' => 'Moderation',
+        'statuses' => ['passed' => 'Passed', 'flagged' => 'Flagged'],
     ],
 
     'settings' => [
@@ -152,6 +160,6 @@ return [
         'price' => 'Renewal price (TRY)',
         'price_help' => 'Per year, in lira, for example 799,90.',
         'save' => 'Save',
-        'saved' => 'Price saved.',
+        'saved' => 'Price saved: :price TRY.',
     ],
 ];

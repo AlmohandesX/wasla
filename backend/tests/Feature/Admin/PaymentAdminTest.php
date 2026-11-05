@@ -13,6 +13,7 @@ use Carbon\Carbon;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\URL;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -74,7 +75,7 @@ it('refund marks the payment and shortens by one year', function () {
 
     Livewire::test(ManagePayments::class)
         ->callAction(adminRefundAction($payment), ['reason' => 'customer asked'])
-        ->assertNotified(__('admin.payments.refunded'));
+        ->assertNotified(__('admin.payments.refunded', ['tag' => $tag->serial]));
 
     $payment->refresh();
     expect($payment->status)->toBe(PaymentStatus::Refunded)->and($payment->refunded_at)->not->toBeNull()
@@ -205,11 +206,16 @@ it('masks the national ID in the admin panel and cannot search it', function () 
     expect($page->instance()->getTable()->getColumn('billing_national_id')->isSearchable())->toBeFalse();
 });
 
+function adminExportUrl(string $from, string $to): string
+{
+    return URL::temporarySignedRoute('admin.payments.export', now()->addMinute(), ['from' => $from, 'to' => $to]);
+}
+
 function adminExportRows(string $from, string $to): array
 {
-    $response = test()->get(route('admin.payments.export', ['from' => $from, 'to' => $to]))->assertOk();
+    $response = test()->get(adminExportUrl($from, $to))->assertOk();
     $csv = preg_replace('/^\xEF\xBB\xBF/', '', $response->streamedContent());
-    $lines = array_map('str_getcsv', array_values(array_filter(explode("\n", $csv))));
+    $lines = array_map(fn ($l) => str_getcsv($l, ';', '"', ''), array_values(array_filter(explode("\n", $csv))));
     $header = array_shift($lines);
 
     return array_map(fn ($l) => array_combine($header, $l), $lines);
@@ -234,7 +240,7 @@ it('exports paid and refunded sales for a date range with billing details', func
     expect($rows)->toHaveCount(2)->and(array_column($rows, 'reference'))->toContain($paid->reference, $refunded->reference)
         ->and(array_keys($rows[0]))->toBe(['reference', 'provider', 'status', 'amount', 'currency', 'paid_at', 'refunded_at', 'tag_serial', 'billing_name', 'billing_address', 'billing_city', 'billing_national_id', 'flag_reason']);
     $row = collect($rows)->firstWhere('reference', $paid->reference);
-    expect($row['status'])->toBe('paid')->and($row['amount'])->toBe('799.00')->and($row['billing_name'])->toBe('Ayşe Yılmaz')
+    expect($row['status'])->toBe('paid')->and($row['amount'])->toBe('799,00')->and($row['billing_name'])->toBe('Ayşe Yılmaz')
         ->and($row['billing_city'])->toBe('İstanbul')->and($row['tag_serial'])->toBe($tag->serial);
 });
 
@@ -290,7 +296,7 @@ it('converts an Istanbul date range to UTC on both ends', function () {
 });
 
 it('keeps the export admin-only', function () {
-    $url = route('admin.payments.export', ['from' => '2030-01-01', 'to' => '2030-01-02']);
+    $url = adminExportUrl('2030-01-01', '2030-01-02');
     auth()->logout();
     app('auth')->forgetGuards();
     $this->get($url)->assertForbidden();
@@ -299,7 +305,77 @@ it('keeps the export admin-only', function () {
 });
 
 it('rejects an invalid or reversed export range', function () {
-    $this->get(route('admin.payments.export', ['from' => 'nope', 'to' => '2030-01-02']))->assertStatus(302);
-    $this->get(route('admin.payments.export', ['from' => '2030-01-03', 'to' => '2030-01-02']))->assertStatus(302);
+    $this->get(adminExportUrl('nope', '2030-01-02'))->assertStatus(302);
+    $this->get(adminExportUrl('2030-01-03', '2030-01-02'))->assertStatus(302);
     expect(AuditLog::where('action', 'payment.export')->count())->toBe(0);
+});
+
+it('refunds the live tag after the paid tag was replaced following payment', function () {
+    [$old, , $user] = adminClaimedTag();
+    $payment = adminSettledPayment($old, $user->id);
+    $new = tagFixture();
+    app(TagAdminService::class)->replace($old, $new, $this->admin, 'damaged');
+    $newExpiry = $new->fresh()->expires_at;
+    expect($payment->extended_tag_id)->toBe($old->id);
+
+    Livewire::test(ManagePayments::class)->callAction(adminRefundAction($payment), ['reason' => 'refund'])
+        ->assertNotified(__('admin.payments.refunded', ['tag' => $new->serial]));
+
+    expect($new->fresh()->expires_at->equalTo($newExpiry->copy()->subYear()))->toBeTrue()
+        ->and(AuditLog::where('action', 'payment.refund')->sole()->meta['shortened_tag_id'])->toBe($new->id);
+});
+
+it('says in the notification that nothing was shortened when no tag was extended', function () {
+    [$tag, , $user] = adminClaimedTag();
+    app(TagAdminService::class)->revoke($tag, $this->admin, 'stolen');
+    $payment = adminSettledPayment($tag->fresh(), $user->id);
+
+    Livewire::test(ManagePayments::class)->callAction(adminRefundAction($payment), ['reason' => 'refund'])
+        ->assertNotified(__('admin.payments.refunded', ['tag' => __('admin.payments.no_tag')]));
+});
+
+it('refuses an unsigned or expired export link and writes no audit row', function () {
+    $this->get(route('admin.payments.export', ['from' => '2030-01-01', 'to' => '2030-01-02']))->assertForbidden();
+    $expired = URL::temporarySignedRoute('admin.payments.export', now()->subMinute(), ['from' => '2030-01-01', 'to' => '2030-01-02']);
+    $this->get($expired)->assertForbidden();
+
+    expect(AuditLog::where('action', 'payment.export')->count())->toBe(0);
+});
+
+it('refuses a session invalidated by a password change and a suspended admin on the export', function () {
+    $url = adminExportUrl('2030-01-01', '2030-01-02');
+    $this->withSession(['password_hash_web' => 'hash-from-before-the-password-change'])->get($url)->assertRedirect();
+    expect(AuditLog::where('action', 'payment.export')->count())->toBe(0);
+
+    $suspended = adminUser(['suspended_at' => now()]);
+    auth()->logout();
+    app('auth')->forgetGuards();
+    $this->actingAs($suspended)->get($url)->assertForbidden();
+    expect(AuditLog::where('action', 'payment.export')->count())->toBe(0);
+});
+
+it('sends the export as a private attachment', function () {
+    $response = $this->get(adminExportUrl('2030-01-01', '2030-01-02'))->assertOk();
+
+    expect($response->headers->get('Cache-Control'))->toContain('no-store')
+        ->and($response->headers->get('Content-Disposition'))->toContain('attachment')->toContain('wasla-sales-20300101-20300102.csv')
+        ->and($response->headers->get('Content-Type'))->toContain('text/csv');
+});
+
+it('reaches the signed export link from the panel action', function () {
+    $component = Livewire::test(ManagePayments::class)
+        ->callAction(TestAction::make('export')->table(), ['from' => '2030-01-01', 'to' => '2030-01-02']);
+
+    $component->assertRedirect();
+    $target = $component->effects['redirect'];
+    expect($target)->toContain('signature=')->and($target)->toContain('expires=');
+    $this->get($target)->assertOk();
+});
+
+it('translates the flag reason in the table', function () {
+    [$tag, , $user] = adminClaimedTag();
+    app(TagAdminService::class)->revoke($tag, $this->admin, 'stolen');
+    adminSettledPayment($tag->fresh(), $user->id);
+
+    Livewire::test(ManagePayments::class)->assertSee(__('admin.payments.flags.paid_on_revoked_tag'));
 });

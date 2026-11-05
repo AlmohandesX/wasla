@@ -13,6 +13,8 @@ use Filament\Resources\Resource;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\URL;
 
 class WaveResource extends Resource
 {
@@ -35,6 +37,16 @@ class WaveResource extends Resource
         return false;
     }
 
+    public static function canEdit(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return false;
+    }
+
     public static function table(Table $table): Table
     {
         $service = fn () => app(WaveService::class);
@@ -48,7 +60,8 @@ class WaveResource extends Resource
             ->columns([
                 TextColumn::make('number')->label(__('admin.waves.number'))->sortable(),
                 TextColumn::make('size')->label(__('admin.waves.size')),
-                TextColumn::make('status')->label(__('admin.waves.status'))->badge(),
+                TextColumn::make('status')->label(__('admin.waves.status'))->badge()
+                    ->formatStateUsing(fn ($state) => __('admin.waves.statuses.'.$state)),
                 TextColumn::make('pending_count')->label(__('admin.waves.pending')),
                 TextColumn::make('sold_count')->label(__('admin.waves.sold')),
                 TextColumn::make('activated_count')->label(__('admin.waves.activated')),
@@ -74,7 +87,7 @@ class WaveResource extends Resource
                         TextInput::make('to')->label(__('admin.waves.to'))->required()->maxLength(20)->placeholder('W001-000100'),
                     ])
                     ->action(fn (array $data) => AdminActionRunner::run(
-                        fn () => ['count' => $service()->markSerialRangeSold($data['from'], $data['to'])],
+                        fn () => ['count' => $service()->markSerialRangeSold($data['from'], $data['to'], auth()->user())],
                         'admin.waves.range_marked',
                     )),
             ])
@@ -83,14 +96,15 @@ class WaveResource extends Resource
                     ->label(__('admin.waves.mark_sold'))
                     ->requiresConfirmation()
                     ->action(fn (Wave $record) => AdminActionRunner::run(
-                        fn () => ['count' => $service()->markSold($record)],
+                        fn () => ['count' => $service()->markSold($record, auth()->user())],
                         'admin.waves.marked',
                     )),
-                // A plain link to an admin-only route: the file lives on the private disk and has no public URL.
+                // A one-minute signed link to an admin-only route: the file is on the private disk and has no public URL,
+                // and a link another site tricks the browser into following is unsigned or expired.
                 Action::make('download')
                     ->label(__('admin.waves.download'))
                     ->visible(fn (Wave $record) => $record->status === 'ready' && $record->package_path !== null)
-                    ->url(fn (Wave $record) => route('admin.waves.package', $record)),
+                    ->action(fn (Wave $record) => redirect(URL::temporarySignedRoute('admin.waves.package', now()->addMinute(), ['wave' => $record->id]))),
             ]);
     }
 

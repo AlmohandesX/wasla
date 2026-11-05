@@ -226,17 +226,26 @@ class RenewalService
         });
     }
 
+    /** Same as refund(), without telling which tag was shortened. */
+    public function markRefunded(Payment $payment, User $admin, string $reason): void
+    {
+        $this->refund($payment, $admin, $reason);
+    }
+
     /**
      * Records a refund decision in WASLA only; the money is returned in the provider's panel. Shortens the tag that
-     * settlement actually extended (the replacement, if any), and nothing when settlement extended nothing.
+     * settlement extended, followed through any replacement to the tag that is live now, and nothing when settlement
+     * extended nothing or that tag has since been revoked with no replacement.
+     *
+     * @return Tag|null the tag that lost a year
      *
      * @throws AdminActionException when the reason is empty or the payment is not Paid (checked under the row lock)
      */
-    public function markRefunded(Payment $payment, User $admin, string $reason): void
+    public function refund(Payment $payment, User $admin, string $reason): ?Tag
     {
         $reason = $this->requireReason($reason);
 
-        DB::transaction(function () use ($payment, $admin, $reason) {
+        $shortened = DB::transaction(function () use ($payment, $admin, $reason) {
             $locked = Payment::query()->lockForUpdate()->findOrFail($payment->id);
 
             if ($locked->status !== PaymentStatus::Paid) {
@@ -245,19 +254,26 @@ class RenewalService
 
             $locked->update(['status' => PaymentStatus::Refunded, 'refunded_at' => now()]);
 
-            $shortened = null;
+            $tag = null;
             if ($locked->extended_tag_id !== null) {
-                $tag = Tag::query()->find($locked->extended_tag_id);
-                if ($tag?->expires_at !== null) {
-                    app(SubscriptionService::class)->shortenOneYear($tag);
-                    $shortened = $tag->id;
+                $live = $this->liveTag($locked->extended_tag_id);
+                if (! $live->isRevoked() && $live->expires_at !== null) {
+                    app(SubscriptionService::class)->shortenOneYear($live);
+                    $tag = $live;
                 }
             }
 
-            $this->audit($admin, 'payment.refund', 'payment', $locked->id, $reason, ['shortened_tag_id' => $shortened]);
+            $this->audit($admin, 'payment.refund', 'payment', $locked->id, $reason, [
+                'extended_tag_id' => $locked->extended_tag_id,
+                'shortened_tag_id' => $tag?->id,
+            ]);
+
+            return $tag;
         });
 
         $payment->refresh();
+
+        return $shortened;
     }
 
     /** Marks a flag as looked at. The flag itself stays as first written. */

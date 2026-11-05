@@ -8,6 +8,7 @@ use App\Http\Controllers\Visitor\ScanController;
 use App\Http\Controllers\Visitor\VisitorChatController;
 use App\Http\Middleware\RejectCrossSiteRequest;
 use App\Http\Middleware\VisitorPageHeaders;
+use Filament\Http\Middleware\AuthenticateSession;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -55,7 +56,9 @@ Route::prefix('t/{token}/chat')
     });
 
 // Admin-only downloads (wave packages, sales CSV). Same session as the panel; the controller refuses anyone who cannot open it.
-Route::prefix('admin/downloads')->middleware('throttle:api')->group(function () {
+// Links are one-minute signed URLs the panel hands out, so another site cannot make an admin's browser run one,
+// and AuthenticateSession drops a session that a password change has invalidated.
+Route::prefix('admin/downloads')->middleware(['throttle:api', AuthenticateSession::class, 'signed'])->group(function () {
     Route::get('waves/{wave}/package', [AdminDownloadController::class, 'package'])->whereNumber('wave')->name('admin.waves.package');
     Route::get('payments/export', [AdminDownloadController::class, 'sales'])->name('admin.payments.export');
 });

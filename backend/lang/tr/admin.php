@@ -76,6 +76,7 @@ return [
         'to' => 'Son seri',
         'range_marked' => ':count etiket satıldı olarak işaretlendi.',
         'download' => 'Paketi indir',
+        'statuses' => ['generating' => 'Oluşturuluyor', 'ready' => 'Hazır', 'failed' => 'Başarısız'],
     ],
 
     'payments' => [
@@ -93,14 +94,19 @@ return [
         'flag_reviewed_at' => 'İşaret incelendi',
         'national_id' => 'T.C. kimlik no',
         'refund' => 'İade et',
-        'refund_confirm' => "Bu işlem iadeyi WASLA'da kaydeder ve uzatılan etiketin süresini bir yıl kısaltır. Para iade etmez: parayı müşteriye sağlayıcının panelinden iade edin.",
-        'refunded' => 'İade kaydedildi.',
+        'refund_confirm' => "Bu işlem iadeyi yalnızca WASLA'da kaydeder. Bu ödeme bir etiketi uzattıysa o etiketin süresi bir yıl kısalır. Para iade etmez: parayı müşteriye sağlayıcının panelinden iade edin.",
+        'refunded' => 'İade kaydedildi. Kısaltılan etiket: :tag.',
+        'no_tag' => 'yok',
         'mark_reviewed' => 'İşareti incelendi yap',
         'flag_reviewed' => 'İşaret incelendi olarak kaydedildi.',
         'unreviewed_flags' => 'İncelenmemiş işaretler',
         'export' => 'Satışları dışa aktar (CSV)',
         'export_from' => 'Başlangıç (İstanbul tarihi)',
         'export_to' => 'Bitiş (İstanbul tarihi)',
+        'flags' => [
+            'amount_mismatch' => 'Tutar uyuşmazlığı', 'currency_mismatch' => 'Para birimi uyuşmazlığı', 'refunded_at_provider' => 'Sağlayıcıda iade edilmiş',
+            'paid_on_revoked_tag' => 'İptal edilmiş etikete ödeme', 'settled_on_replacement' => 'Yedek etikete işlendi', 'settlement_failed' => 'İşleme başarısız',
+        ],
         'statuses' => ['pending' => 'Bekliyor', 'paid' => 'Ödendi', 'failed' => 'Başarısız', 'refunded' => 'İade edildi'],
     ],
 
@@ -127,9 +133,10 @@ return [
         'source' => 'Kaynak',
         'reason' => 'Neden',
         'thread' => 'Konuşma',
-        'user' => 'Kullanıcı',
         'created_at' => 'Zaman',
         'reviewed_at' => 'İncelendi',
+        'surfaces' => ['chat' => 'Sohbet', 'status' => 'Durum mesajı', 'default_message' => 'Varsayılan mesaj', 'contact_label' => 'Kişi etiketi'],
+        'sources' => ['blacklist' => 'Yasaklı liste', 'provider' => 'Sağlayıcı', 'fallback' => 'Yedek'],
         'unreviewed' => 'İncelenmemiş',
         'mark_reviewed' => 'İncelendi yap',
         'reviewed' => 'İncelendi olarak kaydedildi.',
@@ -145,6 +152,7 @@ return [
         'body' => 'Mesaj',
         'thread' => 'Konuşma',
         'status' => 'Moderasyon',
+        'statuses' => ['passed' => 'Geçti', 'flagged' => 'İşaretlendi'],
     ],
 
     'settings' => [
@@ -152,6 +160,6 @@ return [
         'price' => 'Yenileme ücreti (TL)',
         'price_help' => 'Yıllık, lira cinsinden, örneğin 799,90.',
         'save' => 'Kaydet',
-        'saved' => 'Ücret kaydedildi.',
+        'saved' => 'Ücret kaydedildi: :price TL.',
     ],
 ];

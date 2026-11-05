@@ -2,6 +2,7 @@
 
 use App\Filament\Pages\Settings;
 use App\Filament\Resources\WaveResource\Pages\ManageWaves;
+use App\Models\AuditLog;
 use App\Models\Setting;
 use App\Models\Tag;
 use App\Models\Wave;
@@ -9,6 +10,7 @@ use App\Services\Tags\TokenGenerator;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -40,16 +42,61 @@ it('generates a wave and shows pending, sold and activated counts', function () 
         ->assertTableColumnStateSet('activated_count', 1, $wave);
 });
 
-it('serves the package to admins only', function () {
+it('serves the package to admins only, privately, and audits each download', function () {
     $wave = generatedWave(3);
-    $url = route('admin.waves.package', $wave);
+    $url = URL::temporarySignedRoute('admin.waves.package', now()->addMinute(), ['wave' => $wave->id]);
 
-    $this->get($url)->assertOk()->assertDownload('wave-001.zip');
+    $response = $this->get($url)->assertOk()->assertDownload('wave-001.zip');
+    expect($response->headers->get('Cache-Control'))->toContain('no-store')
+        ->and(AuditLog::where('action', 'wave.package_download')->sole()->subject_id)->toBe($wave->id);
+
+    // Unsigned, expired and stale-session requests are refused.
+    $this->get(route('admin.waves.package', $wave))->assertForbidden();
+    $this->get(URL::temporarySignedRoute('admin.waves.package', now()->subMinute(), ['wave' => $wave->id]))->assertForbidden();
 
     auth()->logout();
     app('auth')->forgetGuards();
+    $this->flushSession();
     $this->get($url)->assertForbidden();
     $this->actingAs(owner(['email_verified_at' => now()]))->get($url)->assertForbidden();
+    auth()->logout();
+    app('auth')->forgetGuards();
+    $this->flushSession();
+    $this->actingAs(adminUser(['suspended_at' => now()]))->get($url)->assertForbidden();
+
+    // Last, because it leaves a stale password hash in the test session.
+    $this->withSession(['password_hash_web' => 'hash-from-before-the-password-change'])->get($url)->assertRedirect();
+
+    expect(AuditLog::where('action', 'wave.package_download')->count())->toBe(1);
+});
+
+it('reaches the signed package link from the panel action', function () {
+    $wave = generatedWave(2);
+
+    $component = Livewire::test(ManageWaves::class)->callAction(TestAction::make('download')->table($wave));
+
+    $component->assertRedirect();
+    $this->get($component->effects['redirect'])->assertOk()->assertDownload('wave-001.zip');
+});
+
+it('audits marking a wave and a range sold', function () {
+    $wave = generatedWave(10);
+
+    Livewire::test(ManageWaves::class)
+        ->callAction(TestAction::make('markSerialRangeSold')->table(), ['from' => 'W001-000003', 'to' => 'W001-000005'])
+        ->callAction(TestAction::make('markSold')->table($wave));
+
+    $range = AuditLog::where('action', 'wave.mark_range_sold')->sole();
+    $all = AuditLog::where('action', 'wave.mark_sold')->sole();
+    expect($range->admin_id)->toBe($this->admin->id)->and($range->meta['count'])->toBe(3)
+        ->and($range->meta['from'])->toBe('W001-000003')
+        ->and($all->subject_id)->toBe($wave->id)->and($all->meta['count'])->toBe(7);
+});
+
+it('translates the wave status', function () {
+    generatedWave(1);
+
+    Livewire::test(ManageWaves::class)->assertSee(__('admin.waves.statuses.ready'));
 });
 
 it('marks a wave and a serial range sold, and says how many', function () {
@@ -99,7 +146,8 @@ it('sets the renewal price, as an integer in kurus', function () {
     Livewire::test(Settings::class)
         ->set('data.price', '799,90')
         ->call('save')
-        ->assertHasNoErrors();
+        ->assertHasNoErrors()
+        ->assertNotified(__('admin.settings.saved', ['price' => '799,90']));
 
     expect(Setting::value('renewal_price_kurus'))->toBe('79990');
 
@@ -114,4 +162,4 @@ it('rejects a negative, zero, over-precise or oversized price', function (string
     Livewire::test(Settings::class)->set('data.price', $price)->call('save')->assertHasErrors(['data.price']);
 
     expect(Setting::value('renewal_price_kurus'))->toBe('79900');
-})->with(['-5', '0', '0,00', '12.345', '1e3', 'abc', '99999999999']);
+})->with(['-5', '0', '0,00', '12.345', '1e3', 'abc', '99999999999', '1.000', '1,000', '12.340']);

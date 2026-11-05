@@ -18,7 +18,7 @@ trait AuditsAdminActions
         return $reason;
     }
 
-    private function audit(User $admin, string $action, string $subjectType, int $subjectId, string $reason, array $meta = []): void
+    protected function audit(User $admin, string $action, string $subjectType, int $subjectId, string $reason, array $meta = []): void
     {
         AuditLog::create([
             'admin_id' => $admin->id,

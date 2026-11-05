@@ -103,15 +103,15 @@ it('marks a whole wave sold once', function () {
     $other = Wave::create(['number' => 2, 'size' => 1, 'status' => 'ready']);
     $outsider = Tag::create(['wave_id' => $other->id, 'serial' => 'W002-000001', 'token' => (new TokenGenerator)->generate()]);
 
-    expect(app(WaveService::class)->markSold($wave))->toBe(10)
-        ->and(app(WaveService::class)->markSold($wave))->toBe(0)
+    expect(app(WaveService::class)->markSold($wave, waveAdmin()))->toBe(10)
+        ->and(app(WaveService::class)->markSold($wave, waveAdmin()))->toBe(0)
         ->and($outsider->refresh()->sold_at)->toBeNull();
 });
 
 it('marks a serial range sold without touching other tags', function () {
     $wave = makeWave(10);
 
-    $count = app(WaveService::class)->markSerialRangeSold('W001-000003', 'W001-000005');
+    $count = app(WaveService::class)->markSerialRangeSold('W001-000003', 'W001-000005', waveAdmin());
 
     expect($count)->toBe(3)
         ->and($wave->tags()->whereNotNull('sold_at')->orderBy('serial')->pluck('serial')->all())

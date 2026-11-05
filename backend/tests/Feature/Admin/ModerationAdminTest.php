@@ -9,6 +9,7 @@ use App\Models\ModerationEvent;
 use App\Services\Moderation\ModerationPipeline;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
+use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -69,17 +70,37 @@ it('lists blocked and flagged events, including one with a thread that does not 
         ->assertCanSeeTableRecords([$blocked])->assertCanNotSeeTableRecords([$flagged]);
 });
 
-it('lists messages reported by owners and visitors', function () {
-    $car = linkedCar(owner(['email_verified_at' => now()]));
-    $thread = chatThread($car);
-    $byOwner = $thread->messages()->first(); // the visitor's message, reported by the owner
-    $byOwner->update(['reported_at' => now()]);
-    $byVisitor = $thread->messages()->create(['sender' => 'owner', 'body' => 'reply', 'reported_at' => now()->subHour()]);
-    $clean = $thread->messages()->create(['sender' => 'owner', 'body' => 'fine']);
+it('lists messages reported through the owner and the visitor endpoints', function () {
+    config(['wasla.moderation.api_key' => 'sk-test', 'wasla.moderation.daily_cap' => 5000]);
+    Http::fake(['api.openai.com/*' => Http::response(['results' => [['category_scores' => ['harassment' => 0.01]]]])]);
+    $ownerUser = owner(['email_verified_at' => now()]);
+    $tag = linkedCar($ownerUser)->tag;
 
+    // A visitor writes, and the owner reports that message.
+    $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.5'])->withCredentials()->withUnencryptedCookie('wasla_visitor', '');
+    $sent = $this->postJson("/t/{$tag->token}/chat/messages", ['body' => 'Isiklariniz acik kalmis'])->assertCreated();
+    $cookie = $sent->getCookie('wasla_visitor', false)->getValue();
+    $visitorMessage = ChatMessage::sole();
+    auth()->logout(); // the panel session would otherwise win over the bearer token
+    app('auth')->forgetGuards();
+    $this->postJson("/api/v1/messages/{$visitorMessage->id}/report", [], bearer($ownerUser))->assertOk();
+
+    // The owner answers, and the visitor reports that reply.
+    $ownerMessage = $visitorMessage->thread->messages()->create(['sender' => 'owner', 'body' => 'reply']);
+    $clean = $visitorMessage->thread->messages()->create(['sender' => 'owner', 'body' => 'fine']);
+    $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.5'])->withCredentials()->withUnencryptedCookie('wasla_visitor', $cookie);
+    $this->postJson("/t/{$tag->token}/chat/messages/{$ownerMessage->id}/report")->assertOk();
+
+    $this->actingAs($this->admin);
     Livewire::test(ManageReportedMessages::class)
-        ->assertCanSeeTableRecords([$byOwner, $byVisitor])
-        ->assertCanNotSeeTableRecords([$clean]);
+        ->assertCanSeeTableRecords([$visitorMessage, $ownerMessage])
+        ->assertCanNotSeeTableRecords([$clean])
+        ->assertSee(__('admin.reported.visitor'))->assertSee(__('admin.reported.owner'));
+});
 
-    expect(ChatMessage::whereNotNull('reported_at')->count())->toBe(2);
+it('translates the moderation surface and source', function () {
+    ModerationEvent::create(['kind' => 'blocked', 'surface' => 'default_message', 'text' => 'bad', 'source' => 'fallback']);
+
+    Livewire::test(ManageModerationEvents::class)
+        ->assertSee(__('admin.moderation.surfaces.default_message'))->assertSee(__('admin.moderation.sources.fallback'));
 });

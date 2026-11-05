@@ -7,6 +7,7 @@ use App\Jobs\GenerateWaveJob;
 use App\Models\Tag;
 use App\Models\User;
 use App\Models\Wave;
+use App\Services\Concerns\AuditsAdminActions;
 use chillerlan\QRCode\Common\EccLevel;
 use chillerlan\QRCode\Output\QROutputInterface;
 use chillerlan\QRCode\QRCode;
@@ -20,6 +21,8 @@ use ZipArchive;
 
 class WaveService
 {
+    use AuditsAdminActions;
+
     public const MAX_SIZE = 50000;
 
     private const INSERT_BATCH = 1000;
@@ -67,10 +70,14 @@ class WaveService
         }
     }
 
-    public function markSold(Wave $wave): int
+    public function markSold(Wave $wave, User $admin): int
     {
-        return Tag::query()->where('wave_id', $wave->id)->whereNull('sold_at')
+        $count = Tag::query()->where('wave_id', $wave->id)->whereNull('sold_at')
             ->update(['sold_at' => now()]);
+
+        $this->audit($admin, 'wave.mark_sold', 'wave', $wave->id, 'mark sold', ['count' => $count]);
+
+        return $count;
     }
 
     /**
@@ -79,7 +86,7 @@ class WaveService
      *
      * @throws AdminActionException
      */
-    public function markSerialRangeSold(string $fromSerial, string $toSerial): int
+    public function markSerialRangeSold(string $fromSerial, string $toSerial, User $admin): int
     {
         $from = strtoupper(trim($fromSerial));
         $to = strtoupper(trim($toSerial));
@@ -95,8 +102,12 @@ class WaveService
             throw AdminActionException::because('serial_range_order');
         }
 
-        return Tag::query()->whereBetween('serial', [$from, $to])->whereNull('sold_at')
+        $count = Tag::query()->whereBetween('serial', [$from, $to])->whereNull('sold_at')
             ->update(['sold_at' => now()]);
+
+        $this->audit($admin, 'wave.mark_range_sold', 'tag_range', $admin->id, 'mark range sold', ['from' => $from, 'to' => $to, 'count' => $count]);
+
+        return $count;
     }
 
     /** @return array{pending:int,sold:int,activated:int} */

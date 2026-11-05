@@ -18,6 +18,9 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Lang;
+use Illuminate\Support\Facades\URL;
 
 class PaymentResource extends Resource
 {
@@ -36,6 +39,16 @@ class PaymentResource extends Resource
     }
 
     public static function canCreate(): bool
+    {
+        return false;
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete(Model $record): bool
     {
         return false;
     }
@@ -63,7 +76,8 @@ class PaymentResource extends Resource
                 TextColumn::make('user.email')->label(__('admin.payments.user'))->searchable(),
                 TextColumn::make('paid_at')->label(__('admin.payments.paid_at'))->dateTime(timezone: 'Europe/Istanbul')->sortable(),
                 TextColumn::make('refunded_at')->label(__('admin.payments.refunded_at'))->dateTime(timezone: 'Europe/Istanbul')->toggleable(),
-                TextColumn::make('flag_reason')->label(__('admin.payments.flag'))->badge()->color('warning'),
+                TextColumn::make('flag_reason')->label(__('admin.payments.flag'))->badge()->color('warning')
+                    ->formatStateUsing(fn ($state) => Lang::has('admin.payments.flags.'.$state) ? __('admin.payments.flags.'.$state) : $state),
                 TextColumn::make('flag_reviewed_at')->label(__('admin.payments.flag_reviewed_at'))->dateTime(timezone: 'Europe/Istanbul')->toggleable(),
                 // The full number exists only in the CSV export. Never searchable: it is encrypted, and a search would need it in clear.
                 TextColumn::make('billing_national_id')->label(__('admin.payments.national_id'))
@@ -84,7 +98,7 @@ class PaymentResource extends Resource
                         DatePicker::make('from')->label(__('admin.payments.export_from'))->required()->native(false),
                         DatePicker::make('to')->label(__('admin.payments.export_to'))->required()->native(false)->afterOrEqual('from'),
                     ])
-                    ->action(fn (array $data) => redirect()->route('admin.payments.export', ['from' => $data['from'], 'to' => $data['to']])),
+                    ->action(fn (array $data) => redirect(URL::temporarySignedRoute('admin.payments.export', now()->addMinute(), ['from' => $data['from'], 'to' => $data['to']]))),
             ])
             ->recordActions([
                 Action::make('refund')
@@ -95,7 +109,7 @@ class PaymentResource extends Resource
                     ->modalDescription(__('admin.payments.refund_confirm'))
                     ->schema([$reason()])
                     ->action(fn (Payment $record, array $data) => AdminActionRunner::run(
-                        fn () => app(RenewalService::class)->markRefunded($record, auth()->user(), $data['reason']),
+                        fn () => ['tag' => app(RenewalService::class)->refund($record, auth()->user(), $data['reason'])?->serial ?? __('admin.payments.no_tag')],
                         'admin.payments.refunded',
                     )),
                 Action::make('markReviewed')

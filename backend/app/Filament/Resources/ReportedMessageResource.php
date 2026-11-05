@@ -9,6 +9,7 @@ use Filament\Resources\Resource;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 /** Chat messages an owner or a visitor reported. Both sides stamp reported_at. */
 class ReportedMessageResource extends Resource
@@ -32,6 +33,16 @@ class ReportedMessageResource extends Resource
         return false;
     }
 
+    public static function canEdit(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return false;
+    }
+
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->whereNotNull('reported_at');
@@ -46,7 +57,8 @@ class ReportedMessageResource extends Resource
                     ->formatStateUsing(fn ($state) => __('admin.reported.'.$state)),
                 TextColumn::make('body')->label(__('admin.reported.body'))->wrap(),
                 TextColumn::make('thread_id')->label(__('admin.reported.thread')),
-                TextColumn::make('moderation_status')->label(__('admin.reported.status')),
+                TextColumn::make('moderation_status')->label(__('admin.reported.status'))
+                    ->formatStateUsing(fn ($state) => __('admin.reported.statuses.'.$state)),
             ])
             ->defaultSort('reported_at', 'desc');
     }

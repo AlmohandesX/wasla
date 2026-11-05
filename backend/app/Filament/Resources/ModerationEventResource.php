@@ -13,6 +13,8 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Lang;
 
 class ModerationEventResource extends Resource
 {
@@ -35,6 +37,16 @@ class ModerationEventResource extends Resource
         return false;
     }
 
+    public static function canEdit(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return false;
+    }
+
     public static function table(Table $table): Table
     {
         return $table
@@ -42,9 +54,11 @@ class ModerationEventResource extends Resource
                 TextColumn::make('created_at')->label(__('admin.moderation.created_at'))->dateTime(timezone: 'Europe/Istanbul')->sortable(),
                 TextColumn::make('kind')->label(__('admin.moderation.kind'))->badge()
                     ->formatStateUsing(fn ($state) => __('admin.moderation.'.$state)),
-                TextColumn::make('surface')->label(__('admin.moderation.surface')),
+                TextColumn::make('surface')->label(__('admin.moderation.surface'))
+                    ->formatStateUsing(fn ($state) => Lang::has('admin.moderation.surfaces.'.$state) ? __('admin.moderation.surfaces.'.$state) : $state),
                 TextColumn::make('text')->label(__('admin.moderation.text'))->limit(80)->tooltip(fn (ModerationEvent $record) => $record->text),
-                TextColumn::make('source')->label(__('admin.moderation.source')),
+                TextColumn::make('source')->label(__('admin.moderation.source'))
+                    ->formatStateUsing(fn ($state) => Lang::has('admin.moderation.sources.'.$state) ? __('admin.moderation.sources.'.$state) : $state),
                 TextColumn::make('reason')->label(__('admin.moderation.reason'))->limit(60),
                 // A plain id on purpose: the thread can be missing (an event is written before the thread exists).
                 TextColumn::make('thread_id')->label(__('admin.moderation.thread'))->placeholder('-'),

@@ -2,8 +2,8 @@
 
 namespace App\Filament\Pages;
 
-use App\Models\AuditLog;
 use App\Models\Setting;
+use App\Services\Concerns\AuditsAdminActions;
 use App\Services\Payments\Kurus;
 use App\Services\Payments\RenewalService;
 use BackedEnum;
@@ -20,6 +20,8 @@ use Illuminate\Support\Facades\DB;
 
 class Settings extends Page
 {
+    use AuditsAdminActions;
+
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-cog-6-tooth';
 
     /** @var array<string, mixed>|null */
@@ -53,7 +55,9 @@ class Settings extends Page
             TextInput::make('price')->label(__('admin.settings.price'))->helperText(__('admin.settings.price_help'))
                 ->required()->maxLength(20)->inputMode('decimal')
                 ->rule(fn (): Closure => function (string $attribute, mixed $value, Closure $fail) {
-                    $kurus = Kurus::fromDecimal(is_string($value) ? trim($value) : null);
+                    // Turkish readers take 1.000 as one thousand, so a separator followed by three digits is refused, not guessed.
+                    $text = is_string($value) ? trim($value) : '';
+                    $kurus = preg_match('/^\d{1,10}(?:[.,]\d{1,2})?$/D', $text) ? Kurus::fromDecimal($text) : null;
                     if ($kurus === null || $kurus <= 0 || $kurus > RenewalService::MAX_KURUS) {
                         $fail(__('admin.price_invalid'));
                     }
@@ -75,21 +79,15 @@ class Settings extends Page
     {
         $data = $this->form->getState();
         // Validated above: exact text to integer kurus, no floats.
-        $kurus = (int) Kurus::fromDecimal(trim($data['price']));
+        $kurus = (int) Kurus::fromDecimal(trim((string) $data['price']));
 
         DB::transaction(function () use ($kurus) {
             $old = Setting::query()->lockForUpdate()->find(RenewalService::PRICE_SETTING)?->value;
             Setting::query()->updateOrCreate(['key' => RenewalService::PRICE_SETTING], ['value' => (string) $kurus]);
-            AuditLog::create([
-                'admin_id' => auth()->id(),
-                'action' => 'setting.price',
-                'subject_type' => 'setting',
-                'subject_id' => 0,
-                'meta' => ['from_kurus' => $old, 'to_kurus' => $kurus, 'reason' => 'price changed'],
-            ]);
+            $this->audit(auth()->user(), 'setting.price', 'setting', 0, 'price changed', ['from_kurus' => $old, 'to_kurus' => $kurus]);
         });
 
-        Notification::make()->title(__('admin.settings.saved'))->success()->send();
+        Notification::make()->title(__('admin.settings.saved', ['price' => self::formatLira($kurus)]))->success()->send();
     }
 
     private static function formatLira(int $kurus): string
