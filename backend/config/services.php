@@ -18,6 +18,11 @@ return [
         'key' => env('POSTMARK_API_KEY'),
     ],
 
+    'expo' => [
+        // Optional: only needed when the Expo project enables enhanced push security.
+        'access_token' => env('EXPO_ACCESS_TOKEN'),
+    ],
+
     'resend' => [
         'key' => env('RESEND_API_KEY'),
     ],

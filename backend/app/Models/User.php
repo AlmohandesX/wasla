@@ -47,6 +47,11 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         $this->notify(new QueuedResetPassword($token));
     }
 
+    public function deviceTokens(): HasMany
+    {
+        return $this->hasMany(DeviceToken::class);
+    }
+
     public function preferredLocale(): string
     {
         return $this->locale ?: config('app.locale');

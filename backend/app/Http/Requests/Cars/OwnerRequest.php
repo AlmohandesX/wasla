@@ -14,7 +14,7 @@ class OwnerRequest extends FormRequest
 
     public function authorize(): bool
     {
-        $subject = $this->route('car') ?? $this->route('contact') ?? $this->route('thread') ?? $this->route('message');
+        $subject = $this->route('car') ?? $this->route('contact') ?? $this->route('thread') ?? $this->route('message') ?? $this->route('reminder');
 
         return $subject !== null && $this->user()->can($this->ability, $subject);
     }

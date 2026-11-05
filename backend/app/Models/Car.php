@@ -26,6 +26,11 @@ class Car extends Model
         return $this->hasMany(EmergencyContact::class)->orderBy('position')->orderBy('id');
     }
 
+    public function reminders(): HasMany
+    {
+        return $this->hasMany(Reminder::class)->orderBy('due_on')->orderBy('id');
+    }
+
     public function hasActiveStatus(): bool
     {
         return $this->status_text !== null && $this->status_expires_at?->isFuture() === true;

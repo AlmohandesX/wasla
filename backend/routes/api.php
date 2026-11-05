@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\CarPhotoController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\ClaimController;
 use App\Http\Controllers\Api\ContactController;
+use App\Http\Controllers\Api\DeviceTokenController;
+use App\Http\Controllers\Api\ReminderController;
 use App\Http\Controllers\Api\StatusController;
 use App\Http\Controllers\Api\TransferController;
 use Illuminate\Support\Facades\Route;
@@ -36,6 +38,9 @@ Route::prefix('v1')->group(function () {
         Route::post('tags/claim', ClaimController::class)->middleware('throttle:claim');
         Route::post('cars', [CarController::class, 'store'])->middleware('throttle:writes');
 
+        Route::post('device-tokens', [DeviceTokenController::class, 'store'])->middleware('throttle:writes');
+        Route::delete('device-tokens', [DeviceTokenController::class, 'destroy'])->middleware('throttle:writes');
+
         // Spans cars; it leaves out threads of expired cars itself.
         Route::get('chats', [ChatController::class, 'index'])->middleware('throttle:reads');
 
@@ -56,6 +61,11 @@ Route::prefix('v1')->group(function () {
             Route::post('chats/{thread}/messages', [ChatController::class, 'send'])->middleware('throttle:writes');
             Route::post('chats/{thread}/block', [ChatController::class, 'block'])->middleware('throttle:writes');
             Route::post('messages/{message}/report', [ChatController::class, 'report'])->middleware('throttle:writes');
+
+            Route::get('cars/{car}/reminders', [ReminderController::class, 'index']);
+            Route::post('cars/{car}/reminders', [ReminderController::class, 'store'])->middleware('throttle:writes');
+            Route::patch('reminders/{reminder}', [ReminderController::class, 'update'])->middleware('throttle:writes');
+            Route::delete('reminders/{reminder}', [ReminderController::class, 'destroy'])->middleware('throttle:writes');
 
             Route::get('cars/{car}/contacts', [ContactController::class, 'index']);
             Route::post('cars/{car}/contacts', [ContactController::class, 'store'])->middleware('throttle:writes');
