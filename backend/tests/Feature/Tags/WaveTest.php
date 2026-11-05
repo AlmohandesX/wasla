@@ -21,8 +21,8 @@ function makeWave(int $size): Wave
     return $wave->refresh();
 }
 
-afterEach(function () {
-    Storage::disk('local')->deleteDirectory('waves');
+beforeEach(function () {
+    Storage::fake('local');
 });
 
 it('rejects a wave above 50000 and below 1', function () {
