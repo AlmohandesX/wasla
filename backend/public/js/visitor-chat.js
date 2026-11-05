@@ -40,10 +40,10 @@
         showError(text);
     }
 
+    // lastId only advances for polled messages: the visitor's own send must not skip an owner reply with a lower id.
     function render(message) {
         if (seen[message.id]) { return; }
         seen[message.id] = true;
-        lastId = Math.max(lastId, message.id);
 
         var mine = message.sender === 'visitor';
         var item = document.createElement('li');
@@ -68,7 +68,13 @@
             item.appendChild(report);
         }
 
-        list.appendChild(item);
+        item.dataset.id = message.id;
+        var before = null;
+        Array.prototype.some.call(list.children, function (node) {
+            if (parseInt(node.dataset.id, 10) > message.id) { before = node; return true; }
+            return false;
+        });
+        list.insertBefore(item, before);
         empty.hidden = true;
     }
 
@@ -111,7 +117,10 @@
         if (stopped || polling) { return; }
         polling = true;
         request(chat.dataset.messagesUrl + '?after=' + lastId).then(function (data) {
-            data.data.forEach(render);
+            data.data.forEach(function (message) {
+                render(message);
+                lastId = Math.max(lastId, message.id);
+            });
             if (data.data.length) { list.lastElementChild.scrollIntoView({ block: 'nearest' }); }
         }).catch(function (error) {
             if (error.status === 403) { failure(error); }

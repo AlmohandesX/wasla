@@ -45,7 +45,7 @@ class VisitorChatController extends Controller
         try {
             [$tag, , $thread] = $this->context($request, $token);
         } catch (ChatUnavailable) {
-            return view('visitor.neutral');
+            return view('visitor.chat_unavailable');
         }
 
         $paused = false;
@@ -53,7 +53,7 @@ class VisitorChatController extends Controller
             try {
                 $this->assertCanStartThread($request, $tag->car);
             } catch (ChatUnavailable) {
-                return view('visitor.neutral');
+                return view('visitor.chat_unavailable');
             } catch (ChatsPaused) {
                 $paused = true;
             }
@@ -110,6 +110,12 @@ class VisitorChatController extends Controller
                 $thread->delete();
             }
             throw $e;
+        }
+
+        // The cooldown after a block lands on the network the session last used, not the one it started on.
+        $ipHash = ChatService::hashIp((string) $request->ip());
+        if ($thread->visitorSession->ip_hash !== $ipHash) {
+            $thread->visitorSession->update(['ip_hash' => $ipHash]);
         }
 
         return (new VisitorMessageResource($message))->response()->setStatusCode(201);

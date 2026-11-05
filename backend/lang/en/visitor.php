@@ -35,6 +35,7 @@ return [
     'chat_error' => 'The message could not be sent. Please try again.',
     'chat_limited' => 'Too many messages. Please wait a few minutes and try again.',
     'chat_expired' => 'This page has expired. Reload it and try again.',
+    'chat_unavailable' => 'Chat is not available.',
     'chat_back' => 'Back',
     'footer' => 'Sent with WASLA',
 ];

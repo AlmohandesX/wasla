@@ -35,6 +35,7 @@ return [
     'chat_error' => 'Mesaj gönderilemedi. Lütfen tekrar deneyin.',
     'chat_limited' => 'Çok fazla mesaj gönderildi. Birkaç dakika bekleyip tekrar deneyin.',
     'chat_expired' => 'Bu sayfanın süresi doldu. Sayfayı yenileyip tekrar deneyin.',
+    'chat_unavailable' => 'Sohbet kullanılamıyor.',
     'chat_back' => 'Geri',
     'footer' => 'WASLA ile gönderildi',
 ];

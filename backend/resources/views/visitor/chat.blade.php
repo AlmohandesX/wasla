@@ -26,7 +26,7 @@
              data-error="{{ __('visitor.chat_error') }}"
              data-limited="{{ __('visitor.chat_limited') }}"
              data-expired="{{ __('visitor.chat_expired') }}"
-             data-unavailable="{{ __('visitor.neutral_title') }}">
+             data-unavailable="{{ __('visitor.chat_unavailable') }}">
             <ol class="thread" aria-live="polite" aria-label="{{ __('visitor.chat_title') }}"></ol>
             <p class="hint empty">{{ __('visitor.chat_empty') }}</p>
 

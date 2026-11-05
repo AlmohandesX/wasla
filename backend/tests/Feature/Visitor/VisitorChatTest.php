@@ -175,13 +175,22 @@ it('answers a stealthed car, an expired car and a blocked session identically', 
         expect($answer->json())->toBe($answers[0]->json());
     }
 
-    // The page is the very same bytes as the neutral scan page.
-    asVisitor();
-    $neutral = $this->get("/t/{$stealth->token}")->getContent();
-    expect($this->get("/t/{$stealth->token}/chat")->getContent())->toBe($neutral)
-        ->and($this->get("/t/{$expired->token}/chat")->getContent())->toBe($neutral);
+    // The chat page gives one shared copy for every reason, and it is not the scan page's "tag not active" text.
+    asVisitor(null, '10.9.9.3');
+    $html = $this->get("/t/{$stealth->token}/chat", ['Accept-Language' => 'en'])->assertOk()->getContent();
+    expect($html)->toContain('Chat is not available')->not->toContain('This tag is not active')
+        ->and($this->get("/t/{$expired->token}/chat", ['Accept-Language' => 'en'])->getContent())->toBe($html);
     asVisitor($cookie);
-    expect($this->get("/t/{$blockedTag->token}/chat")->getContent())->toBe($neutral);
+    expect($this->get("/t/{$blockedTag->token}/chat", ['Accept-Language' => 'en'])->getContent())->toBe($html);
+
+    // A cooldown IP on a live tag sees the same page.
+    asVisitor(null, '10.9.9.9');
+    $other = chatTag();
+    sendVisitor($other, 'x', null, '10.9.9.9')->assertCreated();
+    app(ChatService::class)->block(ChatThread::where('car_id', $other->car_id)->sole());
+    asVisitor(null, '10.9.9.9');
+    expect($this->get("/t/{$other->token}/chat", ['Accept-Language' => 'en'])->getContent())->toBe($html);
+    $this->get("/t/{$stealth->token}/chat", ['Accept-Language' => 'tr'])->assertSee('Sohbet kullanılamıyor');
 });
 
 it('treats an unclaimed tag as unavailable and a malformed token as not found', function () {
@@ -393,4 +402,14 @@ it('does not fire ChatMessageCreated for a blocked message', function () {
     sendVisitor(chatTag(), 'zibidi')->assertStatus(422);
 
     Event::assertNotDispatched(ChatMessageCreated::class);
+});
+
+it('puts the cooldown on the IP the blocked session last used', function () {
+    $tag = chatTag();
+    $cookie = cookieOf(sendVisitor($tag, 'Evden', null, '10.8.0.1'));
+    sendVisitor($tag, 'Mobil veriden', $cookie, '10.8.0.2')->assertCreated();
+    app(ChatService::class)->block(ChatThread::sole());
+
+    sendVisitor($tag, 'Yeni cerez', null, '10.8.0.2')->assertForbidden()->assertJsonPath('code', 'chat_unavailable');
+    sendVisitor($tag, 'Eski ag baska biri', null, '10.8.0.1')->assertCreated();
 });
