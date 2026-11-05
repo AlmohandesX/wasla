@@ -68,6 +68,9 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('writes', fn (Request $request) => Limit::perMinute(30)->by($request->user()?->getAuthIdentifier() ?: $request->ip()));
 
+        // Owner polling reads chats often; separate from the 30/min write limit.
+        RateLimiter::for('reads', fn (Request $request) => Limit::perMinute(120)->by($request->user()?->getAuthIdentifier() ?: $request->ip()));
+
         RateLimiter::for('scan', fn (Request $request) => Limit::perMinute(60)->by($request->ip()));
 
         RateLimiter::for('contact-reveal', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CarController;
 use App\Http\Controllers\Api\CarPhotoController;
+use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\ClaimController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\StatusController;
@@ -35,6 +36,12 @@ Route::prefix('v1')->group(function () {
         Route::post('tags/claim', ClaimController::class)->middleware('throttle:claim');
         Route::post('cars', [CarController::class, 'store'])->middleware('throttle:writes');
 
+        // Chats stay readable, blockable and reportable on an expired car; only replying is stopped.
+        Route::get('chats', [ChatController::class, 'index'])->middleware('throttle:reads');
+        Route::get('chats/{thread}/messages', [ChatController::class, 'messages'])->middleware('throttle:reads');
+        Route::post('chats/{thread}/block', [ChatController::class, 'block'])->middleware('throttle:writes');
+        Route::post('messages/{message}/report', [ChatController::class, 'report'])->middleware('throttle:writes');
+
         // Hard stop: a car with an expired tag gets 402 subscription_expired on all of these.
         Route::middleware('car.subscription')->group(function () {
             Route::patch('cars/{car}', [CarController::class, 'update'])->middleware('throttle:writes');
@@ -47,6 +54,8 @@ Route::prefix('v1')->group(function () {
 
             Route::post('cars/{car}/photo', [CarPhotoController::class, 'store'])->middleware('throttle:writes');
             Route::delete('cars/{car}/photo', [CarPhotoController::class, 'destroy'])->middleware('throttle:writes');
+
+            Route::post('chats/{thread}/messages', [ChatController::class, 'send'])->middleware('throttle:writes');
 
             Route::get('cars/{car}/contacts', [ContactController::class, 'index']);
             Route::post('cars/{car}/contacts', [ContactController::class, 'store'])->middleware('throttle:writes');
