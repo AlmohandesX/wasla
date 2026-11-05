@@ -20,7 +20,18 @@ return [
 
     'tag_base_url' => env('TAG_BASE_URL', 'http://localhost:8000/t'),
 
-    'moderation_daily_cap' => (int) env('MODERATION_DAILY_CAP', 1000),
+    'moderation' => [
+        'api_key' => env('OPENAI_API_KEY'),
+        'endpoint' => 'https://api.openai.com/v1/moderations',
+        'model' => 'omni-moderation-latest',
+        'timeout' => 3,
+        // Block when any category score reaches its threshold. Add per-category overrides by name,
+        // for example 'harassment/threatening' => 0.5.
+        'threshold' => 0.7,
+        'thresholds' => [],
+        // Provider calls per Istanbul day; past it, messages pass on the blacklist alone and are flagged.
+        'daily_cap' => (int) env('MODERATION_DAILY_CAP', 5000),
+    ],
 
     'payment_gateway' => env('PAYMENT_GATEWAY', 'fake'),
 

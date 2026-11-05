@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Services\Moderation\ModerationProvider;
+use App\Services\Moderation\OpenAiModerationProvider;
 use App\Support\ProductionGuard;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -20,7 +22,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(ModerationProvider::class, OpenAiModerationProvider::class);
     }
 
     /**
