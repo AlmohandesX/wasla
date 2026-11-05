@@ -364,3 +364,8 @@ it('flags a paid payment whose settlement failed and logs where, so it can be re
             && ! str_contains($json, 'Ayse') && ! str_contains($json, '10000000146');
     })->once();
 });
+
+it('treats array input on the fake gateway as an invalid callback, not a 500', function () {
+    $this->post('/payments/callback/fake', ['reference' => ['x'], 'signature' => 'y'])->assertStatus(400);
+    $this->post('/payments/callback/fake', ['reference' => 'x', 'signature' => ['y']])->assertStatus(400);
+});

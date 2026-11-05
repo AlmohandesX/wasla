@@ -69,6 +69,7 @@ class RenewalService
                 locale: $user->preferredLocale(),
                 description: 'WASLA '.$tag->serial,
                 billing: $billing,
+                buyerId: (string) $user->id,
             ));
 
             if ($session->reference !== $merchantReference) {

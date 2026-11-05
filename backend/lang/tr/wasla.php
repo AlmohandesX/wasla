@@ -32,6 +32,8 @@ return [
     'error_renewal_no_tag' => 'Bu araca bağlı etkin bir etiket yok.',
     'error_renewal_price_unavailable' => 'Yenileme şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.',
     'error_payment_unavailable' => 'Ödeme hizmeti şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.',
+    'billing_full_name_required' => 'Adınızı ve soyadınızı birlikte girin.',
+    'invalid_billing_phone' => 'Geçerli bir cep telefonu numarası girin.',
     'invalid_national_id' => '11 haneli geçerli bir T.C. kimlik numarası girin.',
     'error_rate_limited' => 'Çok fazla mesaj gönderildi. Birkaç dakika bekleyip tekrar deneyin.',
     'push_chat_title' => 'Yeni mesaj',

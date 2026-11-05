@@ -25,12 +25,18 @@ class ProductionGuard
         'paytr' => ['PAYTR_MERCHANT_ID', 'PAYTR_MERCHANT_KEY', 'PAYTR_MERCHANT_SALT'],
     ];
 
+    private const IYZICO_LIVE_URL = 'https://api.iyzipay.com';
+
+    /** Sandbox switches: left on in production, they would extend subscriptions for payments that moved no money. */
+    private const GATEWAY_MODE_VARIABLES = ['IYZICO_BASE_URL', 'PAYTR_TEST_MODE'];
+
     /** Every variable the guard reads, so config can capture them even when config is cached. */
     public static function variableNames(): array
     {
         return array_values(array_unique(array_merge(
             ['APP_ENV', 'APP_DEBUG'],
             self::ALWAYS_REQUIRED_IN_PRODUCTION,
+            self::GATEWAY_MODE_VARIABLES,
             ...array_values(self::GATEWAY_KEYS),
         )));
     }
@@ -77,6 +83,14 @@ class ProductionGuard
             if (! $present($key)) {
                 $problems[] = "$key is required in production.";
             }
+        }
+
+        if ($present('IYZICO_BASE_URL') && rtrim(trim((string) $env['IYZICO_BASE_URL']), '/') !== self::IYZICO_LIVE_URL) {
+            $problems[] = 'IYZICO_BASE_URL must be '.self::IYZICO_LIVE_URL.' in production.';
+        }
+
+        if (filter_var($env['PAYTR_TEST_MODE'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+            $problems[] = 'PAYTR_TEST_MODE must be off in production.';
         }
 
         foreach (['APP_URL', 'TAG_BASE_URL'] as $key) {

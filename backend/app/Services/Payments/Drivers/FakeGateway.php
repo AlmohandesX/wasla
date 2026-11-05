@@ -33,10 +33,10 @@ class FakeGateway implements PaymentGateway
 
     public function verifyCallback(Request $request): VerifiedCallback
     {
-        $reference = (string) $request->input('reference');
-        $signature = (string) $request->input('signature');
+        $reference = $request->input('reference');
+        $signature = $request->input('signature');
 
-        if ($reference === '' || ! hash_equals(self::sign($reference), $signature)) {
+        if (! is_string($reference) || ! is_string($signature) || $reference === '' || ! hash_equals(self::sign($reference), $signature)) {
             throw new InvalidCallback('Invalid fake gateway signature.');
         }
 

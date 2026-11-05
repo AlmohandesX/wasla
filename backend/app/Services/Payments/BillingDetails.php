@@ -4,7 +4,7 @@ namespace App\Services\Payments;
 
 use JsonSerializable;
 
-/** Buyer details for one checkout. The national ID is masked in every dump, export and log context. */
+/** Buyer details for one checkout. The national ID and phone are masked in every dump, export and log context. */
 final class BillingDetails implements JsonSerializable
 {
     public function __construct(
@@ -12,6 +12,7 @@ final class BillingDetails implements JsonSerializable
         public readonly string $address,
         public readonly string $city,
         #[\SensitiveParameter] public readonly string $nationalId,
+        #[\SensitiveParameter] public readonly string $phone,
     ) {}
 
     public function __debugInfo(): array
@@ -24,7 +25,7 @@ final class BillingDetails implements JsonSerializable
         return $this->masked();
     }
 
-    /** Keeps the national ID out of queued payloads, caches and session data. */
+    /** Keeps the national ID and phone out of queued payloads, caches and session data. */
     public function __serialize(): array
     {
         throw new \LogicException('BillingDetails must not be serialized.');
@@ -32,6 +33,6 @@ final class BillingDetails implements JsonSerializable
 
     private function masked(): array
     {
-        return ['name' => $this->name, 'address' => $this->address, 'city' => $this->city, 'nationalId' => '***'];
+        return ['name' => $this->name, 'address' => $this->address, 'city' => $this->city, 'nationalId' => '***', 'phone' => '***'];
     }
 }

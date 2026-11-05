@@ -5,10 +5,10 @@ namespace App\Http\Controllers;
 use App\Services\Payments\GatewayManager;
 use App\Services\Payments\InvalidCallback;
 use App\Services\Payments\RenewalService;
+use App\Services\Payments\UnknownPaymentGateway;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
-use RuntimeException;
 use Throwable;
 
 class PaymentCallbackController extends Controller
@@ -17,7 +17,7 @@ class PaymentCallbackController extends Controller
     {
         try {
             $gateway = $gateways->driver($provider);
-        } catch (RuntimeException) {
+        } catch (UnknownPaymentGateway) {
             abort(404);
         }
 

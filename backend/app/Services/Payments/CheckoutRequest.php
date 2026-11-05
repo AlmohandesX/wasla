@@ -14,5 +14,6 @@ final class CheckoutRequest
         public readonly string $locale,
         public readonly string $description,
         public readonly BillingDetails $billing,
+        public readonly string $buyerId,
     ) {}
 }

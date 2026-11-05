@@ -2,15 +2,15 @@
 
 namespace App\Support;
 
-/** Overwrites the billing national ID wherever it appears in a log context, at any depth. */
+/** Overwrites the billing national ID and phone wherever they appear in a log context, at any depth. */
 class RedactNationalId
 {
-    public const KEY = 'billing_national_id';
+    public const KEYS = ['billing_national_id', 'billing_phone'];
 
     public static function from(array $context): array
     {
         foreach ($context as $key => $value) {
-            if ($key === self::KEY) {
+            if (in_array($key, self::KEYS, true)) {
                 $context[$key] = '[redacted]';
             } elseif (is_array($value)) {
                 $context[$key] = self::from($value);

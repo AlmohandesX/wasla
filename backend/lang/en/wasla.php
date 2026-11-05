@@ -32,6 +32,8 @@ return [
     'error_renewal_no_tag' => 'This car has no activated tag to renew.',
     'error_renewal_price_unavailable' => 'Renewal is not available right now. Please try again later.',
     'error_payment_unavailable' => 'The payment service is not available. Please try again later.',
+    'billing_full_name_required' => 'Enter your first name and surname together.',
+    'invalid_billing_phone' => 'Enter a valid mobile phone number.',
     'invalid_national_id' => 'Enter a valid 11-digit Turkish national ID number.',
     'error_rate_limited' => 'Too many messages. Please wait a few minutes and try again.',
     'push_chat_title' => 'New message',

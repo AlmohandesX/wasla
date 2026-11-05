@@ -2,7 +2,6 @@
 
 use App\Support\ProductionGuard;
 
-
 it('fails when debug is on in production', function () {
     ProductionGuard::validate(productionEnv(['APP_DEBUG' => 'true']));
 })->throws(RuntimeException::class, 'APP_DEBUG');
@@ -48,6 +47,19 @@ it('passes on a complete production environment', function () {
     ProductionGuard::validate(productionEnv(['PAYMENT_GATEWAY' => 'paytr', 'PAYTR_MERCHANT_ID' => '1', 'PAYTR_MERCHANT_KEY' => 'k', 'PAYTR_MERCHANT_SALT' => 's']));
     expect(true)->toBeTrue();
 });
+
+it('refuses the iyzico sandbox URL in production', function () {
+    ProductionGuard::validate(productionEnv(['IYZICO_BASE_URL' => 'https://sandbox-api.iyzipay.com']));
+})->throws(RuntimeException::class, 'IYZICO_BASE_URL');
+
+it('accepts the live iyzico URL in production', function () {
+    ProductionGuard::validate(productionEnv(['IYZICO_BASE_URL' => 'https://api.iyzipay.com/']));
+    expect(true)->toBeTrue();
+});
+
+it('refuses PayTR test mode in production', function () {
+    ProductionGuard::validate(productionEnv(['PAYTR_TEST_MODE' => '1']));
+})->throws(RuntimeException::class, 'PAYTR_TEST_MODE');
 
 it('does not demand production variables outside production', function () {
     ProductionGuard::validate(['APP_ENV' => 'local', 'APP_DEBUG' => 'true']);

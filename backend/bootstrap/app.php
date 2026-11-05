@@ -46,7 +46,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ], $e->status));
 
         // The national ID is never flashed to a session, and BillingDetails masks it in dumps and traces.
-        $exceptions->dontFlash(['billing_national_id']);
+        $exceptions->dontFlash(['billing_national_id', 'billing_phone']);
         $exceptions->context(fn (Throwable $e, array $context) => RedactNationalId::from($context));
 
         $exceptions->shouldRenderJsonWhen(

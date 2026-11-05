@@ -3,7 +3,8 @@
 namespace App\Services\Payments;
 
 use App\Services\Payments\Drivers\FakeGateway;
-use RuntimeException;
+use App\Services\Payments\Drivers\IyzicoGateway;
+use App\Services\Payments\Drivers\PaytrGateway;
 
 /** Picks the driver named by PAYMENT_GATEWAY. Adding a provider means one new case here. */
 class GatewayManager
@@ -15,9 +16,12 @@ class GatewayManager
         return match ($name) {
             // Second line of defence behind ProductionGuard.
             'fake' => app()->isProduction()
-                ? throw new RuntimeException('The fake payment gateway cannot be used in production.')
+                ? throw new UnknownPaymentGateway('The fake payment gateway cannot be used in production.')
                 : new FakeGateway,
-            default => throw new RuntimeException("Payment gateway [$name] is not available."),
+            // Built without touching keys; a driver refuses to act when they are missing (PaymentGatewayNotConfigured).
+            'iyzico' => new IyzicoGateway,
+            'paytr' => new PaytrGateway,
+            default => throw new UnknownPaymentGateway("Payment gateway [$name] is not available."),
         };
     }
 }

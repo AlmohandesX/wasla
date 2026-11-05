@@ -53,8 +53,8 @@ Route::prefix('t/{token}/chat')
             ->whereNumber('message')->middleware('throttle:chat-write')->name('chat.report');
     });
 
-// Payment provider callback: the only thing that can extend a subscription. Server to server, so no session,
-// cookies or CSRF token; the provider's signature and a status re-check are the authentication.
+// Payment provider callback: the only thing that can extend a subscription. From the provider's server or, for iyzico,
+// the owner's browser, so no session, cookies or CSRF token; the driver's verification and a status re-check are the authentication.
 Route::withoutMiddleware([
     EncryptCookies::class,
     AddQueuedCookiesToResponse::class,

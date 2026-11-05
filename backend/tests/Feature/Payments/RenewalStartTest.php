@@ -12,6 +12,9 @@ use App\Services\Payments\Drivers\FakeGateway;
 use App\Services\Payments\GatewayManager;
 use App\Services\Payments\InvalidCallback;
 use App\Services\Payments\PaymentGateway;
+use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Contracts\Debug\ExceptionHandler;
+use Illuminate\Foundation\Exceptions\Handler;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +30,7 @@ function renewalBody(array $overrides = []): array
         'billing_address' => 'Moda Cad. No 5 Kadikoy',
         'billing_city' => 'Istanbul',
         'billing_national_id' => TCKN,
+        'billing_phone' => '0555 000 00 01',
         'legal_accepted' => true,
     ], $overrides);
 }
@@ -99,7 +103,7 @@ it('requires billing details and legal acceptance', function () {
     $user = verifiedOwner();
     $car = linkedCar($user);
 
-    foreach (['billing_name', 'billing_address', 'billing_city', 'billing_national_id', 'legal_accepted'] as $field) {
+    foreach (['billing_name', 'billing_address', 'billing_city', 'billing_national_id', 'billing_phone', 'legal_accepted'] as $field) {
         startRenewal($user, $car, [$field => null])->assertUnprocessable()->assertJsonValidationErrors($field);
     }
     startRenewal($user, $car, ['legal_accepted' => false])->assertUnprocessable()->assertJsonValidationErrors('legal_accepted');
@@ -155,8 +159,8 @@ it('never writes the national ID to logs or API responses', function () {
     Log::shouldNotHaveReceived('error');
     Log::shouldNotHaveReceived('warning');
 
-    $billing = new BillingDetails('A B', 'addr', 'city', TCKN);
-    expect(print_r($billing, true).json_encode($billing).json_encode(["b" => $billing]))->not->toContain(TCKN);
+    $billing = new BillingDetails('A B', 'addr', 'city', TCKN, '+905550000001');
+    expect(print_r($billing, true).json_encode($billing).json_encode(['b' => $billing]))->not->toContain(TCKN);
 });
 
 it('does not leak the national ID when the gateway fails', function () {
@@ -177,9 +181,9 @@ it('does not leak the national ID when the gateway fails', function () {
 });
 
 it('keeps the national ID out of flashed input', function () {
-    $handler = app(Illuminate\Foundation\Exceptions\Handler::class);
+    $handler = app(Handler::class);
     $ref = new ReflectionProperty($handler, 'dontFlash');
-    expect($ref->getValue($handler))->toContain('billing_national_id');
+    expect($ref->getValue($handler))->toContain('billing_national_id')->toContain('billing_phone');
 });
 
 it('forbids renewing another user car', function () {
@@ -255,9 +259,9 @@ it('has a fake gateway that honours the contract', function () {
     $gateway = app(PaymentGateway::class);
     expect($gateway)->toBeInstanceOf(FakeGateway::class)->and($gateway->name())->toBe('fake');
 
-    $b = new BillingDetails('A B', 'addr', 'city', TCKN);
+    $b = new BillingDetails('A B', 'addr', 'city', TCKN, '+905550000001');
     $mk = fn () => $gateway->startCheckout(new CheckoutRequest(
-        'WREF'.bin2hex(random_bytes(6)), 79900, 'TRY', 'a@b.co', '1.2.3.4', 'tr', 'Renewal', $b));
+        'WREF'.bin2hex(random_bytes(6)), 79900, 'TRY', 'a@b.co', '1.2.3.4', 'tr', 'Renewal', $b, '1'));
     [$s1, $s2] = [$mk(), $mk()];
     expect($s1->reference)->not->toBe($s2->reference)->and($s1->redirectUrl)->toContain($s1->reference);
 
@@ -364,14 +368,14 @@ it('strips the national ID from exception context in a real log channel', functi
     {
         public function context(): array
         {
-            return ['billing_national_id' => TCKN, 'nested' => ['billing_national_id' => TCKN], 'keep' => 'visible'];
+            return ['billing_national_id' => TCKN, 'nested' => ['billing_national_id' => TCKN], 'billing_phone' => '+905550000001', 'keep' => 'visible'];
         }
     };
-    app(Illuminate\Contracts\Debug\ExceptionHandler::class)->report($e);
+    app(ExceptionHandler::class)->report($e);
 
     $log = file_get_contents($path);
     @unlink($path);
-    expect($log)->toContain('visible')->not->toContain(TCKN);
+    expect($log)->toContain('visible')->not->toContain(TCKN)->not->toContain('5550000001');
 });
 
 function stalePayment(array $attrs = []): Payment
@@ -413,8 +417,79 @@ it('scrubs billing data from failed and stale pending payments only', function (
 });
 
 it('schedules the billing scrub daily at 03:00 Istanbul time', function () {
-    $event = collect(app(Illuminate\Console\Scheduling\Schedule::class)->events())
+    $event = collect(app(Schedule::class)->events())
         ->first(fn ($e) => str_contains($e->command, 'wasla:scrub-billing'));
 
     expect($event)->not->toBeNull()->and($event->expression)->toBe('0 3 * * *')->and($event->timezone)->toBe('Europe/Istanbul');
+});
+
+it('needs a full name, since iyzico requires a surname', function () {
+    $user = verifiedOwner();
+
+    $car = linkedCar($user);
+
+    startRenewal($user, $car, ['billing_name' => 'Ayse'])
+        ->assertUnprocessable()->assertJsonPath('errors.billing_name.0', __('wasla.billing_full_name_required'));
+    startRenewal($user, $car, ['billing_name' => ['Ayse', 'Yilmaz']])
+        ->assertUnprocessable()->assertJsonValidationErrors('billing_name');
+    expect(Payment::count())->toBe(0);
+});
+
+it('normalizes the phone to international form, and never stores it', function () {
+    $user = verifiedOwner();
+    $car = linkedCar($user);
+    $seen = new ArrayObject;
+    $this->app->instance(PaymentGateway::class, new class($seen) extends FakeGateway
+    {
+        public function __construct(private ArrayObject $seen) {}
+
+        public function startCheckout(CheckoutRequest $request): CheckoutSession
+        {
+            $this->seen[] = $request->billing->phone;
+
+            return parent::startCheckout($request);
+        }
+    });
+
+    foreach (['0555 000 00 01', '5550000001', '+90 (555) 000-00-01', '905550000001'] as $phone) {
+        startRenewal($user, $car, ['billing_phone' => $phone])->assertCreated();
+    }
+
+    expect($seen->getArrayCopy())->toBe(array_fill(0, 4, '+905550000001'))
+        ->and(json_encode(DB::table('payments')->get()))->not->toContain('5550000001');
+});
+
+it('refuses a phone number it cannot normalize', function (mixed $phone) {
+    $user = verifiedOwner();
+
+    startRenewal($user, linkedCar($user), ['billing_phone' => $phone])
+        ->assertUnprocessable()->assertJsonValidationErrors('billing_phone');
+})->with(['letters' => 'call me', 'short' => '0555', 'landline' => '02125550000', 'array' => [[['x']]]]);
+
+it('has the new billing messages in both languages', function () {
+    foreach (['tr', 'en'] as $locale) {
+        foreach (['billing_full_name_required', 'invalid_billing_phone'] as $key) {
+            expect(__('wasla.'.$key, [], $locale))->not->toBe('wasla.'.$key);
+        }
+    }
+});
+
+it('passes the buyer id to the gateway', function () {
+    $user = verifiedOwner();
+    $seen = new ArrayObject;
+    $this->app->instance(PaymentGateway::class, new class($seen) extends FakeGateway
+    {
+        public function __construct(private ArrayObject $seen) {}
+
+        public function startCheckout(CheckoutRequest $request): CheckoutSession
+        {
+            $this->seen[] = $request->buyerId;
+
+            return parent::startCheckout($request);
+        }
+    });
+
+    startRenewal($user, linkedCar($user))->assertCreated();
+
+    expect($seen[0])->toBe((string) $user->id);
 });
