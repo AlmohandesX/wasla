@@ -26,3 +26,5 @@ function productionEnv(array $overrides = []): array
         'MAIL_USERNAME' => 'u', 'MAIL_PASSWORD' => 'p', 'MAIL_FROM_ADDRESS' => 'no-reply@wasla.example',
     ], $overrides);
 }
+
+require_once __DIR__.'/Helpers/tags.php';
