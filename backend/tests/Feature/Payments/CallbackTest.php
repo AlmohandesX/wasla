@@ -1,9 +1,11 @@
 <?php
 
 use App\Enums\PaymentStatus;
+use App\Models\Car;
 use App\Models\Payment;
 use App\Models\Tag;
 use App\Services\Payments\Drivers\FakeGateway;
+use App\Services\Tags\SubscriptionService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
@@ -165,7 +167,7 @@ it('does not extend from the return page', function () {
 it('extends the tag after it changed owner', function () {
     $payment = pendingPayment();
     $before = Tag::find($payment->tag_id)->expires_at;
-    $newCar = \App\Models\Car::create(array_merge(carAttrs(['plate' => '06 XYZ 789']), ['user_id' => owner(['email_verified_at' => now()])->id]));
+    $newCar = Car::create(array_merge(carAttrs(['plate' => '06 XYZ 789']), ['user_id' => owner(['email_verified_at' => now()])->id]));
     Tag::find($payment->tag_id)->update(['car_id' => $newCar->id]);
     FakeGateway::setOutcome($payment->reference, PaymentStatus::Paid, 79900);
 
@@ -337,4 +339,28 @@ describe('fake gateway checkout page', function () {
         expect($routes('fake'))->toContain('fake-gateway.show')
             ->and($routes('iyzico'))->not->toContain('fake-gateway');
     });
+});
+
+it('flags a paid payment whose settlement failed and logs where, so it can be recovered', function () {
+    $payment = pendingPayment();
+    $before = expiryOf($payment);
+    FakeGateway::setOutcome($payment->reference, PaymentStatus::Paid, 79900);
+    $this->mock(SubscriptionService::class)->shouldReceive('extendOneYear')->andThrow(new RuntimeException('boom Ayse 10000000146'));
+    Log::spy();
+
+    postCallback($payment->reference)->assertStatus(503);
+
+    $payment->refresh();
+    expect($payment->status)->toBe(PaymentStatus::Pending)
+        ->and($payment->flagged_at)->not->toBeNull()
+        ->and($payment->flag_reason)->toBe('settlement_failed')
+        ->and(expiryOf($payment))->toBe($before);
+    Log::shouldHaveReceived('error')->withArgs(function ($message, $context = []) use ($payment) {
+        $json = json_encode($context);
+
+        return ($context['payment_id'] ?? null) === $payment->id
+            && ($context['exception'] ?? null) === RuntimeException::class
+            && isset($context['file'], $context['line'])
+            && ! str_contains($json, 'Ayse') && ! str_contains($json, '10000000146');
+    })->once();
 });

@@ -125,6 +125,17 @@ class RenewalService
 
         $remote = $gateway->fetchStatus($callback->reference);
 
+        try {
+            $this->settle($payment, $remote, $gateway);
+        } catch (Throwable $e) {
+            $this->recordSettlementFailure($payment, $gateway, $e);
+
+            throw $e;
+        }
+    }
+
+    private function settle(Payment $payment, ProviderPaymentStatus $remote, PaymentGateway $gateway): void
+    {
         DB::transaction(function () use ($payment, $remote, $gateway) {
             // Concurrent deliveries queue here; the second one sees the first one's result.
             $locked = Payment::query()->lockForUpdate()->findOrFail($payment->id);
@@ -168,6 +179,29 @@ class RenewalService
             $locked->update(['status' => PaymentStatus::Paid, 'paid_at' => now()]);
             app(SubscriptionService::class)->extendOneYear($locked->tag()->firstOrFail());
         });
+    }
+
+    /**
+     * The settlement rolled back, so a payment the provider may have taken money for is still pending. Leave a trail
+     * an admin can act on: ids and location only, never the message (it could echo request or billing data).
+     */
+    private function recordSettlementFailure(Payment $payment, PaymentGateway $gateway, Throwable $e): void
+    {
+        Log::error('Payment settlement failed.', [
+            'provider' => $gateway->name(),
+            'payment_id' => $payment->id,
+            'reference' => $payment->reference,
+            'exception' => $e::class,
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+        ]);
+
+        try {
+            Payment::query()->whereKey($payment->id)->whereNull('flagged_at')
+                ->update(['flagged_at' => now(), 'flag_reason' => 'settlement_failed']);
+        } catch (Throwable) {
+            // The log line above is the fallback if even this write fails.
+        }
     }
 
     /** The payment recorded by the last successful start(). */
