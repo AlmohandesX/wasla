@@ -19,4 +19,12 @@ return [
     'reset_mail_action' => 'Reset password',
     'reset_mail_outro' => 'This link is valid for 60 minutes. If you did not ask for it, ignore this email.',
     'verify_mail_outro' => 'This link is valid for 24 hours. If you did not create an account, ignore this email.',
+    'default_message' => 'The owner is not available right now.',
+    'error_tag_not_found' => 'This tag was not found.',
+    'error_tag_revoked' => 'This tag is no longer valid.',
+    'error_tag_already_claimed' => 'This tag is already linked to another account.',
+    'error_car_already_linked' => 'This car is already linked to a tag.',
+    'error_car_not_owned' => 'This car does not belong to your account.',
+    'error_subscription_expired' => 'Subscription expired. Please renew to keep using this car.',
+    'error_message_blocked' => 'This text is not allowed. Please change it and try again.',
 ];

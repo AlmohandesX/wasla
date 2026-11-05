@@ -19,4 +19,12 @@ return [
     'reset_mail_action' => 'Şifreyi sıfırla',
     'reset_mail_outro' => 'Bu bağlantı 60 dakika geçerlidir. Bu isteği siz yapmadıysanız bu e-postayı yok sayabilirsiniz.',
     'verify_mail_outro' => 'Bu bağlantı 24 saat geçerlidir. Hesabı siz açmadıysanız bu e-postayı yok sayabilirsiniz.',
+    'default_message' => 'Araç sahibi şu an müsait değil.',
+    'error_tag_not_found' => 'Bu etiket bulunamadı.',
+    'error_tag_revoked' => 'Bu etiket artık geçerli değil.',
+    'error_tag_already_claimed' => 'Bu etiket başka bir hesaba bağlı.',
+    'error_car_already_linked' => 'Bu araç zaten bir etikete bağlı.',
+    'error_car_not_owned' => 'Bu araç hesabınıza ait değil.',
+    'error_subscription_expired' => 'Abonelik süresi doldu. Bu aracı kullanmaya devam etmek için lütfen yenileyin.',
+    'error_message_blocked' => 'Bu metne izin verilmiyor. Lütfen değiştirip tekrar deneyin.',
 ];

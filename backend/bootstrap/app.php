@@ -1,5 +1,7 @@
 <?php
 
+use App\Exceptions\TagException;
+use App\Http\Middleware\EnsureCarSubscriptionActive;
 use App\Http\Middleware\EnsureEmailVerified;
 use App\Http\Middleware\EnsureNotSuspended;
 use App\Http\Middleware\SecurityHeaders;
@@ -23,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'not.suspended' => EnsureNotSuspended::class,
             'verified' => EnsureEmailVerified::class,
+            'car.subscription' => EnsureCarSubscriptionActive::class,
         ]);
 
         // "account": signed in and not suspended; usable before the email is verified (me, logout, resend).
@@ -31,6 +34,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->group('owner', ['auth:sanctum', 'not.suspended', 'verified']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Domain errors (tag, ownership, expiry, moderation) all render as {code, message}.
+        $exceptions->render(fn (TagException $e) => response()->json([
+            'code' => $e->errorCode,
+            'message' => __('wasla.error_'.$e->errorCode),
+        ], $e->status));
+
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );

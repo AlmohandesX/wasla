@@ -164,13 +164,13 @@ it('rejects owner routes with 403 email_not_verified until verified', function (
     $user = owner(['email_verified_at' => null]);
     $headers = bearer($user);
 
-    $this->getJson('/api/v1/owner/ping', $headers)->assertForbidden()->assertJsonPath('code', 'email_not_verified');
+    $this->getJson('/api/v1/cars', $headers)->assertForbidden()->assertJsonPath('code', 'email_not_verified');
     $this->getJson('/api/v1/me', $headers)->assertOk()->assertJsonPath('email_verified', false);
     $this->postJson('/api/v1/auth/email/resend', [], $headers)->assertOk();
 
     $user->markEmailAsVerified();
     $this->app['auth']->forgetGuards();
-    $this->getJson('/api/v1/owner/ping', bearer($user->refresh()))->assertOk();
+    $this->getJson('/api/v1/cars', bearer($user->refresh()))->assertOk();
 });
 
 it('verifies through the signed link and rejects a tampered or expired one', function () {
