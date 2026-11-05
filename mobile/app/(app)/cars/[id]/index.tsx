@@ -39,7 +39,7 @@ function CarPhoto({ carId, version }: { carId: number; version: number }) {
   );
 }
 
-type Target = '/cars/[id]/status' | '/cars/[id]/settings' | '/cars/[id]/transfer';
+type Target = '/cars/[id]/reminders' | '/cars/[id]/status' | '/cars/[id]/settings' | '/cars/[id]/transfer';
 
 export default function CarDetail() {
   useLocale();
@@ -78,6 +78,8 @@ export default function CarDetail() {
       {usable ? (
         <View style={styles.actions}>
           <Button label={t('detail.status')} onPress={go('/cars/[id]/status')} />
+          <Button label={t('detail.chats')} variant="secondary" onPress={() => router.push('/chats')} />
+          <Button label={t('detail.reminders')} variant="secondary" onPress={go('/cars/[id]/reminders')} />
           <Button label={t('detail.settings')} variant="secondary" onPress={go('/cars/[id]/settings')} />
           {car.linked ? <Button label={t('detail.transfer')} variant="secondary" onPress={go('/cars/[id]/transfer')} /> : null}
         </View>

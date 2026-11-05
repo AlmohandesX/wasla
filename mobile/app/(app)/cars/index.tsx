@@ -74,6 +74,8 @@ export default function Cars() {
       <View style={styles.actions}>
         <Button label={t('cars.add')} onPress={() => router.push('/cars/scan')} />
         <View style={styles.gap} />
+        <Button label={t('cars.chats')} variant="secondary" onPress={() => router.push('/chats')} />
+        <View style={styles.gap} />
         <Button label={t('cars.signOut')} variant="secondary" onPress={signOut} />
       </View>
     </Screen>

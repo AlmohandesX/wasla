@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { apiRequest, setSessionHandlers } from '../api/client';
 import { ApiError, toApiError } from '../api/errors';
 import { getLocale, loadLocale } from '../i18n';
+import { unregisterStoredToken } from '../push/deviceToken';
 import { clearToken, getToken, setToken } from './token';
 
 export type User = {
@@ -117,6 +118,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     try {
       // Revoke the token on the server when we can; signing out locally must not depend on it. With no
       // user (the boot error screen) there is nothing to revoke and the server may be unreachable.
+      if (user && (await getToken())) {
+        // This phone stops getting this account's pushes (needs the token, so it goes first).
+        await unregisterStoredToken();
+      }
       if (user && (await getToken())) await apiRequest<void>('auth/logout', { method: 'POST', timeoutMs: 5000 });
     } catch {
       // Ignored on purpose.
