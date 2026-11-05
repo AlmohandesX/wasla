@@ -23,9 +23,9 @@ Nothing below has been done by the build. The automated tests, the local API jou
 The Turkish starter set and blacklist were written without a native speaker. They are a starting point, not a validated benchmark.
 
 - [ ] **Sign off the starter labelled set** `backend/tests/Fixtures/moderation/tr-sample.csv` (28 rows). Review every row, add real parking and neighbour messages, harassment with spelling tricks, and polite messages that look rough. This is the launch gate in spec section 12.
-- [ ] Run `php artisan wasla:evaluate-moderation backend/tests/Fixtures/moderation/tr-sample.csv` against the seeded database with a real `OPENAI_API_KEY`, and tune `config/wasla.php` `moderation.threshold` or per-category `thresholds`. On the seeded blacklist **without** an OpenAI key the starter set gives 12 of 14 harassment rows blocked and 1 of 14 ordinary rows wrongly blocked, which shows the real gaps:
+- [ ] Run `php artisan wasla:evaluate-moderation backend/tests/Fixtures/moderation/tr-sample.csv` against the seeded database with a real `OPENAI_API_KEY`, and tune `config/wasla.php` `moderation.threshold` or per-category `thresholds`. On the seeded blacklist **without** an OpenAI key the starter set gives 13 of 14 harassment rows blocked and 1 of 14 ordinary rows wrongly blocked, which shows the real gaps:
   - `sıkık` (bored) is blocked because `sikik` folds the same way (known false positive).
-  - Letters separated by spaces (`o r o s p u`) and a digit inside a two-word term (`göt0ğlanı`) are missed by the blacklist and depend on OpenAI.
+  - Letters separated by spaces (`o r o s p u`) are missed by the blacklist and depend on OpenAI; decide whether to handle them.
 - [ ] Review `BlacklistSeeder` terms: substring stems and known false positives (`sikik`/`sıkık`, `niger`), and add missing slurs. Terms are edited in the admin panel afterwards.
 - [ ] Review **all Turkish strings**: `backend/lang/tr/*` (including admin panel strings), the mobile Turkish strings, the visitor page, the emails, status presets, and the draft privacy notice wording. Check the characters İ ı Ş ş Ğ ğ Ç ç Ö ö Ü ü render correctly everywhere.
 - [ ] Confirm the validation messages in `lang/tr/validation.php` read naturally; server field messages can still show English in places (for example some `errors.*` fields).

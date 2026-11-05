@@ -25,7 +25,8 @@ server {
 }
 
 server {
-    listen 443 ssl http2;
+    listen 443 ssl;
+    http2 on;                # Nginx 1.25.1+. On older versions write "listen 443 ssl http2;" and drop this line.
     server_name wasla.example;
     root /var/www/wasla/backend/public;
     index index.php;
@@ -36,11 +37,10 @@ server {
     # Car photos are accepted up to 10 MB (StoreCarPhotoRequest), so allow a little more.
     client_max_body_size 12m;
 
-    # Reset-password tokens travel in URLs. Do not log query strings, or rotate those logs within days.
-    # The format below logs the path only ($uri, not $request_uri).
-    log_format wasla '$remote_addr [$time_local] "$request_method $uri" $status $body_bytes_sent';
+    # Reset-password tokens travel in URLs. The "wasla" log format (defined in the http context, see below)
+    # logs the path only ($uri, not $request_uri), so query strings stay out of the access log.
     access_log /var/log/nginx/wasla.access.log wasla;
-    error_log  /var/log/nginx/wasla.error.log;
+    error_log  /var/log/nginx/wasla.error.log warn;
 
     location / {
         try_files $uri $uri/ /index.php?$query_string;
@@ -48,12 +48,21 @@ server {
 
     location ~ \.php$ {
         include snippets/fastcgi-php.conf;
+        fastcgi_param HTTPS on;
         fastcgi_pass unix:/run/php/php8.3-fpm.sock;
     }
 
     location ~ /\.(?!well-known).* { deny all; }
 }
 ```
+
+`log_format` is only allowed in the `http` context, not inside `server`. Put it in its own file, `/etc/nginx/conf.d/wasla-log.conf` (the default Ubuntu `nginx.conf` includes `conf.d/*.conf` inside `http`), then run `sudo nginx -t && sudo systemctl reload nginx`:
+
+```nginx
+log_format wasla '$remote_addr [$time_local] "$request_method $uri" $status $body_bytes_sent';
+```
+
+The Nginx **error log still records the full request URI**, query string included, for failed requests (for example upstream or PHP-FPM errors). Keep `error_log` at `warn` or higher as above, rotate it daily with a short retention (logrotate `daily` and `rotate 7`), and restrict who can read it. Laravel's own `storage/logs` do not record query strings.
 
 Query strings carry password-reset tokens and email verification links. Keep access logging of query strings off (as above) or short-lived, and do the same on any load balancer or CDN in front.
 
@@ -64,7 +73,13 @@ sudo mkdir -p /var/www/wasla && sudo chown deploy:www-data /var/www/wasla
 git clone <repo> /var/www/wasla && cd /var/www/wasla/backend
 ```
 
-Create `backend/.env` first (section 4), then:
+Create `backend/.env` first (section 4). **Generate `APP_KEY` before anything else**: `ProductionGuard` refuses to boot without it, and `artisan key:generate` cannot run until the guard passes. On a first install, generate a key without Laravel and paste it into `.env` as `APP_KEY=`:
+
+```bash
+php -r 'echo "base64:".base64_encode(random_bytes(32)),PHP_EOL;'
+```
+
+Back it up straight away (section 9). On later installs keep the existing key. Then:
 
 ```bash
 composer install --no-dev --optimize-autoloader
@@ -73,7 +88,6 @@ composer install --no-dev --optimize-autoloader
 Important: run `composer install` with the **full production `.env` already in place**. `ProductionGuard` runs in `AppServiceProvider::boot()`, so every `php artisan` command, including the ones composer's `post-autoload-dump` scripts run, refuses to start when the production configuration is incomplete. The same `post-autoload-dump` step also regenerates the Filament assets (`filament:upgrade`), so a composer run that fails on the guard also leaves the admin panel without its assets. If you must install before the `.env` is complete, use `composer install --no-dev --optimize-autoloader --no-scripts`, finish the `.env`, then run `composer dump-autoload --optimize` so the scripts run.
 
 ```bash
-php artisan key:generate        # only on the very first install, then back up APP_KEY (section 9)
 php artisan migrate --force
 php artisan db:seed --class=BlacklistSeeder --force   # first install only: starter blacklist. Never run plain db:seed in production, it also creates test@example.com
 php artisan config:cache
@@ -146,7 +160,9 @@ The web server and the queue worker must both be able to write `storage/` (wave 
 
 ## 6. Trusted proxies behind TLS
 
-If Nginx terminates TLS on the same machine and PHP sees `127.0.0.1`, or a load balancer sits in front, set `TRUSTED_PROXIES` to the proxy IPs or CIDRs (comma separated), or `*` only when the VPS is reachable solely through a trusted load balancer. Required: the app compares the browser `Origin` header with the scheme and host it sees (`RejectCrossSiteRequest`), and rate limits key on the client IP. Without `TRUSTED_PROXIES` the app sees `http` and the proxy IP, visitor chat posts are rejected as cross-site, and one proxy IP shares every rate limit. Make sure the proxy sends `X-Forwarded-For`, `X-Forwarded-Proto` and `X-Forwarded-Host` (for Nginx: `fastcgi_param HTTPS on;` or `proxy_set_header` lines when it is a reverse proxy).
+`TRUSTED_PROXIES` is needed **only when a separate reverse proxy or load balancer sits in front of the app server** (a cloud load balancer, Cloudflare, or a second Nginx that proxies to this one). Set it to that proxy's IPs or CIDRs (comma separated), or `*` only when the server is reachable solely through that trusted proxy, and make the proxy send `X-Forwarded-For`, `X-Forwarded-Proto` and `X-Forwarded-Host`. The app compares the browser `Origin` header with the scheme and host it sees (`RejectCrossSiteRequest`) and rate limits key on the client IP, so behind a proxy without `TRUSTED_PROXIES` the app sees `http` and the proxy IP, visitor chat posts are rejected as cross-site, and one proxy IP shares every rate limit.
+
+If Nginx terminates TLS itself and hands requests straight to PHP-FPM (the setup in section 2), leave `TRUSTED_PROXIES` empty. `fastcgi_param HTTPS on;` in the PHP location (add it after the `include snippets/fastcgi-php.conf;` line) is enough for the app to see `https`; the host and client IP come straight from the connection. In production the app also forces `https` URLs.
 
 Verify after deploy: open a tag page, send a chat message from the browser; it must not be refused as cross-site.
 

@@ -2,6 +2,7 @@
 
 use App\Models\BlacklistTerm;
 use App\Models\ModerationEvent;
+use App\Services\Moderation\ModerationPipeline;
 use App\Services\Moderation\ModerationProvider;
 use App\Services\Moderation\ProviderResult;
 use Database\Seeders\BlacklistSeeder;
@@ -88,4 +89,12 @@ it('ships a starter Turkish set that parses', function () {
     $this->artisan('wasla:evaluate-moderation', ['file' => base_path('tests/Fixtures/moderation/tr-sample.csv')])
         ->expectsOutputToContain('NATIVE-SPEAKER SIGN-OFF REQUIRED')
         ->assertExitCode(0);
+});
+
+it('blocks the joined and digit-substituted form of got oglani from the seeded list', function () {
+    $this->seed(BlacklistSeeder::class);
+
+    foreach (['göt0ğlanı', 'got oglani', 'GÖTOĞLANI'] as $text) {
+        expect(app(ModerationPipeline::class)->check($text, [], false, false)->blocked())->toBeTrue($text);
+    }
 });

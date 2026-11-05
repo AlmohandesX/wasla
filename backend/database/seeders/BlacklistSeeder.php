@@ -24,7 +24,7 @@ class BlacklistSeeder extends Seeder
         'substring' => [
             // Turkish (long, unambiguous stems)
             'orospu', 'siktir', 'sikeyim', 'sikerim', 'amina koy', 'aminakoy', 'amcik', 'yarrak', 'dalyarak',
-            'pezevenk', 'serefsiz', 'gotveren', 'got oglani', 'ibne', 'kahpe', 'kaltak', 'yavsak',
+            'pezevenk', 'serefsiz', 'gotveren', 'got oglani', 'gotoglani', 'ibne', 'kahpe', 'kaltak', 'yavsak',
             'gerizekali', 'geri zekali', 'gavat',
             // English
             'fuck', 'bitch', 'asshole', 'dickhead', 'bullshit', 'cocksucker', 'wanker', 'faggot', 'whore',
