@@ -322,6 +322,17 @@ it('erases an account from the support command, even a suspended one', function 
         ->and(json_encode($log->meta))->not->toContain('gone@example.com');
 });
 
+it('refuses a suspended admin as the actor of the support command', function () {
+    $suspended = User::factory()->create(['role' => 'admin', 'suspended_at' => now()]);
+    $user = accountOwner(['email' => 'stay2@example.com']);
+
+    $this->artisan('wasla:erase-account', ['email' => 'stay2@example.com', '--admin' => $suspended->email])
+        ->assertFailed();
+
+    expect(User::find($user->id))->not->toBeNull()
+        ->and(AuditLog::where('action', 'account.erase')->count())->toBe(0);
+});
+
 it('does not erase when the support command is not confirmed or targets an admin', function () {
     $admin = User::factory()->create(['role' => 'admin', 'email' => 'boss@example.com']);
     $user = accountOwner(['email' => 'stay@example.com']);
@@ -344,7 +355,9 @@ it('does not fail an owner push when the owner is already gone', function () {
     $car->setRelation('user', null);
     $message->setRelation('thread', $thread->setRelation('car', $car));
 
+    Queue::fake();
+
     app(NotifyOwnerOfVisitorMessage::class)->handle(new ChatMessageCreated($message));
 
-    expect(true)->toBeTrue();
+    Queue::assertNothingPushed();
 });

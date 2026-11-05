@@ -21,6 +21,11 @@ class EraseAccount extends Command
 
             return self::FAILURE;
         }
+        if ($admin->isSuspended()) {
+            $this->error('The --admin account is suspended and cannot act.');
+
+            return self::FAILURE;
+        }
 
         $user = User::query()->where('email', (string) $this->argument('email'))->first();
         if ($user === null) {
