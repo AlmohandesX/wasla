@@ -12,3 +12,9 @@ Thumbs.db
 # Dependencies and build output (each app also has its own .gitignore)
 node_modules/
 vendor/
+
+# Mobile (Expo)
+mobile/.expo/
+mobile/dist/
+mobile/expo-env.d.ts
+mobile/.env*.local
