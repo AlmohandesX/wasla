@@ -141,3 +141,21 @@ it('blocks photo writes on an expired car', function () {
     $this->postJson(photoUrl($car), ['photo' => photoOfSize(2000)], bearer($user))
         ->assertStatus(402)->assertJsonPath('code', 'subscription_expired');
 });
+
+it('keeps the old photo and does not return 200 when the storage write fails', function () {
+    $user = owner();
+    $car = linkedCar($user);
+    $this->postJson(photoUrl($car), ['photo' => photoOfSize(2000)], bearer($user))->assertOk();
+    $old = $car->refresh()->photo_path;
+
+    $failing = Mockery::mock(Illuminate\Contracts\Filesystem\Filesystem::class);
+    $failing->shouldReceive('put')->once()->andReturnFalse();
+    $failing->shouldNotReceive('delete');
+    Storage::set('photos', $failing);
+
+    $mine = bearer($user);
+    app('auth')->forgetGuards();
+    $this->postJson(photoUrl($car), ['photo' => photoOfSize(3000)], $mine)->assertStatus(500);
+
+    expect($car->refresh()->photo_path)->toBe($old)->and($car->photo_disk)->toBe('photos');
+});

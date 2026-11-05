@@ -6,6 +6,8 @@ use App\Models\Car;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use RuntimeException;
+use Throwable;
 
 class CarPhotoStore
 {
@@ -23,11 +25,19 @@ class CarPhotoStore
         };
         $path = 'car-photos/'.Str::random(40).'.'.$ext;
 
-        Storage::disk($disk)->put($path, $file->get());
+        // Disks run with throw=false, so a failed write returns false: nothing may change until it succeeds.
+        if (Storage::disk($disk)->put($path, $file->get()) === false) {
+            throw new RuntimeException('Car photo could not be written to the '.$disk.' disk.');
+        }
 
         $oldDisk = $car->photo_disk;
         $oldPath = $car->photo_path;
-        $car->update(['photo_disk' => $disk, 'photo_path' => $path]);
+        try {
+            $car->update(['photo_disk' => $disk, 'photo_path' => $path]);
+        } catch (Throwable $e) {
+            Storage::disk($disk)->delete($path);
+            throw $e;
+        }
 
         if ($oldPath !== null && $oldDisk !== null) {
             Storage::disk($oldDisk)->delete($oldPath);
