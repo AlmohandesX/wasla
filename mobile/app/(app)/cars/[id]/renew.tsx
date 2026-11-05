@@ -1,7 +1,7 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getCar } from '../../../../src/api/cars';
 import { getApiBaseUrl } from '../../../../src/api/config';
@@ -16,6 +16,7 @@ import { t, useLocale } from '../../../../src/i18n';
 import { isFullName, isValidBillingPhone, isValidTckn } from '../../../../src/lib/billing';
 import { isAllowedCheckoutUrl } from '../../../../src/lib/checkoutUrl';
 import { formatDate } from '../../../../src/lib/format';
+import { forgetPending, pendingFor, rememberPending } from '../../../../src/lib/pendingRenewals';
 import { pollPayment } from '../../../../src/lib/pollPayment';
 import { colors, fontSize, radius, spacing } from '../../../../src/theme';
 
@@ -41,7 +42,9 @@ export default function Renew() {
   const [nationalId, setNationalId] = useState('');
   const [legal, setLegal] = useState(false);
 
-  const [phase, setPhase] = useState<Phase>('form');
+  // A payment already in progress for this car (left the screen and came back) opens straight on the pending screen.
+  const [phase, setPhase] = useState<Phase>(() => (pendingFor(carId) !== null ? 'pending' : 'form'));
+  const [showPrivacy, setShowPrivacy] = useState(false);
   const [localErrors, setLocalErrors] = useState<LocalErrors>({});
   const [apiError, setApiError] = useState<ApiError | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -49,9 +52,11 @@ export default function Renew() {
 
   const submitting = useRef(false); // a second tap can never start a second payment
   const checking = useRef(false); // one poll run at a time
-  const paymentId = useRef<number | null>(null);
+  const paymentId = useRef<number | null>(pendingFor(carId));
   const checkoutUrl = useRef<string | null>(null);
-  const abort = useRef(new AbortController());
+  const unmounted = useRef(false);
+  const runController = useRef<AbortController | null>(null);
+  const runId = useRef(0);
   const phaseRef = useRef<Phase>('form');
   phaseRef.current = phase;
 
@@ -65,23 +70,34 @@ export default function Renew() {
   );
 
   useEffect(() => {
-    const controller = new AbortController();
-    abort.current = controller;
-    return () => controller.abort(); // leaving the screen stops the polling
+    unmounted.current = false;
+    return () => {
+      unmounted.current = true;
+      runController.current?.abort(); // leaving the screen stops the polling
+    };
   }, []);
 
+  /**
+   * One polling run at a time. `restart` replaces a run that is already going with a fresh one and a new deadline
+   * (the owner just came back to the app).
+   */
   const check = useCallback(
-    async (timeoutMs: number) => {
+    async (timeoutMs: number, restart = false) => {
       const id = paymentId.current;
-      if (id === null || checking.current) return;
+      if (id === null || unmounted.current || (checking.current && !restart)) return;
+      runController.current?.abort();
+      const controller = new AbortController();
+      runController.current = controller;
+      const signal = controller.signal;
+      const myRun = ++runId.current;
       checking.current = true;
-      const signal = abort.current.signal;
       setApiError(null);
       setPhase('checking');
       try {
         const result = await pollPayment(id, { intervalMs: POLL_INTERVAL_MS, timeoutMs, signal });
         if (signal.aborted) return;
         if (result === 'paid') {
+          forgetPending(carId);
           // The new expiry comes from the server, never from this screen's own arithmetic.
           try {
             setExpiresAt((await getCar(carId)).subscription.expires_at);
@@ -91,6 +107,7 @@ export default function Renew() {
           if (signal.aborted) return;
           setPhase('paid');
         } else {
+          if (result === 'failed') forgetPending(carId);
           setPhase(result);
         }
       } catch (e) {
@@ -98,16 +115,19 @@ export default function Renew() {
         setApiError(toApiError(e));
         setPhase('pending');
       } finally {
-        checking.current = false;
+        if (runId.current === myRun) checking.current = false;
       }
     },
     [carId],
   );
 
-  // Coming back to the app while the payment is unconfirmed is a good moment to ask again.
+  // Coming back to the app (on Android the browser call returns at once, so the owner is away while we poll)
+  // starts a fresh run with a new deadline whenever the payment is not yet settled.
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active' && phaseRef.current === 'pending') void check(POLL_AGAIN_MS);
+      if (state === 'active' && (phaseRef.current === 'pending' || phaseRef.current === 'checking')) {
+        void check(POLL_AGAIN_MS, true);
+      }
     });
     return () => subscription.remove();
   }, [check]);
@@ -120,11 +140,13 @@ export default function Renew() {
     }
     try {
       // The browser result and the address it ends on are not evidence of anything: only the backend is asked.
+      // On iOS this waits until the sheet is closed; on Android it can return at once. Either way what happens
+      // next is a poll of the backend, and returning to the app restarts it (see the AppState effect).
       await WebBrowser.openBrowserAsync(url);
     } catch {
       // Whether or not the page opened, what matters is the payment's status on the server.
     }
-    if (!abort.current.signal.aborted) await check(POLL_AFTER_CHECKOUT_MS);
+    if (!unmounted.current) await check(POLL_AFTER_CHECKOUT_MS);
   };
 
   const validate = (): LocalErrors => {
@@ -160,16 +182,27 @@ export default function Renew() {
         legal_accepted: legal,
       });
       paymentId.current = started.id;
+      rememberPending(carId, started.id);
       checkoutUrl.current = started.redirect_url;
       url = started.redirect_url;
     } catch (e) {
-      setApiError(toApiError(e));
-      setPhase('form');
+      const error = toApiError(e);
+      if (error.code === 'renewal_pending' && error.paymentId !== undefined) {
+        // A checkout for this car is already open (this phone or another): follow that payment, do not start one.
+        paymentId.current = error.paymentId;
+        rememberPending(carId, error.paymentId);
+        setApiError(error);
+        setPhase('pending');
+      } else {
+        setApiError(error);
+        setPhase('form');
+      }
     } finally {
       setNationalId(''); // gone from state as soon as it has been sent
       submitting.current = false;
     }
     if (url) await openCheckout(url);
+    else if (paymentId.current !== null) await check(POLL_AGAIN_MS);
   };
 
   const reopen = () => {
@@ -179,6 +212,7 @@ export default function Renew() {
   const tryAgain = () => {
     paymentId.current = null;
     checkoutUrl.current = null;
+    forgetPending(carId);
     setApiError(null);
     setNotice(null);
     setPhase('form');
@@ -249,6 +283,7 @@ export default function Renew() {
         label={t('renew.name')}
         value={name}
         onChangeText={setName}
+        maxLength={120}
         autoComplete="name"
         textContentType="name"
         error={localErrors.name ?? serverField('billing_name')}
@@ -257,6 +292,7 @@ export default function Renew() {
         label={t('renew.address')}
         value={address}
         onChangeText={setAddress}
+        maxLength={300}
         autoComplete="street-address"
         textContentType="fullStreetAddress"
         error={localErrors.address ?? serverField('billing_address')}
@@ -265,6 +301,7 @@ export default function Renew() {
         label={t('renew.city')}
         value={city}
         onChangeText={setCity}
+        maxLength={80}
         autoComplete="postal-address-locality"
         textContentType="addressCity"
         error={localErrors.city ?? serverField('billing_city')}
@@ -296,6 +333,16 @@ export default function Renew() {
         contextMenuHidden
         error={localErrors.nationalId ?? serverField('billing_national_id')}
       />
+      <Text style={styles.draft}>{t('legal.draftBadge')}</Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: showPrivacy }}
+        onPress={() => setShowPrivacy((v) => !v)}
+        style={styles.privacyLink}
+      >
+        <Text style={styles.privacyLinkText}>{t('renew.privacyLink')}</Text>
+      </Pressable>
+      {showPrivacy ? <Text style={styles.privacyBody}>{t('legal.privacyBody')}</Text> : null}
       <Checkbox
         label={t('renew.legal')}
         checked={legal}
@@ -320,4 +367,8 @@ const styles = StyleSheet.create({
   },
   pendingText: { fontSize: fontSize.body, color: colors.text },
   gap: { height: spacing.sm },
+  draft: { fontSize: fontSize.small, fontWeight: '700', color: colors.danger, marginBottom: spacing.xs },
+  privacyLink: { minHeight: 44, justifyContent: 'center' },
+  privacyLinkText: { color: colors.primaryDark, fontSize: fontSize.body, textDecorationLine: 'underline' },
+  privacyBody: { fontSize: fontSize.small, color: colors.text, marginBottom: spacing.md },
 });

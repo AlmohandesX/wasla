@@ -111,7 +111,7 @@ class PaytrGateway implements PaymentGateway
             'merchant_fail_url' => $returnUrl,
             'test_mode' => $testMode,
             'debug_on' => '0',
-            'timeout_limit' => '30',
+            'timeout_limit' => (string) max(1, (int) config('wasla.checkout_lifetime_minutes')),
             'lang' => $request->locale === 'en' ? 'en' : 'tr',
         ]);
 

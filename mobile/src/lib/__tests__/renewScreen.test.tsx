@@ -1,6 +1,10 @@
 import { act, create, type ReactTestInstance } from 'react-test-renderer';
 
+import { AppState } from 'react-native';
+
 import Renew from '../../../app/(app)/cars/[id]/renew';
+import { ApiError } from '../../api/errors';
+import { forgetPending, pendingFor } from '../pendingRenewals';
 
 const mockStartRenewal = jest.fn();
 const mockPoll = jest.fn();
@@ -15,9 +19,13 @@ jest.mock('expo-router', () => ({
   useLocalSearchParams: () => ({ id: '5' }),
   useRouter: () => ({ dismissTo: jest.fn(), push: jest.fn(), replace: jest.fn() }),
   useFocusEffect: (cb: () => void | (() => void)) => {
-    // Run like an effect on mount (React's own useEffect, so cleanup runs on unmount).
+    // Run like an effect on mount; the test can also call the cleanup to simulate the screen losing focus.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    require('react').useEffect(cb, []);
+    require('react').useEffect(() => {
+      const cleanup = cb();
+      (globalThis as unknown as { __blur?: () => void }).__blur = () => cleanup?.();
+      return cleanup;
+    }, []);
   },
 }));
 jest.mock('expo-web-browser', () => ({ openBrowserAsync: (...a: unknown[]) => mockOpen(...a) }));
@@ -54,6 +62,7 @@ async function fillAndSubmit(tree: ReturnType<typeof create>) {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  forgetPending(5);
   process.env.EXPO_PUBLIC_API_URL = 'http://192.168.1.20:8000';
   mockOpen.mockResolvedValue({ type: 'dismiss' });
 });
@@ -122,7 +131,6 @@ test('a pending result says the payment is being confirmed and offers another ch
 });
 
 test('after a refused request the national ID field is empty again and the server message shows', async () => {
-  const { ApiError } = jest.requireActual('../../api/errors');
   mockStartRenewal.mockRejectedValue(new ApiError(422, 'validation_failed', 'x', { fields: { billing_name: ['Ad soyad gerekli.'] } }));
   let tree!: ReturnType<typeof create>;
   await act(async () => {
@@ -132,4 +140,127 @@ test('after a refused request the national ID field is empty again and the serve
   expect(input(tree, 'T.C. kimlik numarası').props.value).toBe('');
   expect(tree.root.findAll((n) => n.props.children === 'Ad soyad gerekli.').length).toBeGreaterThan(0);
   expect(mockOpen).not.toHaveBeenCalled();
+});
+
+const textOf = (tree: ReturnType<typeof create>) =>
+  tree.root.findAll((n) => (n.type as unknown) === 'Text').map((n) => n.children.join('')).join('|');
+const payButton = (tree: ReturnType<typeof create>) =>
+  tree.root.findAll((n) => n.props.accessibilityRole === 'button' && n.props.accessibilityLabel === 'Ödemeye geç')[0];
+
+test('a double tap starts only one payment', async () => {
+  let resolve!: (v: unknown) => void;
+  mockStartRenewal.mockReturnValue(new Promise((r) => (resolve = r)));
+  mockPoll.mockResolvedValue('pending');
+  let tree!: ReturnType<typeof create>;
+  await act(async () => {
+    tree = create(<Renew />);
+  });
+  const set = (label: string, value: string) => act(() => input(tree, label).props.onChangeText(value));
+  await set('Ad soyad', 'Ayse Yilmaz');
+  await set('Fatura adresi', 'Moda Cd. 1');
+  await set('Şehir', 'Istanbul');
+  await set('Telefon numarası', '0532 123 45 67');
+  await set('T.C. kimlik numarası', VALID_ID);
+  await act(async () => tree.root.findByProps({ accessibilityRole: 'checkbox' }).props.onPress());
+  const press = payButton(tree).props.onPress;
+  // Two taps in the same tick, before React has re-rendered the button as busy.
+  await act(async () => {
+    void press();
+    void press();
+  });
+  expect(mockStartRenewal).toHaveBeenCalledTimes(1);
+  await act(async () => resolve({ id: 9, status: 'pending', redirect_url: 'http://192.168.1.20:8000/fake-gateway/checkout/W1' }));
+});
+
+test('leaving and coming back shows the pending screen for the same payment, with no second start', async () => {
+  mockStartRenewal.mockResolvedValue({ id: 9, status: 'pending', redirect_url: 'http://192.168.1.20:8000/fake-gateway/checkout/W1' });
+  mockPoll.mockResolvedValue('pending');
+  let tree!: ReturnType<typeof create>;
+  await act(async () => {
+    tree = create(<Renew />);
+  });
+  await fillAndSubmit(tree);
+  expect(pendingFor(5)).toBe(9);
+  act(() => tree.unmount());
+
+  await act(async () => {
+    tree = create(<Renew />);
+  });
+  expect(textOf(tree)).toContain('Ödemen doğrulanıyor');
+  expect(textOf(tree)).toContain('Tekrar kontrol et');
+  expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'T.C. kimlik numarası')).toHaveLength(0);
+  mockPoll.mockResolvedValue('paid');
+  await act(async () =>
+    tree.root.findAll((n) => n.props.accessibilityLabel === 'Tekrar kontrol et' && n.props.onPress)[0].props.onPress(),
+  );
+  expect(mockPoll).toHaveBeenLastCalledWith(9, expect.anything());
+  expect(mockStartRenewal).toHaveBeenCalledTimes(1);
+  expect(pendingFor(5)).toBeNull();
+});
+
+test('a 409 renewal_pending polls the payment it names and never opens a second checkout', async () => {
+  mockStartRenewal.mockRejectedValue(new ApiError(409, 'renewal_pending', 'x', { paymentId: 42 }));
+  mockPoll.mockResolvedValue('paid');
+  let tree!: ReturnType<typeof create>;
+  await act(async () => {
+    tree = create(<Renew />);
+  });
+  await fillAndSubmit(tree);
+  expect(mockPoll).toHaveBeenCalledWith(42, expect.anything());
+  expect(mockOpen).not.toHaveBeenCalled();
+  expect(textOf(tree)).toContain('Ödeme alındı');
+});
+
+test('returning to the app restarts the poll with a fresh deadline while the payment is unsettled', async () => {
+  let handler: ((s: string) => void) | undefined;
+  jest.spyOn(AppState, 'addEventListener').mockImplementation(((_: string, cb: (s: string) => void) => {
+    handler = cb;
+    return { remove: jest.fn() };
+  }) as never);
+  mockStartRenewal.mockResolvedValue({ id: 9, status: 'pending', redirect_url: 'http://192.168.1.20:8000/fake-gateway/checkout/W1' });
+  mockPoll.mockResolvedValueOnce('pending'); // the poll after the browser call
+  let tree!: ReturnType<typeof create>;
+  await act(async () => {
+    tree = create(<Renew />);
+  });
+  await fillAndSubmit(tree);
+  expect(mockPoll).toHaveBeenCalledTimes(1);
+
+  mockPoll.mockResolvedValueOnce('paid');
+  await act(async () => handler?.('active'));
+  expect(mockPoll).toHaveBeenCalledTimes(2);
+  expect(textOf(tree)).toContain('Ödeme alındı');
+});
+
+test('losing focus empties the national ID field', async () => {
+  let tree!: ReturnType<typeof create>;
+  await act(async () => {
+    tree = create(<Renew />);
+  });
+  await act(async () => input(tree, 'T.C. kimlik numarası').props.onChangeText(VALID_ID));
+  expect(input(tree, 'T.C. kimlik numarası').props.value).toBe(VALID_ID);
+  await act(async () => (globalThis as unknown as { __blur: () => void }).__blur());
+  expect(input(tree, 'T.C. kimlik numarası').props.value).toBe('');
+});
+
+test('the text fields stop at the lengths the server accepts', async () => {
+  let tree!: ReturnType<typeof create>;
+  await act(async () => {
+    tree = create(<Renew />);
+  });
+  expect(input(tree, 'Ad soyad').props.maxLength).toBe(120);
+  expect(input(tree, 'Fatura adresi').props.maxLength).toBe(300);
+  expect(input(tree, 'Şehir').props.maxLength).toBe(80);
+});
+
+test('the legal line carries the draft marker and opens the privacy notice', async () => {
+  let tree!: ReturnType<typeof create>;
+  await act(async () => {
+    tree = create(<Renew />);
+  });
+  expect(textOf(tree)).toContain('TASLAK');
+  await act(async () =>
+    tree.root.findAll((n) => n.props.accessibilityRole === 'button' && n.props.accessibilityState?.expanded === false)[0].props.onPress(),
+  );
+  expect(textOf(tree)).toContain('Wasla');
 });

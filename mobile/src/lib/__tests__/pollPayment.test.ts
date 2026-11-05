@@ -80,3 +80,8 @@ test('an error that is certain is thrown, not swallowed', async () => {
   getPayment.mockRejectedValue(new ApiError(404, 'not_found', 'nope'));
   await expect(pollPayment(7, { intervalMs: 1000, timeoutMs: 60000 })).rejects.toThrow('nope');
 });
+
+test('an unexpected non-API error is a bug and is thrown, not treated as a network blip', async () => {
+  getPayment.mockRejectedValue(new TypeError('boom'));
+  await expect(pollPayment(7, { intervalMs: 1000, timeoutMs: 60000 })).rejects.toThrow('boom');
+});

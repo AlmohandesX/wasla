@@ -44,6 +44,7 @@ return [
     'error_chats_paused' => 'Sahibi şu an yeni mesaj kabul etmiyor.',
     'error_renewal_no_tag' => 'Bu araca bağlı etkin bir etiket yok.',
     'error_renewal_price_unavailable' => 'Yenileme şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.',
+    'error_renewal_pending' => 'Bu araç için bir ödeme zaten devam ediyor. Tekrar ödemeden önce onaylanmasını bekleyin.',
     'error_payment_unavailable' => 'Ödeme hizmeti şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.',
     'billing_full_name_required' => 'Adınızı ve soyadınızı birlikte girin.',
     'invalid_billing_phone' => 'Geçerli bir cep telefonu numarası girin.',

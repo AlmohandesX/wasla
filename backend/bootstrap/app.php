@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\RenewalPending;
 use App\Exceptions\TagException;
 use App\Http\Middleware\EnsureCarSubscriptionActive;
 use App\Http\Middleware\EnsureEmailVerified;
@@ -47,6 +48,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(fn (TagException $e) => response()->json([
             'code' => $e->errorCode,
             'message' => __('wasla.error_'.$e->errorCode),
+            // Lets the app pick up the checkout that is already open instead of starting another.
+            ...($e instanceof RenewalPending ? ['payment_id' => $e->paymentId] : []),
         ], $e->status));
 
         // A throttled API request gets a stable code and a translated message; Retry-After stays.

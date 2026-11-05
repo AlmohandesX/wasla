@@ -100,7 +100,7 @@ export default function Account() {
             <Button label={t('account.deleteCancel')} variant="secondary" disabled={busy} onPress={cancel} />
           </>
         ) : (
-          <Button label={t('account.deleteOpen')} variant="secondary" onPress={() => setDeleting(true)} />
+          <Button label={t('account.deleteOpen')} variant="danger" onPress={() => setDeleting(true)} />
         )}
       </View>
     </Screen>

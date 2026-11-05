@@ -6,12 +6,14 @@ export class ApiError extends Error {
   readonly fields?: Record<string, string[]>;
   /** Seconds until a throttled request may be retried. */
   readonly retryAfter?: number;
+  /** The open payment a 409 renewal_pending points at. */
+  readonly paymentId?: number;
 
   constructor(
     status: number,
     code: string,
     message: string,
-    extra: { fields?: Record<string, string[]>; retryAfter?: number } = {},
+    extra: { fields?: Record<string, string[]>; retryAfter?: number; paymentId?: number } = {},
   ) {
     super(message);
     this.name = 'ApiError';
@@ -19,6 +21,7 @@ export class ApiError extends Error {
     this.code = code;
     this.fields = extra.fields;
     this.retryAfter = extra.retryAfter;
+    this.paymentId = extra.paymentId;
   }
 }
 
@@ -64,7 +67,11 @@ export function errorFromResponse(status: number, body: unknown, retryAfterHeade
   const retryAfter = [bodySeconds, headerSeconds].find((n) => Number.isFinite(n));
 
   const serverMessage = typeof data.message === 'string' ? data.message : undefined;
-  return new ApiError(status, code, messageFor(code, serverMessage, retryAfter), { fields, retryAfter });
+  return new ApiError(status, code, messageFor(code, serverMessage, retryAfter), {
+    fields,
+    retryAfter,
+    paymentId: typeof data.payment_id === 'number' ? data.payment_id : undefined,
+  });
 }
 
 export function networkError(): ApiError {

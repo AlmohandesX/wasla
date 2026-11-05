@@ -369,3 +369,37 @@ it('treats array input on the fake gateway as an invalid callback, not a 500', f
     $this->post('/payments/callback/fake', ['reference' => ['x'], 'signature' => 'y'])->assertStatus(400);
     $this->post('/payments/callback/fake', ['reference' => 'x', 'signature' => ['y']])->assertStatus(400);
 });
+
+it('still extends but flags a second payment paid within 24 hours for the same tag', function () {
+    $first = pendingPayment();
+    $tag = Tag::find($first->tag_id);
+    FakeGateway::setOutcome($first->reference, PaymentStatus::Paid, 79900);
+    postCallback($first->reference)->assertOk();
+    $afterFirst = expiryOf($first);
+
+    $second = pendingPayment($tag);
+    FakeGateway::setOutcome($second->reference, PaymentStatus::Paid, 79900);
+    Log::spy();
+    postCallback($second->reference)->assertOk();
+
+    $second->refresh();
+    expect($second->status)->toBe(PaymentStatus::Paid)
+        ->and($second->flag_reason)->toBe('possible_duplicate')
+        ->and(expiryOf($second))->not->toBe($afterFirst)
+        ->and($first->refresh()->flag_reason)->toBeNull();
+    Log::shouldHaveReceived('warning')->withArgs(fn ($m, $c = []) => ($c['payment_id'] ?? null) === $second->id && str_contains($m, 'duplicate'))->once();
+});
+
+it('does not flag a second payment paid more than 24 hours after the first', function () {
+    $first = pendingPayment();
+    $tag = Tag::find($first->tag_id);
+    FakeGateway::setOutcome($first->reference, PaymentStatus::Paid, 79900);
+    postCallback($first->reference)->assertOk();
+    Payment::query()->whereKey($first->id)->update(['paid_at' => now()->subHours(25)]);
+
+    $second = pendingPayment($tag);
+    FakeGateway::setOutcome($second->reference, PaymentStatus::Paid, 79900);
+    postCallback($second->reference)->assertOk();
+
+    expect($second->refresh()->flag_reason)->toBeNull();
+});

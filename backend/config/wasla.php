@@ -45,6 +45,11 @@ return [
 
     'payment_gateway' => env('PAYMENT_GATEWAY', 'fake'),
 
+    // How long a hosted checkout stays payable. While a payment is pending and younger than this, the same tag
+    // cannot start another renewal (409 renewal_pending). iyzico's checkout token lives about 30 minutes, and
+    // PaytrGateway sends this same value as timeout_limit, so neither provider can accept a payment after the window.
+    'checkout_lifetime_minutes' => (int) env('CHECKOUT_LIFETIME_MINUTES', 30),
+
     // Version of the distance-selling pre-information and contract text a buyer accepts at renewal.
     'legal_text_version' => env('LEGAL_TEXT_VERSION', '1'),
 

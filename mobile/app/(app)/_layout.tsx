@@ -60,7 +60,7 @@ export default function AppLayout() {
       <Stack.Screen name="cars/[id]/status" options={{ title: t('detail.status') }} />
       <Stack.Screen name="cars/[id]/reminders" options={{ title: t('reminders.title') }} />
       <Stack.Screen name="cars/[id]/transfer" options={{ title: t('detail.transfer') }} />
-      <Stack.Screen name="cars/[id]/expired" options={{ title: t('expired.back') }} />
+      <Stack.Screen name="cars/[id]/expired" options={{ title: '' }} />
       <Stack.Screen name="cars/[id]/renew" options={{ title: t('renew.title') }} />
       <Stack.Screen name="account/index" options={{ title: t('account.title') }} />
     </Stack>

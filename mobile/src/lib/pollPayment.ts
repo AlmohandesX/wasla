@@ -12,9 +12,10 @@ export type PollOptions = {
 
 const REQUEST_TIMEOUT_MS = 8000;
 
-/** Failures that say nothing about the payment: the next poll may well work. */
+/** Failures that say nothing about the payment: the next poll may well work. Rethrown otherwise. */
 function isTemporary(error: unknown): boolean {
-  if (!(error instanceof ApiError)) return true;
+  // Anything that is not an ApiError is a bug in the app, not a network hiccup: do not hide it.
+  if (!(error instanceof ApiError)) return false;
   return error.code === 'network_error' || error.code === 'invalid_response' || error.status === 429 || error.status >= 500;
 }
 

@@ -276,7 +276,6 @@
   "renew.failedTitle": "Payment not completed",
   "renew.failedBody": "The payment was not completed and you were not charged. You can try again.",
   "renew.tryAgain": "Try again",
-  "renew.backToCar": "Back to the car",
   "account.title": "Account",
   "account.open": "Account",
   "account.signedInAs": "Signed in as {email}",
@@ -290,5 +289,7 @@
   "account.deleteConfirm": "Permanently delete my account",
   "account.deleteCancel": "Cancel",
   "account.tooMany": "Too many attempts. Try again in {minutes} minutes.",
-  "account.passwordRequired": "Enter your password."
+  "account.passwordRequired": "Enter your password.",
+  "errors.renewal_pending": "A payment for this car is already in progress. Check its status instead of paying again.",
+  "renew.privacyLink": "Read the privacy notice"
 }

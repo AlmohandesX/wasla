@@ -6,6 +6,7 @@ use App\Enums\PaymentStatus;
 use App\Exceptions\AdminActionException;
 use App\Exceptions\PaymentUnavailable;
 use App\Exceptions\RenewalNoTag;
+use App\Exceptions\RenewalPending;
 use App\Exceptions\RenewalPriceUnavailable;
 use App\Models\Payment;
 use App\Models\Setting;
@@ -47,21 +48,37 @@ class RenewalService
         $price = $this->currentPriceKurus();
         $merchantReference = 'W'.strtoupper(bin2hex(random_bytes(12)));
 
-        $payment = Payment::create([
-            'tag_id' => $tag->id,
-            'user_id' => $user->id,
-            'provider' => $this->gateway->name(),
-            'reference' => $merchantReference,
-            'amount_kurus' => $price,
-            'currency' => self::CURRENCY,
-            'status' => PaymentStatus::Pending,
-            'billing_name' => $billing->name,
-            'billing_address' => $billing->address,
-            'billing_city' => $billing->city,
-            'billing_national_id' => $billing->nationalId,
-            'legal_accepted_at' => now(),
-            'legal_text_version' => (string) config('wasla.legal_text_version'),
-        ]);
+        $payment = DB::transaction(function () use ($user, $tag, $billing, $price, $merchantReference) {
+            // The tag row is the lock: two starts for one tag queue here, so the second sees the first one's row.
+            Tag::query()->lockForUpdate()->findOrFail($tag->id);
+
+            $open = Payment::query()
+                ->where('tag_id', $tag->id)
+                ->where('status', PaymentStatus::Pending)
+                ->where('created_at', '>', now()->subMinutes((int) config('wasla.checkout_lifetime_minutes')))
+                ->latest('id')
+                ->first();
+
+            if ($open !== null) {
+                throw new RenewalPending($open->id);
+            }
+
+            return Payment::create([
+                'tag_id' => $tag->id,
+                'user_id' => $user->id,
+                'provider' => $this->gateway->name(),
+                'reference' => $merchantReference,
+                'amount_kurus' => $price,
+                'currency' => self::CURRENCY,
+                'status' => PaymentStatus::Pending,
+                'billing_name' => $billing->name,
+                'billing_address' => $billing->address,
+                'billing_city' => $billing->city,
+                'billing_national_id' => $billing->nationalId,
+                'legal_accepted_at' => now(),
+                'legal_text_version' => (string) config('wasla.legal_text_version'),
+            ]);
+        });
 
         try {
             $session = $this->gateway->startCheckout(new CheckoutRequest(
@@ -217,8 +234,24 @@ class RenewalService
                 return;
             }
 
+            // Money was taken, so it extends either way; a second payment close behind the first is flagged for a refund.
+            $duplicate = Payment::query()
+                ->where('tag_id', $locked->tag_id)
+                ->where('id', '!=', $locked->id)
+                ->where('status', PaymentStatus::Paid)
+                ->where('paid_at', '>', now()->subHours(24))
+                ->exists();
+
             app(SubscriptionService::class)->extendOneYear($tag);
             $locked->update(['extended_tag_id' => $tag->id]);
+
+            if ($duplicate) {
+                $this->flag($locked, 'possible_duplicate', $gateway);
+                Log::warning('Payment settled as a possible duplicate of a recent payment for the same tag.', [
+                    'provider' => $gateway->name(),
+                    'payment_id' => $locked->id,
+                ]);
+            }
 
             if ($tag->id !== $locked->tag_id) {
                 $this->flag($locked, 'settled_on_replacement', $gateway);

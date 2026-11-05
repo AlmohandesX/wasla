@@ -276,7 +276,6 @@
   "renew.failedTitle": "Ödeme tamamlanmadı",
   "renew.failedBody": "Ödeme tamamlanmadı ve hesabından çekim yapılmadı. Tekrar deneyebilirsin.",
   "renew.tryAgain": "Tekrar dene",
-  "renew.backToCar": "Araca dön",
   "account.title": "Hesap",
   "account.open": "Hesap",
   "account.signedInAs": "{email} olarak giriş yapıldı",
@@ -290,5 +289,7 @@
   "account.deleteConfirm": "Hesabımı kalıcı olarak sil",
   "account.deleteCancel": "Vazgeç",
   "account.tooMany": "Çok fazla deneme. {minutes} dakika sonra tekrar dene.",
-  "account.passwordRequired": "Şifreni gir."
+  "account.passwordRequired": "Şifreni gir.",
+  "errors.renewal_pending": "Bu araç için bir ödeme zaten devam ediyor. Tekrar ödemek yerine durumunu kontrol et.",
+  "renew.privacyLink": "Gizlilik bildirimini oku"
 }

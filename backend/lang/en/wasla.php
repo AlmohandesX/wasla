@@ -44,6 +44,7 @@ return [
     'error_chats_paused' => 'The owner is not accepting new messages right now.',
     'error_renewal_no_tag' => 'This car has no activated tag to renew.',
     'error_renewal_price_unavailable' => 'Renewal is not available right now. Please try again later.',
+    'error_renewal_pending' => 'A payment for this car is already in progress. Wait for it to be confirmed before paying again.',
     'error_payment_unavailable' => 'The payment service is not available. Please try again later.',
     'billing_full_name_required' => 'Enter your first name and surname together.',
     'invalid_billing_phone' => 'Enter a valid mobile phone number.',

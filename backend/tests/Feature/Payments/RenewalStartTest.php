@@ -85,6 +85,7 @@ it('uses the price at start even if it changes later', function () {
     startRenewal($user, $car)->assertCreated();
 
     setRenewalPrice(99900);
+    Payment::query()->update(['status' => PaymentStatus::Failed]); // a new start needs the first checkout to be over
 
     expect(Payment::first()->amount_kurus)->toBe(79900);
     startRenewal($user, $car)->assertCreated()->assertJsonPath('data.amount_kurus', 99900);
@@ -453,6 +454,7 @@ it('normalizes the phone to international form, and never stores it', function (
 
     foreach (['0555 000 00 01', '5550000001', '+90 (555) 000-00-01', '905550000001'] as $phone) {
         startRenewal($user, $car, ['billing_phone' => $phone])->assertCreated();
+        Payment::query()->update(['status' => PaymentStatus::Failed]);
     }
 
     expect($seen->getArrayCopy())->toBe(array_fill(0, 4, '+905550000001'))
@@ -515,4 +517,49 @@ it('passes a foreign phone number on through the route, and refuses a Turkish la
         ->assertUnprocessable()->assertJsonPath('errors.billing_phone.0', __('wasla.invalid_billing_phone'));
 
     expect($seen->getArrayCopy())->toBe(['+491701234567']);
+});
+
+it('refuses a second start with 409 and the pending payment id while a checkout is still open', function () {
+    $user = verifiedOwner();
+    $car = linkedCar($user);
+
+    $first = startRenewal($user, $car)->assertCreated()->json('data.id');
+    startRenewal($user, $car)->assertStatus(409)
+        ->assertJsonPath('code', 'renewal_pending')
+        ->assertJsonPath('payment_id', $first);
+
+    expect(Payment::count())->toBe(1);
+});
+
+it('allows a new start once the open checkout is older than its lifetime', function () {
+    config(['wasla.checkout_lifetime_minutes' => 30]);
+    $user = verifiedOwner();
+    $car = linkedCar($user);
+
+    startRenewal($user, $car)->assertCreated();
+    Payment::query()->update(['created_at' => now()->subMinutes(31)]);
+
+    startRenewal($user, $car)->assertCreated();
+    expect(Payment::count())->toBe(2);
+});
+
+it('allows a new start after the earlier payment failed', function () {
+    $user = verifiedOwner();
+    $car = linkedCar($user);
+
+    startRenewal($user, $car)->assertCreated();
+    Payment::query()->update(['status' => PaymentStatus::Failed]);
+
+    startRenewal($user, $car)->assertCreated();
+});
+
+it('does not create a payment or call the gateway for the refused start', function () {
+    $user = verifiedOwner();
+    $car = linkedCar($user);
+    startRenewal($user, $car)->assertCreated();
+    $before = Payment::count();
+
+    startRenewal($user, $car)->assertStatus(409);
+
+    expect(Payment::count())->toBe($before);
 });

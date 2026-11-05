@@ -6,7 +6,7 @@ import { colors, fontSize, radius, touchTarget } from '../theme';
 type Props = {
   label: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'link';
+  variant?: 'primary' | 'secondary' | 'link' | 'danger';
   loading?: boolean;
   disabled?: boolean;
   accessibilityLabel?: string;
@@ -30,6 +30,7 @@ export function Button({ label, onPress, variant = 'primary', loading, disabled,
         styles.base,
         variant === 'primary' && styles.primary,
         variant === 'secondary' && styles.secondary,
+        variant === 'danger' && styles.danger,
         pressed && (filled ? styles.primaryPressed : styles.tintPressed),
         focused && styles.focused,
         inactive && styles.inactive,
@@ -38,7 +39,7 @@ export function Button({ label, onPress, variant = 'primary', loading, disabled,
       {loading ? (
         <ActivityIndicator color={filled ? colors.surface : colors.primary} />
       ) : (
-        <Text style={[styles.label, filled ? styles.labelFilled : styles.labelPlain]}>{label}</Text>
+        <Text style={[styles.label, filled ? styles.labelFilled : variant === 'danger' ? styles.labelDanger : styles.labelPlain]}>{label}</Text>
       )}
     </Pressable>
   );
@@ -56,6 +57,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   primary: { backgroundColor: colors.primary },
+  danger: { backgroundColor: colors.surface, borderColor: colors.danger },
   secondary: { backgroundColor: colors.surface, borderColor: colors.primary },
   primaryPressed: { backgroundColor: colors.primaryDark },
   tintPressed: { backgroundColor: colors.primaryTint },
@@ -64,4 +66,5 @@ const styles = StyleSheet.create({
   label: { fontSize: fontSize.body, fontWeight: '600', textAlign: 'center' },
   labelFilled: { color: colors.surface },
   labelPlain: { color: colors.primaryDark },
+  labelDanger: { color: colors.danger },
 });
