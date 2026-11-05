@@ -29,7 +29,8 @@ Route::prefix('v1')->group(function () {
         Route::post('auth/email/resend', [AuthController::class, 'resend'])->middleware('throttle:resend-verification');
 
         // Outside owner (works before verification) and outside car.subscription (works after expiry).
-        // A suspended owner is refused by not.suspended: support handles those so abuse evidence is kept.
+        // A suspended owner is refused by not.suspended: support handles those with `php artisan wasla:erase-account`,
+        // so abuse evidence is not wiped by the owner.
         Route::delete('account', [AccountController::class, 'destroy'])->middleware('throttle:account-delete');
     });
 

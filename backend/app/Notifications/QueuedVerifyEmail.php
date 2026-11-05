@@ -10,4 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 class QueuedVerifyEmail extends VerifyEmail implements ShouldQueue
 {
     use Queueable;
+
+    /** An erased user must not leave a failed job holding a token. */
+    public bool $deleteWhenMissingModels = true;
 }

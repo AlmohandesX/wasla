@@ -44,10 +44,23 @@ class CarPhotoStore
         }
     }
 
+    /**
+     * Removes one file. Disks run with throw=false, so a failed delete returns false rather than throwing;
+     * both that and an exception count as failure, and the caller decides what to do about it.
+     */
+    public function deleteFile(string $disk, string $path): bool
+    {
+        try {
+            return Storage::disk($disk)->delete($path) !== false;
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
     public function delete(Car $car): void
     {
         if ($car->photo_path !== null && $car->photo_disk !== null) {
-            Storage::disk($car->photo_disk)->delete($car->photo_path);
+            $this->deleteFile($car->photo_disk, $car->photo_path);
         }
         $car->update(['photo_disk' => null, 'photo_path' => null]);
     }

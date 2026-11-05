@@ -1,6 +1,8 @@
 <?php
 
 use App\Enums\PaymentStatus;
+use App\Events\ChatMessageCreated;
+use App\Listeners\NotifyOwnerOfVisitorMessage;
 use App\Models\AuditLog;
 use App\Models\Car;
 use App\Models\ChatMessage;
@@ -257,4 +259,92 @@ it('deletes files only after the transaction commits', function () {
 
     Storage::disk('photos')->assertExists('car-photos/a.jpg');
     expect(Car::find($car->id))->not->toBeNull();
+});
+
+it('logs a path-free warning when a disk reports a failed delete by returning false', function () {
+    $user = accountOwner();
+    $car = linkedCar($user, null, ['plate' => '34 PLT 777']);
+    $car->update(['photo_disk' => 'photos', 'photo_path' => 'car-photos/secret.jpg']);
+    $disk = Mockery::mock(Filesystem::class);
+    $disk->shouldReceive('delete')->andReturn(false);
+    Storage::shouldReceive('disk')->with('photos')->andReturn($disk);
+    Log::spy();
+
+    app(AccountEraser::class)->erase($user);
+
+    expect(User::find($user->id))->toBeNull();
+    Log::shouldHaveReceived('warning')->once();
+    assertNotLogged('34 PLT 777', 'secret.jpg', $user->email);
+});
+
+it('limits deletion attempts to 5 an hour and counts per user', function () {
+    $user = accountOwner();
+    $other = accountOwner();
+
+    foreach (range(1, 5) as $i) {
+        $this->travel($i * 2)->minutes();
+        requestAccountDeletion($user, 'wrong-password-'.$i)->assertStatus(422);
+    }
+    $this->travel(12)->minutes();
+    requestAccountDeletion($user, 'wrong-password-6')->assertStatus(429)->assertJsonPath('code', 'too_many_requests');
+    // Another user is unaffected (fresh guard: the test app caches the first user).
+    $this->app['auth']->forgetGuards();
+    requestAccountDeletion($other, 'wrong-password-1')->assertStatus(422);
+});
+
+it('scrubs a pending payment of an erased user without a user link', function () {
+    $tag = tagFixture();
+    $payment = Payment::create([
+        'tag_id' => $tag->id, 'user_id' => null, 'provider' => 'fake', 'reference' => 'WORPHAN01',
+        'amount_kurus' => 79900, 'currency' => 'TRY', 'status' => PaymentStatus::Pending,
+        'billing_name' => 'Ayse', 'billing_national_id' => '10000000146',
+        'legal_accepted_at' => now(), 'legal_text_version' => '1',
+    ]);
+    DB::table('payments')->where('id', $payment->id)->update(['created_at' => now()->subDays(8)]);
+
+    $this->artisan('wasla:scrub-billing')->assertSuccessful();
+
+    expect($payment->fresh()->billing_national_id)->toBeNull();
+});
+
+it('erases an account from the support command, even a suspended one', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $user = accountOwner(['suspended_at' => now(), 'email' => 'gone@example.com']);
+    linkedCar($user);
+
+    $this->artisan('wasla:erase-account', ['email' => 'gone@example.com', '--admin' => $admin->email])
+        ->expectsConfirmation('Erase this account permanently?', 'yes')
+        ->assertSuccessful();
+
+    expect(User::find($user->id))->toBeNull();
+    $log = AuditLog::where('action', 'account.erase')->firstOrFail();
+    expect($log->admin_id)->toBe($admin->id)->and($log->subject_id)->toBe($user->id)
+        ->and(json_encode($log->meta))->not->toContain('gone@example.com');
+});
+
+it('does not erase when the support command is not confirmed or targets an admin', function () {
+    $admin = User::factory()->create(['role' => 'admin', 'email' => 'boss@example.com']);
+    $user = accountOwner(['email' => 'stay@example.com']);
+
+    $this->artisan('wasla:erase-account', ['email' => 'stay@example.com', '--admin' => $admin->email])
+        ->expectsConfirmation('Erase this account permanently?', 'no')
+        ->assertFailed();
+    $this->artisan('wasla:erase-account', ['email' => 'boss@example.com', '--admin' => $admin->email])
+        ->assertFailed();
+
+    expect(User::find($user->id))->not->toBeNull()->and(User::find($admin->id))->not->toBeNull()
+        ->and(AuditLog::where('action', 'account.erase')->count())->toBe(0);
+});
+
+it('does not fail an owner push when the owner is already gone', function () {
+    $car = linkedCar($owner = accountOwner());
+    $thread = chatThread($car);
+    $message = $thread->messages()->first();
+    $owner->forceFill([])->save();
+    $car->setRelation('user', null);
+    $message->setRelation('thread', $thread->setRelation('car', $car));
+
+    app(NotifyOwnerOfVisitorMessage::class)->handle(new ChatMessageCreated($message));
+
+    expect(true)->toBeTrue();
 });

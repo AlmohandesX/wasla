@@ -10,6 +10,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -44,6 +45,18 @@ return Application::configure(basePath: dirname(__DIR__))
             'code' => $e->errorCode,
             'message' => __('wasla.error_'.$e->errorCode),
         ], $e->status));
+
+        // A throttled API request gets a stable code and a translated message; Retry-After stays.
+        $exceptions->render(function (TooManyRequestsHttpException $e, Request $request) {
+            if (! ($request->is('api/*') || $request->expectsJson())) {
+                return null;
+            }
+
+            return response()->json([
+                'code' => 'too_many_requests',
+                'message' => __('wasla.too_many_requests'),
+            ], 429, $e->getHeaders());
+        });
 
         // The national ID is never flashed to a session, and BillingDetails masks it in dumps and traces.
         $exceptions->dontFlash(['billing_national_id', 'billing_phone']);

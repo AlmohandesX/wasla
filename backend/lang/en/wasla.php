@@ -4,6 +4,7 @@ return [
     'account_suspended' => 'Your account has been suspended.',
     'email_not_verified' => 'You need to verify your email address for this action.',
     'invalid_credentials' => 'The email or password is incorrect.',
+    'too_many_requests' => 'Too many requests. Please try again later.',
     'too_many_attempts' => 'Too many failed attempts. Please try again later.',
     'reset_link_sent' => 'If this email address is registered, a password reset link has been sent.',
     'invalid_reset_token' => 'The password reset link is invalid or has expired.',

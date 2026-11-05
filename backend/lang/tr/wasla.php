@@ -4,6 +4,7 @@ return [
     'account_suspended' => 'Hesabınız askıya alındı.',
     'email_not_verified' => 'Bu işlem için e-posta adresinizi doğrulamanız gerekir.',
     'invalid_credentials' => 'E-posta veya şifre hatalı.',
+    'too_many_requests' => 'Çok fazla istek. Lütfen daha sonra tekrar deneyin.',
     'too_many_attempts' => 'Çok fazla başarısız deneme. Lütfen daha sonra tekrar deneyin.',
     'reset_link_sent' => 'Bu e-posta adresi kayıtlıysa şifre sıfırlama bağlantısı gönderildi.',
     'invalid_reset_token' => 'Şifre sıfırlama bağlantısı geçersiz veya süresi dolmuş.',

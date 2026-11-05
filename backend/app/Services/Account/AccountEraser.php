@@ -7,13 +7,14 @@ use App\Models\ChatThread;
 use App\Models\Reminder;
 use App\Models\Tag;
 use App\Models\User;
+use App\Services\Cars\CarPhotoStore;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use Throwable;
 
 class AccountEraser
 {
+    public function __construct(private readonly CarPhotoStore $photos) {}
+
     /**
      * Erases the owner's personal data. Tags are unlinked with their dates and revenue fields untouched, so they
      * can be claimed again. Payments stay as financial records with only the user link cleared. Files go after
@@ -35,8 +36,9 @@ class AccountEraser
                 $files[] = ['disk' => $car->photo_disk, 'path' => $car->photo_path];
             }
 
-            // Locked the way claiming and transferring lock them, so a concurrent claim or renewal waits.
-            Tag::query()->whereIn('car_id', $carIds)->lockForUpdate()->update(['car_id' => null]);
+            // Lock the rows first, as claiming and transferring do, then unlink them.
+            $tagIds = Tag::query()->whereIn('car_id', $carIds)->lockForUpdate()->pluck('id');
+            Tag::query()->whereIn('id', $tagIds)->update(['car_id' => null]);
 
             // Moderation events keep message text: the owner's own, and visitor text in the owner's threads.
             DB::table('moderation_events')
@@ -68,14 +70,9 @@ class AccountEraser
     private function deleteFiles(array $files): void
     {
         foreach ($files as $file) {
-            try {
-                Storage::disk($file['disk'])->delete($file['path']);
-            } catch (Throwable $e) {
-                // Class and disk only: never the path, which could name the car, and never the message.
-                Log::warning('A car photo could not be deleted after account erasure.', [
-                    'disk' => $file['disk'],
-                    'exception' => $e::class,
-                ]);
+            if (! $this->photos->deleteFile($file['disk'], $file['path'])) {
+                // The disk name only: never the path, which could name the car, and never an exception message.
+                Log::warning('A car photo could not be deleted after account erasure.', ['disk' => $file['disk']]);
             }
         }
     }
