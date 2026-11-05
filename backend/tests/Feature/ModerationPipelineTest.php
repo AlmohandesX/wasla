@@ -178,3 +178,11 @@ it('seeds a starter blacklist that leaves everyday Turkish words alone', functio
         ->and(pipeline()->check('fuuuck you', [], false)->decision)->toBe(ModerationDecision::Block);
 });
 
+
+it('seeds the blacklist idempotently through the database seeder', function () {
+    $this->seed(\Database\Seeders\DatabaseSeeder::class);
+    $count = BlacklistTerm::count();
+    $this->seed(\Database\Seeders\BlacklistSeeder::class);
+
+    expect($count)->toBeGreaterThan(20)->and(BlacklistTerm::count())->toBe($count);
+});

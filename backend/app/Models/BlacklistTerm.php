@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Services\Moderation\TextNormalizer;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 
 #[Fillable(['term', 'match_mode', 'active'])]
@@ -16,9 +17,12 @@ class BlacklistTerm extends Model
         return ['active' => 'boolean'];
     }
 
-    protected static function booted(): void
+    /** The stored term is normalized exactly like incoming text (a mutator, so it works without model events). */
+    protected function term(): Attribute
     {
-        // The stored term is normalized exactly like incoming text.
-        static::saving(fn (self $term) => $term->normalized = (new TextNormalizer)->normalize($term->term));
+        return Attribute::make(set: fn (string $value) => [
+            'term' => $value,
+            'normalized' => (new TextNormalizer)->normalize($value),
+        ]);
     }
 }

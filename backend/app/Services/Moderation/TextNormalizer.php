@@ -4,9 +4,8 @@ namespace App\Services\Moderation;
 
 class TextNormalizer
 {
-    // "@" folds to "o" (the brief's fixture k@tukelime); "a"-style evasions like "@mk" are a known gap.
     private const SUBSTITUTIONS = [
-        '0' => 'o', '1' => 'i', '3' => 'e', '4' => 'a', '5' => 's', '7' => 't', '@' => 'o', '$' => 's',
+        '0' => 'o', '1' => 'i', '3' => 'e', '4' => 'a', '5' => 's', '7' => 't', '@' => 'a', '$' => 's',
     ];
 
     public function normalize(string $text): string
