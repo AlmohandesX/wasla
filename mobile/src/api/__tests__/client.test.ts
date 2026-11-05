@@ -246,3 +246,45 @@ test('a 2xx that is not JSON is an invalid_response error, but a 204 is fine', a
   fetchMock.mockResolvedValueOnce(reply(204));
   await expect(apiRequest('auth/logout', { method: 'POST' })).resolves.toBeUndefined();
 });
+
+test('a FormData body is sent as is, with no JSON content type, and the token still goes along', async () => {
+  await setToken('abc123');
+  fetchMock.mockResolvedValue(reply(200, { has_photo: true }));
+  const form = new FormData();
+  form.append('photo', new Blob(['x'], { type: 'image/jpeg' }), 'car.jpg');
+
+  await apiRequest('cars/1/photo', { method: 'POST', body: form });
+
+  const [, init] = fetchMock.mock.calls[0];
+  expect(init.body).toBe(form);
+  expect(init.headers['Content-Type']).toBeUndefined();
+  expect(init.headers.Authorization).toBe('Bearer abc123');
+});
+
+test('a JSON body still gets the JSON content type', async () => {
+  fetchMock.mockResolvedValue(reply(200, {}));
+  await apiRequest('cars/1/stealth', { method: 'PUT', body: { enabled: true } });
+  const [, init] = fetchMock.mock.calls[0];
+  expect(init.headers['Content-Type']).toBe('application/json');
+  expect(init.body).toBe('{"enabled":true}');
+});
+
+test('an upload that gets 401 signs the session out, and one that times out is a network_error', async () => {
+  await setToken('abc123');
+  const form = new FormData();
+  form.append('photo', new Blob(['x']), 'car.jpg');
+
+  fetchMock.mockResolvedValue(reply(401, { message: 'Unauthenticated.' }));
+  const unauthorized = await failure(apiRequest('cars/1/photo', { method: 'POST', body: form }));
+  expect(unauthorized.status).toBe(401);
+  expect(onUnauthorized).toHaveBeenCalledTimes(1);
+
+  fetchMock.mockImplementation(
+    (_url: string, init: { signal: AbortSignal }) =>
+      new Promise((_resolve, reject) => {
+        init.signal.addEventListener('abort', () => reject(new Error('aborted')));
+      }),
+  );
+  const timedOut = await failure(apiRequest('cars/1/photo', { method: 'POST', body: form, timeoutMs: 20 }));
+  expect(timedOut.code).toBe('network_error');
+});

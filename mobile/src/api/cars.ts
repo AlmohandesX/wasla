@@ -38,13 +38,7 @@ export function claimTag(input: { token: string; model?: string; plate?: string;
     body.model = input.model;
     body.plate = input.plate;
   }
-  // The claim answer for a brand-new car leaves the two switches null (database defaults not yet read back);
-  // they are off, so normalise them here instead of letting a null reach the screens.
-  return apiRequest<Car>('tags/claim', { method: 'POST', body }).then((car) => ({
-    ...car,
-    stealth_enabled: car.stealth_enabled ?? false,
-    chats_paused: car.chats_paused ?? false,
-  }));
+  return apiRequest<Car>('tags/claim', { method: 'POST', body });
 }
 
 export function updateCar(
@@ -56,6 +50,10 @@ export function updateCar(
 
 export function setStealth(id: number, enabled: boolean): Promise<Car> {
   return apiRequest<Car>(`cars/${id}/stealth`, { method: 'PUT', body: { enabled } });
+}
+
+export function setChatsPaused(id: number, paused: boolean): Promise<Car> {
+  return apiRequest<Car>(`cars/${id}/chats-paused`, { method: 'PUT', body: { paused } });
 }
 
 export const MAX_STATUS_LENGTH = 140;
@@ -85,9 +83,7 @@ export async function deleteContact(contactId: number): Promise<void> {
   await apiRequest<void>(`contacts/${contactId}`, { method: 'DELETE' });
 }
 
-/** The backend accepts JPEG, PNG or WebP up to 10 MB (10240 KB). */
-export const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
-
+/** The backend takes JPEG, PNG or WebP up to 10 MB; pickPhoto re-encodes to JPEG at most 1600 px wide, far below that. */
 export function uploadPhoto(carId: number, file: { uri: string; name: string; type: string }): Promise<{ has_photo: boolean }> {
   const form = new FormData();
   // React Native's FormData takes a { uri, name, type } descriptor for a file.

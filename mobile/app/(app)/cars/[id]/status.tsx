@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { clearStatus, MAX_STATUS_LENGTH, setStatus } from '../../../../src/api/cars';
 import { fieldError, toApiError, type ApiError } from '../../../../src/api/errors';
 import { useCar } from '../../../../src/cars/useCar';
+import { STATUS_PRESETS } from '../../../../src/cars/statusPresets';
 import { Button } from '../../../../src/components/Button';
 import { ErrorBanner } from '../../../../src/components/ErrorBanner';
 import { Screen } from '../../../../src/components/Screen';
@@ -71,6 +72,24 @@ export default function StatusScreen() {
           />
         </View>
       ) : null}
+      <Text style={styles.groupLabel}>{t('status.presets')}</Text>
+      <View style={styles.chips}>
+        {STATUS_PRESETS.map((key) => (
+          <Pressable
+            key={key}
+            accessibilityRole="button"
+            accessibilityLabel={t(key)}
+            onPress={() => {
+              setText(t(key));
+              setEmptyError(false);
+              setError(null);
+            }}
+            style={styles.chip}
+          >
+            <Text style={styles.chipText}>{t(key)}</Text>
+          </Pressable>
+        ))}
+      </View>
       <TextField
         label={t('status.text')}
         value={text}

@@ -150,5 +150,17 @@
   "errors.car_not_owned": "This car does not belong to your account.",
   "errors.message_blocked": "This text is not allowed. Change it and try again.",
   "errors.forbidden": "You are not allowed to do that.",
-  "errors.not_found": "Not found."
+  "errors.not_found": "Not found.",
+  "status.presets": "Quick messages",
+  "status.p1": "Back in 5 minutes.",
+  "status.p2": "Loading or unloading.",
+  "status.p3": "At the pharmacy.",
+  "status.p4": "Call me.",
+  "settings.chatsTitle": "Chat",
+  "settings.chatsPausedOn": "New chats are paused",
+  "settings.chatsPausedOff": "Accepting new chats",
+  "settings.chatsPausedHint": "While paused, people who scan cannot start a new chat. Chats already open keep working.",
+  "settings.chatsPausedSwitchOn": "Pause new chats",
+  "settings.chatsPausedSwitchOff": "Accept new chats again",
+  "settings.chatsPausedFailed": "Could not change the chat setting. The previous setting was restored."
 }

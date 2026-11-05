@@ -6,6 +6,7 @@ import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native
 import { claimTag, listCars, type Car } from '../../../src/api/cars';
 import { getTagBaseUrl } from '../../../src/api/config';
 import { fieldError, toApiError, type ApiError } from '../../../src/api/errors';
+import { createScanGate } from '../../../src/cars/scanGate';
 import { Button } from '../../../src/components/Button';
 import { ErrorBanner } from '../../../src/components/ErrorBanner';
 import { Screen } from '../../../src/components/Screen';
@@ -33,28 +34,28 @@ export default function Scan() {
   const [already, setAlready] = useState<Car | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ model?: string; plate?: string }>({});
 
-  // One scan is handled at a time: the camera reports the same code many times a second.
-  const busy = useRef(false);
-  const pausedUntil = useRef(0);
-  const knownCars = useRef<Car[]>([]);
+  // One code is handled at a time: the camera reports the same one many times a second. After a refusal the
+  // gate stays closed until the owner taps "Scan again", so the same QR in view cannot claim twice.
+  const gate = useRef(createScanGate()).current;
+  // Best effort, started on arrival and awaited before a claim, so a tag that is already on one of your cars
+  // is reported as such.
+  const knownCars = useRef<Promise<Car[]>>(Promise.resolve([]));
 
   useEffect(() => {
-    // Best effort: lets a tag that is already on one of your cars be reported as such.
-    listCars()
-      .then((cars) => (knownCars.current = cars))
-      .catch(() => undefined);
+    knownCars.current = listCars().catch(() => []);
   }, []);
 
   const claim = async (scannedToken: string, details?: { model: string; plate: string }) => {
     setClaiming(true);
     setError(null);
     try {
+      const before = await knownCars.current;
       const car = await claimTag(
         existingCarId !== undefined
           ? { token: scannedToken, carId: existingCarId }
           : { token: scannedToken, model: details?.model, plate: details?.plate },
       );
-      const wasMine = knownCars.current.some((c) => c.id === car.id && c.linked);
+      const wasMine = before.some((c) => c.id === car.id && c.linked);
       if (wasMine) {
         setAlready(car);
         return;
@@ -64,41 +65,38 @@ export default function Scan() {
       const apiError = toApiError(e);
       setError(apiError);
       setFieldErrors({ model: fieldError(apiError, 'model'), plate: fieldError(apiError, 'plate') });
-      // A refused tag cannot be fixed by retyping, so go back to scanning; a form problem keeps the form.
-      if (!fieldError(apiError, 'model') && !fieldError(apiError, 'plate')) {
-        setToken(null);
-        busy.current = false;
-      }
+      // A refused tag cannot be fixed by retyping, so go back to the camera (gate still closed, "Scan again"
+      // opens it); a form problem keeps the form.
+      if (!fieldError(apiError, 'model') && !fieldError(apiError, 'plate')) setToken(null);
     } finally {
       setClaiming(false);
     }
   };
 
   const onScanned = ({ data }: { data: string }) => {
-    if (busy.current || Date.now() < pausedUntil.current) return;
+    if (!gate.open()) return;
     let tagBase: string;
     try {
       tagBase = getTagBaseUrl();
     } catch (e) {
-      busy.current = true;
+      gate.lock();
       setError(toApiError(e));
       return;
     }
     const scanned = parseTagToken(data, tagBase);
     if (!scanned) {
-      pausedUntil.current = Date.now() + REJECT_PAUSE_MS;
+      gate.pause(REJECT_PAUSE_MS);
       setNotice(t('scan.notWasla'));
       return;
     }
-    busy.current = true;
+    gate.lock();
     setNotice(null);
     setToken(scanned);
     if (existingCarId !== undefined) void claim(scanned);
   };
 
   const rescan = () => {
-    busy.current = false;
-    pausedUntil.current = 0;
+    gate.reset();
     setToken(null);
     setError(null);
     setNotice(null);

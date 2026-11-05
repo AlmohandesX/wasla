@@ -5,7 +5,7 @@ import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
 import { carPhotoUrl } from '../../../../src/api/cars';
 import { getToken } from '../../../../src/auth/token';
 import { useCar } from '../../../../src/cars/useCar';
-import { useStealth } from '../../../../src/cars/useStealth';
+import { useStealth } from '../../../../src/cars/useServerSwitch';
 import { Button } from '../../../../src/components/Button';
 import { CarCard, isExpired } from '../../../../src/components/CarCard';
 import { ErrorBanner } from '../../../../src/components/ErrorBanner';

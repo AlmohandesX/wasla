@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
   addContact,
@@ -14,13 +14,14 @@ import {
 import { ApiError, fieldError, toApiError } from '../../../../src/api/errors';
 import { useCar } from '../../../../src/cars/useCar';
 import { pickPhoto } from '../../../../src/cars/pickPhoto';
+import { useChatsPaused } from '../../../../src/cars/useServerSwitch';
 import { Button } from '../../../../src/components/Button';
 import { ErrorBanner } from '../../../../src/components/ErrorBanner';
 import { Screen } from '../../../../src/components/Screen';
 import { TextField } from '../../../../src/components/TextField';
 import { t, useLocale } from '../../../../src/i18n';
 import { normalizePhone } from '../../../../src/lib/phone';
-import { colors, fontSize, radius, spacing } from '../../../../src/theme';
+import { colors, fontSize, radius, spacing, touchTarget } from '../../../../src/theme';
 
 /** The message to show beside a field: a moderation refusal about this text, or the server's validation message. */
 function beside(error: ApiError | null, field: string): string | undefined {
@@ -240,6 +241,35 @@ function Contacts({ carId }: { carId: number }) {
   );
 }
 
+function ChatsSection({ carId }: { carId: number }) {
+  const { car, setCar } = useCar(carId);
+  const chats = useChatsPaused(setCar);
+  const pending = chats.pendingValue !== null;
+  // Only the server's answer decides what is shown; while a request is out the row says it is updating.
+  const paused = car?.chats_paused === true && !pending;
+  return (
+    <View>
+      <Text accessibilityRole="header" style={styles.heading}>
+        {t('settings.chatsTitle')}
+      </Text>
+      <Text style={styles.note}>{t('settings.chatsPausedHint')}</Text>
+      <ErrorBanner message={chats.error} />
+      <Pressable
+        accessibilityRole="switch"
+        accessibilityState={{ checked: paused, busy: pending, disabled: !car }}
+        accessibilityLabel={t(car?.chats_paused ? 'settings.chatsPausedSwitchOff' : 'settings.chatsPausedSwitchOn')}
+        disabled={!car || pending}
+        onPress={() => car && chats.toggle(car)}
+        style={[styles.switchRow, paused && styles.switchRowOn]}
+      >
+        <Text style={styles.switchLabel}>
+          {pending ? t('card.stealthPending') : paused ? t('settings.chatsPausedOn') : t('settings.chatsPausedOff')}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
 export default function Settings() {
   useLocale();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -247,6 +277,9 @@ export default function Settings() {
   return (
     <Screen>
       <CarDetails carId={carId} />
+      <View style={styles.section}>
+        <ChatsSection carId={carId} />
+      </View>
       <View style={styles.section}>
         <PhotoSection carId={carId} />
       </View>
@@ -271,6 +304,16 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   warningText: { fontSize: fontSize.small, fontWeight: '600', color: colors.danger },
+  switchRow: {
+    minHeight: touchTarget,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    borderRadius: radius,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  switchRowOn: { borderWidth: 2, borderStyle: 'dashed', borderColor: colors.primaryDark, backgroundColor: colors.primaryTint },
+  switchLabel: { fontSize: fontSize.body, fontWeight: '600', color: colors.text },
   contact: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
   contactText: { flex: 1, marginRight: spacing.sm },
   contactLabel: { fontSize: fontSize.body, fontWeight: '600', color: colors.text },

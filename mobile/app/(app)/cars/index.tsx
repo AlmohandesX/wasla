@@ -5,7 +5,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { listCars, type Car } from '../../../src/api/cars';
 import { toApiError } from '../../../src/api/errors';
 import { useSession } from '../../../src/auth/session';
-import { useStealth } from '../../../src/cars/useStealth';
+import { useStealth } from '../../../src/cars/useServerSwitch';
 import { Button } from '../../../src/components/Button';
 import { CarCard } from '../../../src/components/CarCard';
 import { ErrorBanner } from '../../../src/components/ErrorBanner';

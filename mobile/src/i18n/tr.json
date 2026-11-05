@@ -150,5 +150,17 @@
   "errors.car_not_owned": "Bu araç hesabına ait değil.",
   "errors.message_blocked": "Bu metne izin verilmiyor. Değiştirip tekrar dene.",
   "errors.forbidden": "Bu işlem için yetkin yok.",
-  "errors.not_found": "Bulunamadı."
+  "errors.not_found": "Bulunamadı.",
+  "status.presets": "Hazır mesajlar",
+  "status.p1": "5 dakika içinde dönerim.",
+  "status.p2": "Yükleme veya boşaltma yapıyorum.",
+  "status.p3": "Eczanedeyim.",
+  "status.p4": "Beni arayın.",
+  "settings.chatsTitle": "Sohbet",
+  "settings.chatsPausedOn": "Yeni sohbetler durduruldu",
+  "settings.chatsPausedOff": "Yeni sohbetlere açık",
+  "settings.chatsPausedHint": "Durdurursan tarayanlar yeni sohbet başlatamaz. Süren sohbetler devam eder.",
+  "settings.chatsPausedSwitchOn": "Yeni sohbetleri durdur",
+  "settings.chatsPausedSwitchOff": "Yeni sohbetleri tekrar aç",
+  "settings.chatsPausedFailed": "Sohbet ayarı değiştirilemedi. Önceki durum geri yüklendi."
 }

@@ -11,6 +11,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[Fillable(['user_id', 'model', 'plate', 'photo_path', 'photo_disk', 'default_message', 'stealth_enabled', 'chats_paused', 'status_text', 'status_expires_at'])]
 class Car extends Model
 {
+    /** The database defaults, so a freshly created car answers with false (not null) before it is read back. */
+    protected $attributes = ['stealth_enabled' => false, 'chats_paused' => false];
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
