@@ -17,6 +17,10 @@ class TagClaimer
     public function claim(User $user, string $token, array $carAttributes, ?Car $existingCar = null): Car
     {
         return DB::transaction(function () use ($user, $token, $carAttributes, $existingCar) {
+            if (! TokenGenerator::isWellFormed($token)) {
+                throw new TagNotFound;
+            }
+
             $tag = Tag::query()->where('token', $token)->lockForUpdate()->first()
                 ?? throw new TagNotFound;
 
@@ -48,7 +52,7 @@ class TagClaimer
             $tag->sold_at ??= now();
             if ($tag->first_activated_at === null) {
                 $tag->first_activated_at = now();
-                $tag->expires_at = now()->addYear();
+                $tag->expires_at ??= now()->addYear();
             }
             $tag->save();
 

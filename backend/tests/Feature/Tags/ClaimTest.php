@@ -122,3 +122,30 @@ it('links an existing unlinked car of the same user', function () {
     expect(app(TagClaimer::class)->claim($user, $tag->token, [], $car)->id)->toBe($car->id)
         ->and($tag->refresh()->car_id)->toBe($car->id);
 });
+
+it('treats malformed tokens as not found instead of a database error', function (string $bad) {
+    tagFixture(['token' => 'AbCdEfGh12345678']);
+    expect(fn () => app(TagClaimer::class)->claim(User::factory()->create(), $bad, carAttrs()))
+        ->toThrow(TagNotFound::class);
+})->with([
+    'non-ascii' => "\u{fc}\u{fc}\u{fc}\u{fc}\u{fc}\u{fc}\u{fc}\u{fc}\u{fc}\u{fc}\u{fc}\u{fc}\u{fc}\u{fc}\u{fc}\u{fc}",
+    'emoji' => "abc\u{1F600}",
+    'trailing space' => 'AbCdEfGh12345678  ',
+    'trailing newline' => "AbCdEfGh12345678\n",
+    'empty' => '',
+]);
+
+it('validates token format in one reusable place', function () {
+    expect(TokenGenerator::isWellFormed('AbCdEfGh12345678'))->toBeTrue()
+        ->and(TokenGenerator::isWellFormed("AbCdEfGh12345678\n"))->toBeFalse()
+        ->and(TokenGenerator::isWellFormed('short'))->toBeFalse();
+});
+
+it('does not grant a year when a tag with a preset past expiry is first claimed', function () {
+    $tag = tagFixture(['expires_at' => now()->subDays(10)]);
+    app(TagClaimer::class)->claim(User::factory()->create(), $tag->token, carAttrs());
+
+    $tag->refresh();
+    expect($tag->first_activated_at)->not->toBeNull()
+        ->and($tag->expires_at->equalTo(now()->subDays(10)))->toBeTrue();
+});
