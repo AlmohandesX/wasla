@@ -2,6 +2,8 @@
 
 namespace App\Exceptions;
 
+use Carbon\CarbonInterface;
+
 /** A checkout for this tag is still open, so a second one would risk charging the owner twice. */
 class RenewalPending extends TagException
 {
@@ -9,7 +11,8 @@ class RenewalPending extends TagException
 
     public int $status = 409;
 
-    public function __construct(public readonly int $paymentId)
+    /** @param  int|null  $paymentId  set only when the open payment belongs to the person asking */
+    public function __construct(public readonly ?int $paymentId, public readonly CarbonInterface $opensUntil)
     {
         parent::__construct();
     }

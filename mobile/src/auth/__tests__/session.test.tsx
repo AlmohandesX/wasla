@@ -2,6 +2,7 @@ import { act, create } from 'react-test-renderer';
 
 import { SessionProvider, useSession, type Session } from '../session';
 import { accessFor } from '../guard';
+import { pendingFor, rememberPending } from '../../lib/pendingRenewals';
 import { clearToken, getToken, setToken } from '../token';
 
 const mockStore = new Map<string, string>();
@@ -194,4 +195,16 @@ describe('deleteAccount', () => {
     expect(session.user).toEqual(USER);
     expect(await getToken()).toBe('t');
   });
+});
+
+test('signing out forgets any payment in progress', async () => {
+  await setToken('t');
+  fetchMock.mockResolvedValueOnce(reply(200, USER));
+  await mount();
+  rememberPending(5, { paymentId: 9, checkoutUrl: null, expiresAt: Date.now() + 60000 });
+  fetchMock.mockResolvedValue(reply(204));
+  await act(async () => {
+    await session.signOut();
+  });
+  expect(pendingFor(5)).toBeNull();
 });

@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\CheckoutLifetime;
 use App\Support\ProductionGuard;
 
 return [
@@ -46,9 +47,11 @@ return [
     'payment_gateway' => env('PAYMENT_GATEWAY', 'fake'),
 
     // How long a hosted checkout stays payable. While a payment is pending and younger than this, the same tag
-    // cannot start another renewal (409 renewal_pending). iyzico's checkout token lives about 30 minutes, and
-    // PaytrGateway sends this same value as timeout_limit, so neither provider can accept a payment after the window.
-    'checkout_lifetime_minutes' => (int) env('CHECKOUT_LIFETIME_MINUTES', 30),
+    // cannot start another renewal (409 renewal_pending). Clamped to 30..60: iyzico's checkout token lives a fixed
+    // 1800 s, so less than 30 would allow a second start while the first can still be paid, and PaytrGateway sends
+    // this same value as timeout_limit. An empty, zero or negative value falls back to 30 instead of turning the
+    // guard off; ProductionGuard refuses out-of-range values outright.
+    'checkout_lifetime_minutes' => CheckoutLifetime::fromEnv(env('CHECKOUT_LIFETIME_MINUTES')),
 
     // Version of the distance-selling pre-information and contract text a buyer accepts at renewal.
     'legal_text_version' => env('LEGAL_TEXT_VERSION', '1'),

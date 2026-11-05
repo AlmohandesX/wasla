@@ -556,10 +556,49 @@ it('allows a new start after the earlier payment failed', function () {
 it('does not create a payment or call the gateway for the refused start', function () {
     $user = verifiedOwner();
     $car = linkedCar($user);
+    $calls = new ArrayObject;
+    $this->app->instance(PaymentGateway::class, new class($calls) extends FakeGateway
+    {
+        public function __construct(private ArrayObject $calls) {}
+
+        public function startCheckout(CheckoutRequest $request): CheckoutSession
+        {
+            $this->calls[] = $request->merchantReference;
+
+            return parent::startCheckout($request);
+        }
+    });
     startRenewal($user, $car)->assertCreated();
     $before = Payment::count();
 
     startRenewal($user, $car)->assertStatus(409);
 
-    expect(Payment::count())->toBe($before);
+    expect(Payment::count())->toBe($before)->and($calls)->toHaveCount(1);
+});
+
+it('says when the open checkout ends, in the start answer and in the 409', function () {
+    $user = verifiedOwner();
+    $car = linkedCar($user);
+
+    $start = startRenewal($user, $car)->assertCreated();
+    expect(now()->parse($start->json('data.checkout_expires_at'))->diffInMinutes(now(), true))->toBeGreaterThan(28)->toBeLessThan(31);
+
+    $refused = startRenewal($user, $car)->assertStatus(409);
+    expect($refused->json('checkout_expires_at'))->toBe($start->json('data.checkout_expires_at'));
+});
+
+it('does not hand the open payment id to someone else', function () {
+    $owner = verifiedOwner();
+    $car = linkedCar($owner);
+    startRenewal($owner, $car)->assertCreated();
+    // The tag changes hands while the first checkout is still open.
+    $newcomer = verifiedOwner();
+    $tag = $car->tag;
+    $tag->update(['car_id' => null]);
+    $other = Car::create(array_merge(carAttrs(), ['user_id' => $newcomer->id]));
+    $tag->update(['car_id' => $other->id]);
+
+    app('auth')->forgetGuards(); // the request guard remembers the first caller within one test
+    $res = startRenewal($newcomer, $other->refresh())->assertStatus(409)->assertJsonPath('code', 'renewal_pending');
+    expect($res->json('payment_id'))->toBeNull()->and($res->json('checkout_expires_at'))->not->toBeNull();
 });

@@ -291,5 +291,8 @@
   "account.tooMany": "Too many attempts. Try again in {minutes} minutes.",
   "account.passwordRequired": "Enter your password.",
   "errors.renewal_pending": "A payment for this car is already in progress. Check its status instead of paying again.",
-  "renew.privacyLink": "Read the privacy notice"
+  "renew.privacyLink": "Read the privacy notice",
+  "renew.startNew": "Start a new payment",
+  "renew.waitOther": "A payment for this car is already in progress. You can start a new one in about {minutes} minutes.",
+  "renew.pendingOver": "The earlier payment page has expired and the payment has not been confirmed. If you did not pay, you can start a new payment."
 }

@@ -16,7 +16,7 @@ import { t, useLocale } from '../../../../src/i18n';
 import { isFullName, isValidBillingPhone, isValidTckn } from '../../../../src/lib/billing';
 import { isAllowedCheckoutUrl } from '../../../../src/lib/checkoutUrl';
 import { formatDate } from '../../../../src/lib/format';
-import { forgetPending, pendingFor, rememberPending } from '../../../../src/lib/pendingRenewals';
+import { forgetPending, isOver, parseExpiry, pendingFor, rememberPending } from '../../../../src/lib/pendingRenewals';
 import { pollPayment } from '../../../../src/lib/pollPayment';
 import { colors, fontSize, radius, spacing } from '../../../../src/theme';
 
@@ -42,8 +42,10 @@ export default function Renew() {
   const [nationalId, setNationalId] = useState('');
   const [legal, setLegal] = useState(false);
 
-  // A payment already in progress for this car (left the screen and came back) opens straight on the pending screen.
-  const [phase, setPhase] = useState<Phase>(() => (pendingFor(carId) !== null ? 'pending' : 'form'));
+  // A checkout already in progress for this car (left the screen and came back) opens straight on the pending screen.
+  const initial = useRef(pendingFor(carId));
+  const [phase, setPhase] = useState<Phase>(() => (initial.current ? 'pending' : 'form'));
+  const [checkedOnce, setCheckedOnce] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [localErrors, setLocalErrors] = useState<LocalErrors>({});
   const [apiError, setApiError] = useState<ApiError | null>(null);
@@ -52,8 +54,8 @@ export default function Renew() {
 
   const submitting = useRef(false); // a second tap can never start a second payment
   const checking = useRef(false); // one poll run at a time
-  const paymentId = useRef<number | null>(pendingFor(carId));
-  const checkoutUrl = useRef<string | null>(null);
+  const paymentId = useRef<number | null>(initial.current?.paymentId ?? null);
+  const checkoutUrl = useRef<string | null>(initial.current?.checkoutUrl ?? null);
   const unmounted = useRef(false);
   const runController = useRef<AbortController | null>(null);
   const runId = useRef(0);
@@ -108,6 +110,7 @@ export default function Renew() {
           setPhase('paid');
         } else {
           if (result === 'failed') forgetPending(carId);
+          setCheckedOnce(true);
           setPhase(result);
         }
       } catch (e) {
@@ -120,6 +123,12 @@ export default function Renew() {
     },
     [carId],
   );
+
+  // Coming back to a checkout whose lifetime has passed: look once at what the backend says, so a payment that
+  // did go through is never answered with an offer to pay again.
+  useEffect(() => {
+    if (initial.current && initial.current.paymentId !== null && isOver(initial.current)) void check(10000);
+  }, [check]);
 
   // Coming back to the app (on Android the browser call returns at once, so the owner is away while we poll)
   // starts a fresh run with a new deadline whenever the payment is not yet settled.
@@ -182,16 +191,24 @@ export default function Renew() {
         legal_accepted: legal,
       });
       paymentId.current = started.id;
-      rememberPending(carId, started.id);
+      rememberPending(carId, {
+        paymentId: started.id,
+        checkoutUrl: started.redirect_url,
+        expiresAt: parseExpiry(started.checkout_expires_at),
+      });
       checkoutUrl.current = started.redirect_url;
       url = started.redirect_url;
     } catch (e) {
       const error = toApiError(e);
-      if (error.code === 'renewal_pending' && error.paymentId !== undefined) {
-        // A checkout for this car is already open (this phone or another): follow that payment, do not start one.
-        paymentId.current = error.paymentId;
-        rememberPending(carId, error.paymentId);
-        setApiError(error);
+      if (error.code === 'renewal_pending') {
+        // A checkout for this car is already open: follow that payment if it is ours, otherwise wait it out.
+        paymentId.current = error.paymentId ?? null;
+        checkoutUrl.current = null;
+        rememberPending(carId, {
+          paymentId: error.paymentId ?? null,
+          checkoutUrl: null,
+          expiresAt: parseExpiry(error.checkoutExpiresAt),
+        });
         setPhase('pending');
       } else {
         setApiError(error);
@@ -213,6 +230,7 @@ export default function Renew() {
     paymentId.current = null;
     checkoutUrl.current = null;
     forgetPending(carId);
+    setCheckedOnce(false);
     setApiError(null);
     setNotice(null);
     setPhase('form');
@@ -249,6 +267,10 @@ export default function Renew() {
   }
 
   if (phase === 'checking' || phase === 'pending') {
+    const entry = pendingFor(carId);
+    const over = entry === null || isOver(entry);
+    const minutesLeft = entry ? Math.max(1, Math.ceil((entry.expiresAt - Date.now()) / 60000)) : 1;
+    const ours = paymentId.current !== null;
     return (
       <Screen>
         <Text accessibilityRole="header" style={styles.title}>
@@ -257,15 +279,18 @@ export default function Renew() {
         <ErrorBanner message={notice} />
         <ErrorBanner message={apiError?.message} />
         <View style={styles.pendingBox}>
-          <Text style={styles.pendingText}>{t('renew.pendingBody')}</Text>
+          <Text style={styles.pendingText}>
+            {!ours ? t('renew.waitOther', { minutes: minutesLeft }) : over ? t('renew.pendingOver') : t('renew.pendingBody')}
+          </Text>
         </View>
         {phase === 'checking' ? (
           <ActivityIndicator size="large" color={colors.primary} accessibilityLabel={t('renew.checking')} />
         ) : (
           <>
-            <Button label={t('renew.checkAgain')} onPress={() => void check(POLL_AGAIN_MS)} />
+            {ours ? <Button label={t('renew.checkAgain')} onPress={() => void check(POLL_AGAIN_MS)} /> : null}
             <View style={styles.gap} />
-            {checkoutUrl.current ? <Button label={t('renew.reopen')} variant="secondary" onPress={reopen} /> : null}
+            {checkoutUrl.current && !over ? <Button label={t('renew.reopen')} variant="secondary" onPress={reopen} /> : null}
+            {over && (!ours || checkedOnce) ? <Button label={t('renew.startNew')} variant="secondary" onPress={tryAgain} /> : null}
             <View style={styles.gap} />
             <Button label={t('expired.back')} variant="link" onPress={toCars} />
           </>

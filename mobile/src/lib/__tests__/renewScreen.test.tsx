@@ -4,7 +4,7 @@ import { AppState } from 'react-native';
 
 import Renew from '../../../app/(app)/cars/[id]/renew';
 import { ApiError } from '../../api/errors';
-import { forgetPending, pendingFor } from '../pendingRenewals';
+import { forgetPending, pendingFor, rememberPending } from '../pendingRenewals';
 
 const mockStartRenewal = jest.fn();
 const mockPoll = jest.fn();
@@ -39,6 +39,7 @@ jest.mock('../../api/cars', () => ({
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const VALID_ID = '10000000146';
+const future = () => new Date(Date.now() + 25 * 60_000).toISOString();
 
 function input(tree: ReturnType<typeof create>, label: string): ReactTestInstance {
   return tree.root.findAll((n) => n.props.accessibilityLabel === label && typeof n.props.onChangeText === 'function')[0];
@@ -68,7 +69,7 @@ beforeEach(() => {
 });
 
 test('the national ID is masked, sent once, and cleared from state afterwards', async () => {
-  mockStartRenewal.mockResolvedValue({ id: 9, status: 'pending', redirect_url: 'http://192.168.1.20:8000/fake-gateway/checkout/W1' });
+  mockStartRenewal.mockResolvedValue({ id: 9, status: 'pending', redirect_url: 'http://192.168.1.20:8000/fake-gateway/checkout/W1', checkout_expires_at: future() });
   mockPoll.mockResolvedValue('paid');
   let tree!: ReturnType<typeof create>;
   await act(async () => {
@@ -106,7 +107,7 @@ test('an invalid national ID is refused before any request', async () => {
 });
 
 test('an unsafe checkout address is never opened and the owner can check the payment', async () => {
-  mockStartRenewal.mockResolvedValue({ id: 9, status: 'pending', redirect_url: 'http://evil.example.com/pay' });
+  mockStartRenewal.mockResolvedValue({ id: 9, status: 'pending', redirect_url: 'http://evil.example.com/pay', checkout_expires_at: future() });
   let tree!: ReturnType<typeof create>;
   await act(async () => {
     tree = create(<Renew />);
@@ -117,7 +118,7 @@ test('an unsafe checkout address is never opened and the owner can check the pay
 });
 
 test('a pending result says the payment is being confirmed and offers another check, never failure', async () => {
-  mockStartRenewal.mockResolvedValue({ id: 9, status: 'pending', redirect_url: 'http://192.168.1.20:8000/fake-gateway/checkout/W1' });
+  mockStartRenewal.mockResolvedValue({ id: 9, status: 'pending', redirect_url: 'http://192.168.1.20:8000/fake-gateway/checkout/W1', checkout_expires_at: future() });
   mockPoll.mockResolvedValue('pending');
   let tree!: ReturnType<typeof create>;
   await act(async () => {
@@ -169,18 +170,18 @@ test('a double tap starts only one payment', async () => {
     void press();
   });
   expect(mockStartRenewal).toHaveBeenCalledTimes(1);
-  await act(async () => resolve({ id: 9, status: 'pending', redirect_url: 'http://192.168.1.20:8000/fake-gateway/checkout/W1' }));
+  await act(async () => resolve({ id: 9, status: 'pending', redirect_url: 'http://192.168.1.20:8000/fake-gateway/checkout/W1', checkout_expires_at: future() }));
 });
 
 test('leaving and coming back shows the pending screen for the same payment, with no second start', async () => {
-  mockStartRenewal.mockResolvedValue({ id: 9, status: 'pending', redirect_url: 'http://192.168.1.20:8000/fake-gateway/checkout/W1' });
+  mockStartRenewal.mockResolvedValue({ id: 9, status: 'pending', redirect_url: 'http://192.168.1.20:8000/fake-gateway/checkout/W1', checkout_expires_at: future() });
   mockPoll.mockResolvedValue('pending');
   let tree!: ReturnType<typeof create>;
   await act(async () => {
     tree = create(<Renew />);
   });
   await fillAndSubmit(tree);
-  expect(pendingFor(5)).toBe(9);
+  expect(pendingFor(5)?.paymentId).toBe(9);
   act(() => tree.unmount());
 
   await act(async () => {
@@ -199,7 +200,7 @@ test('leaving and coming back shows the pending screen for the same payment, wit
 });
 
 test('a 409 renewal_pending polls the payment it names and never opens a second checkout', async () => {
-  mockStartRenewal.mockRejectedValue(new ApiError(409, 'renewal_pending', 'x', { paymentId: 42 }));
+  mockStartRenewal.mockRejectedValue(new ApiError(409, 'renewal_pending', 'x', { paymentId: 42, checkoutExpiresAt: future() }));
   mockPoll.mockResolvedValue('paid');
   let tree!: ReturnType<typeof create>;
   await act(async () => {
@@ -217,7 +218,7 @@ test('returning to the app restarts the poll with a fresh deadline while the pay
     handler = cb;
     return { remove: jest.fn() };
   }) as never);
-  mockStartRenewal.mockResolvedValue({ id: 9, status: 'pending', redirect_url: 'http://192.168.1.20:8000/fake-gateway/checkout/W1' });
+  mockStartRenewal.mockResolvedValue({ id: 9, status: 'pending', redirect_url: 'http://192.168.1.20:8000/fake-gateway/checkout/W1', checkout_expires_at: future() });
   mockPoll.mockResolvedValueOnce('pending'); // the poll after the browser call
   let tree!: ReturnType<typeof create>;
   await act(async () => {
@@ -263,4 +264,47 @@ test('the legal line carries the draft marker and opens the privacy notice', asy
     tree.root.findAll((n) => n.props.accessibilityRole === 'button' && n.props.accessibilityState?.expanded === false)[0].props.onPress(),
   );
   expect(textOf(tree)).toContain('Wasla');
+});
+
+describe('an abandoned checkout', () => {
+  const URL = 'http://192.168.1.20:8000/fake-gateway/checkout/W1';
+
+  test('after the checkout lifetime a poll that is still pending offers a new payment, and it works', async () => {
+    rememberPending(5, { paymentId: 9, checkoutUrl: URL, expiresAt: Date.now() - 1000 });
+    mockPoll.mockResolvedValue('pending');
+    let tree!: ReturnType<typeof create>;
+    await act(async () => {
+      tree = create(<Renew />);
+    });
+    expect(textOf(tree)).toContain('Ödemen doğrulanıyor');
+    const startNew = tree.root.findAll((n) => n.props.accessibilityLabel === 'Yeni ödeme başlat' && n.props.onPress)[0];
+    expect(startNew).toBeDefined();
+    await act(async () => startNew.props.onPress());
+    expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'T.C. kimlik numarası').length).toBeGreaterThan(0);
+    expect(pendingFor(5)).toBeNull();
+  });
+
+  test('inside the lifetime there is no new-payment button, and the checkout can be reopened from memory', async () => {
+    rememberPending(5, { paymentId: 9, checkoutUrl: URL, expiresAt: Date.now() + 10 * 60_000 });
+    mockPoll.mockResolvedValue('pending');
+    let tree!: ReturnType<typeof create>;
+    await act(async () => {
+      tree = create(<Renew />);
+    });
+    expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Yeni ödeme başlat')).toHaveLength(0);
+    await act(async () => tree.root.findAll((n) => n.props.accessibilityLabel === 'Ödeme sayfasını tekrar aç' && n.props.onPress)[0].props.onPress());
+    expect(mockOpen).toHaveBeenCalledWith(URL);
+  });
+
+  test('a 409 without a payment id shows a wait message with the time left, and no check button', async () => {
+    mockStartRenewal.mockRejectedValue(new ApiError(409, 'renewal_pending', 'x', { checkoutExpiresAt: new Date(Date.now() + 12 * 60_000 + 5000).toISOString() }));
+    let tree!: ReturnType<typeof create>;
+    await act(async () => {
+      tree = create(<Renew />);
+    });
+    await fillAndSubmit(tree);
+    expect(mockPoll).not.toHaveBeenCalled();
+    expect(textOf(tree)).toContain('13 dakika');
+    expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Tekrar kontrol et')).toHaveLength(0);
+  });
 });

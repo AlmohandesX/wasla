@@ -60,7 +60,11 @@ class RenewalService
                 ->first();
 
             if ($open !== null) {
-                throw new RenewalPending($open->id);
+                // The id is only handed to the person who started that payment.
+                throw new RenewalPending(
+                    $open->user_id === $user->id ? $open->id : null,
+                    $open->created_at->copy()->addMinutes((int) config('wasla.checkout_lifetime_minutes')),
+                );
             }
 
             return Payment::create([

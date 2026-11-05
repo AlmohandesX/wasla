@@ -21,7 +21,7 @@ export type BillingInput = {
   legal_accepted: boolean;
 };
 
-export type StartedRenewal = Payment & { redirect_url: string };
+export type StartedRenewal = Payment & { redirect_url: string; checkout_expires_at: string };
 
 export async function startRenewal(carId: number, billing: BillingInput): Promise<StartedRenewal> {
   const response = await apiRequest<{ data: StartedRenewal }>(`cars/${carId}/renewals`, {

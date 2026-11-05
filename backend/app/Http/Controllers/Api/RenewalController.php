@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\RenewalNoTag;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Payments\StartRenewalRequest;
 use App\Http\Resources\PaymentResource;
-use App\Exceptions\RenewalNoTag;
 use App\Models\Car;
 use App\Models\Payment;
 use App\Services\Payments\RenewalService;
@@ -25,6 +25,7 @@ class RenewalController extends Controller
         return response()->json(['data' => [
             ...(new PaymentResource($payment))->resolve($request),
             'redirect_url' => $session->redirectUrl,
+            'checkout_expires_at' => $payment->created_at->copy()->addMinutes((int) config('wasla.checkout_lifetime_minutes'))->toIso8601String(),
         ]], 201);
     }
 

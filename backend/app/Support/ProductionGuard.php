@@ -30,6 +30,8 @@ class ProductionGuard
     /** Sandbox switches: left on in production, they would extend subscriptions for payments that moved no money. */
     private const GATEWAY_MODE_VARIABLES = ['IYZICO_BASE_URL', 'PAYTR_TEST_MODE'];
 
+    public const CHECKOUT_LIFETIME_VARIABLE = 'CHECKOUT_LIFETIME_MINUTES';
+
     /** Every variable the guard reads, so config can capture them even when config is cached. */
     public static function variableNames(): array
     {
@@ -37,6 +39,7 @@ class ProductionGuard
             ['APP_ENV', 'APP_DEBUG'],
             self::ALWAYS_REQUIRED_IN_PRODUCTION,
             self::GATEWAY_MODE_VARIABLES,
+            [self::CHECKOUT_LIFETIME_VARIABLE],
             ...array_values(self::GATEWAY_KEYS),
         )));
     }
@@ -91,6 +94,13 @@ class ProductionGuard
 
         if (filter_var($env['PAYTR_TEST_MODE'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
             $problems[] = 'PAYTR_TEST_MODE must be off in production.';
+        }
+
+        if (isset($env[self::CHECKOUT_LIFETIME_VARIABLE])) {
+            $minutes = filter_var($env[self::CHECKOUT_LIFETIME_VARIABLE], FILTER_VALIDATE_INT);
+            if ($minutes === false || $minutes < 30 || $minutes > 60) {
+                $problems[] = self::CHECKOUT_LIFETIME_VARIABLE.' must be a whole number from 30 to 60.';
+            }
         }
 
         foreach (['APP_URL', 'TAG_BASE_URL'] as $key) {

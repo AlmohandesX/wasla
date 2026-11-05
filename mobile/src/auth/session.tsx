@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { apiRequest, setSessionHandlers } from '../api/client';
 import { ApiError, toApiError } from '../api/errors';
 import { getLocale, loadLocale } from '../i18n';
+import { clearAllPending } from '../lib/pendingRenewals';
 import { forgetStoredToken, resetRegistration, unregisterStoredToken } from '../push/deviceToken';
 import { clearToken, getToken, setToken } from './token';
 
@@ -44,6 +45,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [bootError, setBootError] = useState<ApiError | null>(null);
   const [bootAttempt, setBootAttempt] = useState(0);
   const [signedOutReason, setSignedOutReason] = useState<Session['signedOutReason']>(null);
+
+  // A different user, or none (sign-out, deletion, rejected token): nothing in progress carries over.
+  const userId = user?.id;
+  useEffect(() => {
+    clearAllPending();
+  }, [userId]);
 
   // Any session end (sign-out, rejected token, suspension) forgets what was registered for the old account.
   useEffect(() => {

@@ -291,5 +291,8 @@
   "account.tooMany": "Çok fazla deneme. {minutes} dakika sonra tekrar dene.",
   "account.passwordRequired": "Şifreni gir.",
   "errors.renewal_pending": "Bu araç için bir ödeme zaten devam ediyor. Tekrar ödemek yerine durumunu kontrol et.",
-  "renew.privacyLink": "Gizlilik bildirimini oku"
+  "renew.privacyLink": "Gizlilik bildirimini oku",
+  "renew.startNew": "Yeni ödeme başlat",
+  "renew.waitOther": "Bu araç için bir ödeme zaten devam ediyor. Yaklaşık {minutes} dakika sonra yenisini başlatabilirsin.",
+  "renew.pendingOver": "Önceki ödeme sayfasının süresi doldu ve ödeme onaylanmadı. Ödeme yapmadıysan yeni bir ödeme başlatabilirsin."
 }
