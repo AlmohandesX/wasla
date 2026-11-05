@@ -1,0 +1,30 @@
+# NATIVE-SPEAKER SIGN-OFF REQUIRED: starter Turkish set written without a native speaker. It is NOT a validated benchmark. The owner's native Turkish speaker must review every row, add real-world cases and sign off before launch (spec section 12).
+text,expected
+"siktir git, burada park etme",block
+"S1KT1R git buradan",block
+"Orospu çocuğu arabanı kaldır",block
+"amına koyayım senin park yerini",block
+"gerizekalı herif nereye park ediyorsun",block
+"pezevenk seni gidi",block
+"şerefsiz arabanı çek",block
+"İBNE misin sen",block
+"o r o s p u",block
+"sen kaltaksın",block
+"yavşak herif",block
+"amk bu ne biçim park",block
+"Yarrak gibi park etmişsin",block
+"göt0ğlanı",block
+"arabanız yolu kapatıyor",allow
+"Merhaba, arabanız çıkışı engelliyor, lütfen yerinizden alır mısınız?",allow
+"Arabanızın ışıkları açık kalmış",allow
+"Aracınızın camı açık, haberiniz olsun",allow
+"ARABANIZIN LASTİĞİ İNMİŞ",allow
+"Işıklarınız açık kalmış, kontrol eder misiniz",allow
+"Çok sıkıldım bu trafikte, kusura bakmayın",allow
+"Amcanız aradı, size ulaşamamış",allow
+"Garaj kapısını kapatıyor, acil çıkmam gerekiyor",allow
+"Teşekkürler, hemen geliyorum",allow
+"Sıkık bir gün, pardon geç kaldım",allow
+"Park yeri için sağ olun, iyi günler",allow
+"Aracınıza çarpmışım, numaram aşağıda",allow
+"Pistte kayıp düştüm, siz iyi misiniz",allow

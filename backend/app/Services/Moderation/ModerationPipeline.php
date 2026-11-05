@@ -16,32 +16,33 @@ class ModerationPipeline
 
     /**
      * @param  array{surface?: string, thread_id?: int|null, user_id?: int|null}  $context
+     * @param  bool  $record  false for dry runs (the evaluation command): no moderation event row, no daily-cap spend
      */
-    public function check(string $text, array $context = [], bool $useProvider = true): ModerationResult
+    public function check(string $text, array $context = [], bool $useProvider = true, bool $record = true): ModerationResult
     {
         $hit = $this->blacklistHit($this->normalizer->normalize($text));
         if ($hit !== null) {
-            return $this->finish($text, $context, new ModerationResult(ModerationDecision::Block, 'blacklist', 'blacklist: '.$hit));
+            return $this->finish($text, $context, $record, new ModerationResult(ModerationDecision::Block, 'blacklist', 'blacklist: '.$hit));
         }
 
         if (! $useProvider) {
             return new ModerationResult(ModerationDecision::Allow, 'blacklist');
         }
 
-        if (! $this->reserveCall()) {
-            return $this->finish($text, $context, new ModerationResult(ModerationDecision::AllowFlagged, 'fallback', 'daily cap reached'));
+        if ($record && ! $this->reserveCall()) {
+            return $this->finish($text, $context, $record, new ModerationResult(ModerationDecision::AllowFlagged, 'fallback', 'daily cap reached'));
         }
 
         try {
             $scores = $this->provider->check($text)->scores;
         } catch (ProviderUnavailable $e) {
-            return $this->finish($text, $context, new ModerationResult(ModerationDecision::AllowFlagged, 'fallback', $e->getMessage()));
+            return $this->finish($text, $context, $record, new ModerationResult(ModerationDecision::AllowFlagged, 'fallback', $e->getMessage()));
         }
 
         foreach ($scores as $category => $score) {
             $threshold = (float) config("wasla.moderation.thresholds.$category", config('wasla.moderation.threshold'));
             if ($score >= $threshold) {
-                return $this->finish($text, $context, new ModerationResult(
+                return $this->finish($text, $context, $record, new ModerationResult(
                     ModerationDecision::Block, 'provider', sprintf('%s (%.2f)', $category, $score),
                 ));
             }
@@ -78,8 +79,12 @@ class ModerationPipeline
         return Cache::increment($key) <= (int) config('wasla.moderation.daily_cap');
     }
 
-    private function finish(string $text, array $context, ModerationResult $result): ModerationResult
+    private function finish(string $text, array $context, bool $record, ModerationResult $result): ModerationResult
     {
+        if (! $record) {
+            return $result;
+        }
+
         ModerationEvent::create([
             'kind' => $result->blocked() ? 'blocked' : 'flagged',
             'surface' => $context['surface'] ?? 'chat',
