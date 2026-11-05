@@ -5,5 +5,5 @@ export async function registerDeviceToken(token: string, platform: 'ios' | 'andr
 }
 
 export async function unregisterDeviceToken(token: string): Promise<void> {
-  await apiRequest<void>('device-tokens', { method: 'DELETE', body: { token }, timeoutMs: 5000 });
+  await apiRequest<void>('device-tokens', { method: 'DELETE', body: { token }, timeoutMs: 3000 });
 }

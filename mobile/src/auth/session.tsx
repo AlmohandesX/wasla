@@ -3,7 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { apiRequest, setSessionHandlers } from '../api/client';
 import { ApiError, toApiError } from '../api/errors';
 import { getLocale, loadLocale } from '../i18n';
-import { unregisterStoredToken } from '../push/deviceToken';
+import { resetRegistration, unregisterStoredToken } from '../push/deviceToken';
 import { clearToken, getToken, setToken } from './token';
 
 export type User = {
@@ -42,6 +42,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [bootError, setBootError] = useState<ApiError | null>(null);
   const [bootAttempt, setBootAttempt] = useState(0);
   const [signedOutReason, setSignedOutReason] = useState<Session['signedOutReason']>(null);
+
+  // Any session end (sign-out, rejected token, suspension) forgets what was registered for the old account.
+  useEffect(() => {
+    if (!user) resetRegistration();
+  }, [user]);
 
   useEffect(() => {
     setSessionHandlers({
@@ -116,13 +121,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     try {
-      // Revoke the token on the server when we can; signing out locally must not depend on it. With no
-      // user (the boot error screen) there is nothing to revoke and the server may be unreachable.
+      // With no user (the boot error screen) there is nothing to revoke and the server may be unreachable.
+      // Otherwise revoke the token and drop this phone's push token together, each with a short timeout:
+      // signing out locally must not wait on the server.
       if (user && (await getToken())) {
-        // This phone stops getting this account's pushes (needs the token, so it goes first).
-        await unregisterStoredToken();
+        await Promise.allSettled([unregisterStoredToken(), apiRequest<void>('auth/logout', { method: 'POST', timeoutMs: 3000 })]);
       }
-      if (user && (await getToken())) await apiRequest<void>('auth/logout', { method: 'POST', timeoutMs: 5000 });
     } catch {
       // Ignored on purpose.
     }

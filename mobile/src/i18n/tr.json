@@ -232,5 +232,8 @@
   "reminders.delete": "Sil",
   "reminders.deleteLabel": "{type} hatırlatmasını sil, {date}",
   "reminders.deleteFailed": "Hatırlatma silinemedi.",
-  "reminders.loadError": "Hatırlatmalar yüklenemedi."
+  "reminders.loadError": "Hatırlatmalar yüklenemedi.",
+  "chat.maybeSent": "Bağlantı koptu; mesaj gönderilmiş olabilir. Tekrar denemeden önce kontrol ediliyor.",
+  "chat.incoming": "Yeni mesaj: {body}",
+  "chat.metaFailed": "Sohbet bilgisi alınamadı, bu yüzden şimdilik yanıt yazamazsın."
 }

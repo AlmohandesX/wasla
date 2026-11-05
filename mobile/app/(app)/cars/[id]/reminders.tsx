@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { toApiError, fieldError, type ApiError } from '../../../../src/api/errors';
 import { addReminder, deleteReminder, listReminders, REMINDER_TYPES, type Reminder, type ReminderType } from '../../../../src/api/reminders';
@@ -71,7 +71,7 @@ export default function Reminders() {
     <Screen>
       <Text style={styles.note}>{t('reminders.intro')}</Text>
       <ErrorBanner message={error} />
-      {items === null && !error ? <Text style={styles.note}>{t('common.loading')}</Text> : null}
+      {items === null && !error ? <ActivityIndicator size="large" color={colors.primary} accessibilityLabel={t('common.loading')} /> : null}
       {items?.length === 0 ? <Text style={styles.empty}>{t('reminders.empty')}</Text> : null}
       {items?.map((reminder) => {
         const name = t(`reminders.${reminder.type}`);
@@ -112,7 +112,7 @@ export default function Reminders() {
           hint={t('reminders.dateHint')}
           value={date}
           onChangeText={setDate}
-          keyboardType="numbers-and-punctuation"
+          keyboardType="numeric"
           maxLength={10}
           error={dateError}
         />

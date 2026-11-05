@@ -4,15 +4,22 @@ import { unregisterDeviceToken } from '../api/push';
 
 const KEY = 'wasla.pushToken';
 
-/** The token this install registered with the backend, kept so sign-out can remove it. In memory it also stops repeat registration. */
-let registered: string | null = null;
+/**
+ * What this run has registered with the backend, and for whom. Keyed by user so the next account on the same
+ * phone registers again; reset on any session end (explicit sign-out or a rejected token).
+ */
+let registered: { userId: number; token: string } | null = null;
 
-export function alreadyRegistered(token: string): boolean {
-  return registered === token;
+export function alreadyRegistered(userId: number, token: string): boolean {
+  return registered?.userId === userId && registered.token === token;
 }
 
-export async function rememberToken(token: string): Promise<void> {
-  registered = token;
+export function resetRegistration(): void {
+  registered = null;
+}
+
+export async function rememberToken(userId: number, token: string): Promise<void> {
+  registered = { userId, token };
   try {
     await SecureStore.setItemAsync(KEY, token);
   } catch {
@@ -22,7 +29,7 @@ export async function rememberToken(token: string): Promise<void> {
 
 /** Best effort, called while the session is still valid: the owner is signing out whether or not this works. */
 export async function unregisterStoredToken(): Promise<void> {
-  let token = registered;
+  let token = registered?.token ?? null;
   try {
     token = token ?? (await SecureStore.getItemAsync(KEY));
   } catch {

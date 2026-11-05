@@ -1,23 +1,36 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AccessibilityInfo, AppState } from 'react-native';
 
-import { getCar, type Car } from '../api/cars';
-import { blockThread, listMessages, listThreads, reportMessage, sendMessage, type Message, type Thread } from '../api/chats';
+import { blockThread, getThread, listMessages, reportMessage, sendMessage, type ThreadDetail } from '../api/chats';
 import { ApiError, toApiError } from '../api/errors';
-import { mergeMessages } from '../lib/mergeMessages';
-import { nextPollDelay } from './polling';
+import { t } from '../i18n';
+import { mergeMessages, type Message } from '../lib/mergeMessages';
+import { createPoller } from './poller';
 
-export type Pending = { key: number; body: string; status: 'sending' | 'failed'; error?: string };
+export type Pending = {
+  key: number;
+  body: string;
+  status: 'sending' | 'failed';
+  error?: string;
+  /** A timed-out send may have arrived: Retry waits until a poll has checked. */
+  checking?: boolean;
+};
 
-/** Codes after which polling cannot succeed, so it stops instead of backing off. */
-const FATAL = new Set([402, 403, 404]);
+/** The thread and its car are re-read at most this often while the screen stays open. */
+const META_FRESH_MS = 30000;
 
 let pendingKey = 0;
 
-export function useThread(threadId: number) {
-  const [thread, setThread] = useState<Thread | null>(null);
-  const [car, setCar] = useState<Car | null>(null);
+/** What a 403 from sending means in plain words: chat_unavailable has its own text, anything else is generic. */
+function sendRefusal(error: ApiError): string {
+  return error.status === 403 && error.code !== 'chat_unavailable' ? t('errors.forbidden') : error.message;
+}
+
+export function useThread(threadId: number, initialBlocked = false) {
+  const [meta, setMeta] = useState<ThreadDetail | null>(null);
+  const [metaFailed, setMetaFailed] = useState(false);
+  const [blocked, setBlocked] = useState(initialBlocked);
   const [messages, setMessages] = useState<Message[]>([]);
   const [pending, setPending] = useState<Pending[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -29,14 +42,75 @@ export function useThread(threadId: number) {
   const [focused, setFocused] = useState(false);
   const [foreground, setForeground] = useState(AppState.currentState === 'active');
 
-  const lastId = useRef(0);
-  const inFlight = useRef(false); // one request at a time between polls and sends
-  const failures = useRef(0);
-  const lastError = useRef<ApiError | null>(null);
+  const messagesRef = useRef<Message[]>([]);
+  const sending = useRef(false); // only sends exclude each other; a poll never blocks a send
+  const metaAt = useRef(0);
+  const metaBusy = useRef(false);
+  const firstLoadDone = useRef(false);
+
+  const merge = useCallback((incoming: Message[]) => {
+    const next = mergeMessages(messagesRef.current, incoming);
+    messagesRef.current = next;
+    setMessages(next);
+  }, []);
+
+  const loadMeta = useCallback(
+    async (force: boolean) => {
+      if (metaBusy.current || (!force && Date.now() - metaAt.current < META_FRESH_MS)) return;
+      metaBusy.current = true;
+      try {
+        const detail = await getThread(threadId);
+        metaAt.current = Date.now();
+        setMeta(detail);
+        setBlocked(detail.blocked);
+        setMetaFailed(false);
+      } catch (e) {
+        const error = toApiError(e);
+        if (error.status === 402 || error.status === 403 || error.status === 404) setFatal(error);
+        else setMetaFailed(true);
+      } finally {
+        metaBusy.current = false;
+      }
+    },
+    [threadId],
+  );
+
+  const poller = useMemo(
+    () =>
+      createPoller({
+        load: (after) => listMessages(threadId, after),
+        onMessages: (incoming) => {
+          const held = new Set(messagesRef.current.map((m) => m.id));
+          const fresh = incoming.filter((m) => m.sender === 'visitor' && !held.has(m.id));
+          merge(incoming);
+          // Screen readers hear a new visitor message without having to look for it.
+          if (firstLoadDone.current && fresh.length > 0) {
+            AccessibilityInfo.announceForAccessibility(t('chat.incoming', { body: fresh[fresh.length - 1].body }));
+          }
+          firstLoadDone.current = true;
+        },
+        onSuccess: () => {
+          setPollFailing(false);
+          setLoaded(true);
+          void loadMeta(false); // refreshes the thread and car when stale, and retries after a failure
+        },
+        onError: () => {
+          setPollFailing(true);
+          setLoaded(true);
+          if (!metaAt.current) void loadMeta(false);
+        },
+        onFatal: (error) => {
+          setFatal(error);
+          setLoaded(true);
+        },
+      }),
+    [threadId, merge, loadMeta],
+  );
 
   useFocusEffect(
     useCallback(() => {
       setFocused(true);
+      setFatal(null); // coming back to the screen tries again
       return () => setFocused(false);
     }, []),
   );
@@ -46,74 +120,25 @@ export function useThread(threadId: number) {
     return () => sub.remove();
   }, []);
 
-  const merge = useCallback((incoming: Message[]) => {
-    setMessages((current) => {
-      const next = mergeMessages(current, incoming);
-      lastId.current = next.length ? next[next.length - 1].id : 0;
-      return next;
-    });
-  }, []);
-
-  /** The thread's state and its car: whether replying can work at all. */
-  const loadMeta = useCallback(async () => {
-    const threads = await listThreads();
-    const found = threads.find((t) => t.id === threadId);
-    if (!found) throw new ApiError(404, 'not_found', '');
-    setThread(found);
-    setCar(await getCar(found.car_id));
-  }, [threadId]);
-
-  const poll = useCallback(async () => {
-    if (inFlight.current) return;
-    inFlight.current = true;
-    try {
-      merge(await listMessages(threadId, lastId.current));
-      failures.current = 0;
-      lastError.current = null;
-      setPollFailing(false);
-    } catch (e) {
-      const error = toApiError(e);
-      if (FATAL.has(error.status)) setFatal(error);
-      failures.current += 1;
-      lastError.current = error;
-      setPollFailing(true);
-    } finally {
-      inFlight.current = false;
-      setLoaded(true);
-    }
-  }, [threadId, merge]);
-
-  // Poll only while the thread is on screen and the app is in the foreground; one timer, no overlap.
+  // Poll only while the thread is on screen and the app is in the foreground.
   useEffect(() => {
     if (!focused || !foreground || fatal) return;
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const tick = async () => {
-      await poll();
-      if (!cancelled) timer = setTimeout(tick, nextPollDelay(failures.current, lastError.current));
-    };
-    void tick();
-    void loadMeta().catch((e) => {
-      const error = toApiError(e);
-      if (FATAL.has(error.status)) setFatal(error);
-    });
-    return () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-    };
-  }, [focused, foreground, fatal, poll, loadMeta]);
+    poller.start();
+    void loadMeta(false);
+    return () => poller.stop();
+  }, [focused, foreground, fatal, poller, loadMeta]);
 
   /** Sends `body`. Resolves true when it was accepted, so the caller can clear its input. */
   const send = useCallback(
     async (body: string): Promise<boolean> => {
-      if (inFlight.current) return false;
-      inFlight.current = true;
+      if (sending.current) return false;
+      sending.current = true;
       const key = ++pendingKey;
+      const knownBefore = messagesRef.current.length ? messagesRef.current[messagesRef.current.length - 1].id : 0;
       setSendError(null);
       setPending((list) => [...list.filter((p) => p.status !== 'failed'), { key, body, status: 'sending' }]);
       try {
-        const sent = await sendMessage(threadId, body);
-        merge([sent]);
+        merge([await sendMessage(threadId, body)]);
         setPending((list) => list.filter((p) => p.key !== key));
         return true;
       } catch (e) {
@@ -123,18 +148,28 @@ export function useThread(threadId: number) {
           setPending((list) => list.filter((p) => p.key !== key));
         } else if (error.status === 403 || error.status === 422) {
           // Refused for a reason retrying cannot change: the text stays in the input for the owner to edit.
-          setSendError(error.message);
+          setSendError(sendRefusal(error));
           setPending((list) => list.filter((p) => p.key !== key));
-          if (error.status === 403) void loadMeta().catch(() => undefined); // the thread or tag changed: refresh what disables the composer
+          if (error.status === 403) void loadMeta(true); // the thread or tag changed: refresh what disables the composer
+        } else if (error.status === 0) {
+          // No answer (offline or timed out): the message may have been stored. Check before offering Retry.
+          setPending((list) =>
+            list.map((p) => (p.key === key ? { ...p, status: 'failed', checking: true, error: t('chat.maybeSent') } : p)),
+          );
+          await poller.pollNow();
+          const arrived = messagesRef.current.some((m) => m.sender === 'owner' && m.id > knownBefore && m.body === body);
+          setPending((list) =>
+            arrived ? list.filter((p) => p.key !== key) : list.map((p) => (p.key === key ? { ...p, checking: false } : p)),
+          );
         } else {
           setPending((list) => list.map((p) => (p.key === key ? { ...p, status: 'failed', error: error.message } : p)));
         }
         return false;
       } finally {
-        inFlight.current = false;
+        sending.current = false;
       }
     },
-    [threadId, merge, loadMeta],
+    [threadId, merge, loadMeta, poller],
   );
 
   const discard = useCallback((key: number) => setPending((list) => list.filter((p) => p.key !== key)), []);
@@ -142,12 +177,11 @@ export function useThread(threadId: number) {
   const block = useCallback(async () => {
     setActionError(null);
     try {
-      setThread(await blockThread(threadId));
+      const updated = await blockThread(threadId);
+      setBlocked(updated.blocked);
     } catch (e) {
-      setActionError(toApiError(e).message);
-      return false;
+      setActionError(`${t('chat.blockFailed')} ${toApiError(e).message}`);
     }
-    return true;
   }, [threadId]);
 
   const report = useCallback(
@@ -156,11 +190,17 @@ export function useThread(threadId: number) {
       try {
         merge([await reportMessage(messageId)]);
       } catch (e) {
-        setActionError(toApiError(e).message);
+        setActionError(`${t('chat.reportFailed')} ${toApiError(e).message}`);
       }
     },
     [merge],
   );
 
-  return { thread, car, messages, pending, loaded, fatal, pollFailing, sendError, setSendError, actionError, send, discard, block, report };
+  const retryMeta = useCallback(() => void loadMeta(true), [loadMeta]);
+  const clearFatal = useCallback(() => setFatal(null), []);
+
+  return {
+    meta, metaFailed, blocked, messages, pending, loaded, fatal, pollFailing, sendError, setSendError, actionError,
+    send, discard, block, report, retryMeta, clearFatal,
+  };
 }

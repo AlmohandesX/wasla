@@ -308,3 +308,48 @@ it('refuses an owner reply to a thread they blocked', function () {
         ->assertJsonPath('code', 'chat_unavailable');
     expect($thread->messages()->count())->toBe(1);
 });
+
+it('shows one thread with the car state the reply screen needs', function () {
+    $user = owner();
+    $car = linkedCar($user);
+    $thread = chatThread($car);
+
+    $this->getJson("/api/v1/chats/{$thread->id}", bearer($user))
+        ->assertOk()
+        ->assertJsonPath('id', $thread->id)
+        ->assertJsonPath('blocked', false)
+        ->assertJsonPath('unread_count', 1)
+        ->assertJsonPath('car.id', $car->id)
+        ->assertJsonPath('car.model', $car->model)
+        ->assertJsonPath('car.linked', true)
+        ->assertJsonPath('car.chats_paused', false)
+        ->assertJsonPath('car.subscription_active', true)
+        ->assertJsonMissingPath('car.plate');
+});
+
+it('refuses to show a thread to another user, a new owner or for an expired tag', function () {
+    $user = owner();
+    $car = linkedCar($user);
+    $thread = chatThread($car);
+
+    $this->getJson("/api/v1/chats/{$thread->id}", bearer(owner()))->assertForbidden();
+    app('auth')->forgetGuards();
+    $this->getJson('/api/v1/chats/999999', bearer($user))->assertNotFound();
+    app('auth')->forgetGuards();
+
+    $car->tag->update(['expires_at' => now()->subDay()]);
+    $this->getJson("/api/v1/chats/{$thread->id}", bearer($user))->assertStatus(402)->assertJsonPath('code', 'subscription_expired');
+});
+
+it('reports a car without a tag on the thread', function () {
+    $user = owner();
+    $car = linkedCar($user);
+    $thread = chatThread($car);
+    $this->postJson("/api/v1/cars/{$car->id}/unlink", [], bearer($user))->assertOk();
+    app('auth')->forgetGuards();
+
+    $this->getJson("/api/v1/chats/{$thread->id}", bearer($user))
+        ->assertOk()
+        ->assertJsonPath('car.linked', false)
+        ->assertJsonPath('car.subscription_active', false);
+});

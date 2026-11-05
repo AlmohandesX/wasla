@@ -68,6 +68,7 @@ Route::prefix('v1')->group(function () {
             Route::post('cars/{car}/photo', [CarPhotoController::class, 'store'])->middleware('throttle:writes');
             Route::delete('cars/{car}/photo', [CarPhotoController::class, 'destroy'])->middleware('throttle:writes');
 
+            Route::get('chats/{thread}', [ChatController::class, 'show'])->middleware('throttle:reads');
             Route::get('chats/{thread}/messages', [ChatController::class, 'messages'])->middleware('throttle:reads');
             Route::post('chats/{thread}/messages', [ChatController::class, 'send'])->middleware('throttle:writes');
             Route::post('chats/{thread}/block', [ChatController::class, 'block'])->middleware('throttle:writes');

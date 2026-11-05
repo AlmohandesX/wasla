@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { listCars, type Car } from '../../../src/api/cars';
 import { listThreads, type Thread } from '../../../src/api/chats';
 import { toApiError } from '../../../src/api/errors';
+import { useSession } from '../../../src/auth/session';
 import { Button } from '../../../src/components/Button';
 import { ErrorBanner } from '../../../src/components/ErrorBanner';
 import { t, useLocale } from '../../../src/i18n';
@@ -13,7 +14,7 @@ import { formatDateTime } from '../../../src/lib/format';
 import { enablePush, getPushState, type PushState } from '../../../src/push/register';
 import { colors, fontSize, radius, spacing, touchTarget } from '../../../src/theme';
 
-function PushPrompt() {
+function PushPrompt({ userId }: { userId: number }) {
   const [state, setState] = useState<PushState | null>(null);
 
   useFocusEffect(
@@ -31,7 +32,7 @@ function PushPrompt() {
       </Text>
       <Text style={styles.promptBody}>{state === 'denied' ? t('chats.pushDenied') : t('chats.pushBody')}</Text>
       {state === 'undetermined' ? (
-        <Button label={t('chats.pushAllow')} variant="secondary" onPress={() => void enablePush(true).then(setState)} />
+        <Button label={t('chats.pushAllow')} variant="secondary" onPress={() => void enablePush(true, userId).then(setState)} />
       ) : null}
     </View>
   );
@@ -40,6 +41,7 @@ function PushPrompt() {
 export default function Chats() {
   useLocale();
   const router = useRouter();
+  const { user } = useSession();
   const [threads, setThreads] = useState<Thread[] | null>(null);
   const [cars, setCars] = useState<Map<number, Car>>(new Map());
   const [error, setError] = useState<string | null>(null);
@@ -83,7 +85,7 @@ export default function Chats() {
             ? t('chats.rowLabel', { car, who, body: preview, unread }) + (item.blocked ? ` ${t('chats.blocked')}.` : '')
             : `${car}. ${preview}. ${unread}`
         }
-        onPress={() => router.push({ pathname: '/chats/[id]', params: { id: String(item.id) } })}
+        onPress={() => router.push({ pathname: '/chats/[id]', params: { id: String(item.id), blocked: item.blocked ? '1' : '0' } })}
         style={[styles.row, item.unread_count > 0 && styles.rowUnread]}
       >
         <View style={styles.rowHead}>
@@ -123,7 +125,7 @@ export default function Chats() {
             <View>
               {error ? <ErrorBanner message={`${t('chats.loadError')} ${error}`} /> : null}
               {error && threads === null ? <Button label={t('common.retry')} onPress={load} /> : null}
-              <PushPrompt />
+              {user ? <PushPrompt userId={user.id} /> : null}
             </View>
           }
           ListEmptyComponent={threads ? <Text style={styles.empty}>{t('chats.empty')}</Text> : undefined}

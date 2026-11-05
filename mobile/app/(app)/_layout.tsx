@@ -1,6 +1,7 @@
 import { Stack, useRouter } from 'expo-router';
 import { useEffect } from 'react';
 
+import { useSession } from '../../src/auth/session';
 import { t, useLocale } from '../../src/i18n';
 import { enablePush, listenForChatTaps } from '../../src/push/register';
 import { colors } from '../../src/theme';
@@ -8,12 +9,14 @@ import { colors } from '../../src/theme';
 export default function AppLayout() {
   useLocale();
   const router = useRouter();
+  const { user } = useSession();
+  const userId = user?.id;
 
   // Once per signed-in session: register this device if notification permission was already given. The
   // permission prompt itself is left to the chats screen so it does not appear at cold start.
   useEffect(() => {
-    void enablePush(false);
-  }, []);
+    if (userId !== undefined) void enablePush(false, userId);
+  }, [userId]);
 
   // A tap on a chat notification opens that thread.
   useEffect(

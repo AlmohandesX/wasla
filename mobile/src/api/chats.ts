@@ -12,6 +12,15 @@ export type Thread = {
   updated_at: string;
 };
 
+/** A thread plus the state of its car that decides whether the owner can reply. */
+export type ThreadDetail = Thread & {
+  car: { id: number; model: string; linked: boolean; chats_paused: boolean; subscription_active: boolean };
+};
+
+export function getThread(threadId: number): Promise<ThreadDetail> {
+  return apiRequest<ThreadDetail>(`chats/${threadId}`);
+}
+
 export async function listThreads(): Promise<Thread[]> {
   return (await apiRequest<{ data: Thread[] }>('chats')).data;
 }

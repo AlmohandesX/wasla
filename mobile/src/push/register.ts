@@ -4,6 +4,9 @@ import { Platform } from 'react-native';
 import { registerDeviceToken } from '../api/push';
 import { alreadyRegistered, rememberToken } from './deviceToken';
 
+/** Notification responses already acted on, so a remount does not reopen an old thread. */
+const handled = new Set<string>();
+
 export type PushState = 'granted' | 'denied' | 'undetermined' | 'unavailable';
 
 // expo-notifications is loaded on demand and every call is guarded: in Expo Go on Android (SDK 53 and later)
@@ -18,6 +21,7 @@ function projectId(): string | null {
 }
 
 export async function getPushState(): Promise<PushState> {
+  if (!projectId()) return 'unavailable'; // Nothing to register without an EAS project, so nothing to offer.
   try {
     const N = await notifications();
     const { status, canAskAgain } = await N.getPermissionsAsync();
@@ -33,7 +37,7 @@ export async function getPushState(): Promise<PushState> {
  * permission prompt, so it can run quietly after sign-in; the chats screen calls it with `ask` true when the
  * owner taps to turn notifications on. Never throws.
  */
-export async function enablePush(ask: boolean): Promise<PushState> {
+export async function enablePush(ask: boolean, userId: number): Promise<PushState> {
   try {
     const N = await notifications();
     N.setNotificationHandler({
@@ -50,9 +54,9 @@ export async function enablePush(ask: boolean): Promise<PushState> {
     const id = projectId();
     if (!id) return 'unavailable'; // No EAS project configured: nothing to register.
     const { data: token } = await N.getExpoPushTokenAsync({ projectId: id });
-    if (!alreadyRegistered(token)) {
+    if (!alreadyRegistered(userId, token)) {
       await registerDeviceToken(token, Platform.OS === 'ios' || Platform.OS === 'android' ? Platform.OS : null);
-      await rememberToken(token);
+      await rememberToken(userId, token);
     }
     return 'granted';
   } catch {
@@ -76,13 +80,18 @@ export function listenForChatTaps(onThread: (threadId: number) => void): () => v
       const N = await notifications();
       if (stopped) return;
       const sub = N.addNotificationResponseReceivedListener((response) => {
+        handled.add(response.notification.request.identifier);
         const id = threadIdFrom(response.notification.request.content.data);
         if (id) onThread(id);
       });
       remove = () => sub.remove();
       const last = await N.getLastNotificationResponseAsync();
+      const responseId = last?.notification.request.identifier;
       const id = threadIdFrom(last?.notification.request.content.data);
-      if (id && !stopped) onThread(id);
+      if (id && responseId && !handled.has(responseId) && !stopped) {
+        handled.add(responseId);
+        onThread(id);
+      }
     } catch {
       // No push here (Expo Go): nothing to listen to.
     }

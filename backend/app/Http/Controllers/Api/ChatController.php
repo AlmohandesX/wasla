@@ -12,6 +12,7 @@ use App\Http\Resources\ChatThreadResource;
 use App\Models\ChatMessage;
 use App\Models\ChatThread;
 use App\Services\Chat\ChatService;
+use App\Services\Tags\SubscriptionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -36,6 +37,24 @@ class ChatController extends Controller
             ->get();
 
         return response()->json(['data' => ChatThreadResource::collection($threads)->resolve($request)]);
+    }
+
+    /** One thread with the car state the reply screen needs (no plate: the screen never shows it). */
+    public function show(Request $request, ChatThread $thread): JsonResponse
+    {
+        Gate::authorize('view', $thread);
+
+        $thread->load('lastMessage', 'car.tag');
+        $thread->loadCount(['messages as unread_count' => fn ($q) => $q->where('sender', 'visitor')->whereNull('read_at')]);
+        $car = $thread->car;
+
+        return response()->json(ChatThreadResource::make($thread)->resolve($request) + ['car' => [
+            'id' => $car->id,
+            'model' => $car->model,
+            'linked' => $car->tag !== null,
+            'chats_paused' => (bool) $car->chats_paused,
+            'subscription_active' => $car->tag !== null && app(SubscriptionService::class)->isActive($car->tag),
+        ]]);
     }
 
     /** Polling: pass the highest message id seen as ?after=. Returned visitor messages count as read. */

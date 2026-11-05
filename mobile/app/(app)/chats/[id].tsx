@@ -31,23 +31,26 @@ function Bubble({ own, label, body, status }: { own: boolean; label: string; bod
 export default function ChatThread() {
   useLocale();
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, blocked: blockedParam } = useLocalSearchParams<{ id: string; blocked?: string }>();
   const threadId = Number(id);
-  const chat = useThread(threadId);
+  // The list passes what it already knows so the blocked state shows at once.
+  const chat = useThread(threadId, blockedParam === '1');
   const [text, setText] = useState('');
   const list = useRef<FlatList<Row>>(null);
 
-  const { thread, car, fatal } = chat;
+  const { meta, fatal } = chat;
+  const car = meta?.car ?? null;
   const trimmed = text.trim();
   const busy = chat.pending.some((p) => p.status === 'sending');
 
-  // Why the composer is off, if it is. It stays on while the thread is still loading so a slow network does not hide it.
+  // Why the composer is off, if it is.
   let notice: string | null = null;
-  if (fatal?.status === 402) notice = t('chat.expiredNotice');
-  else if (thread?.blocked) notice = t('chat.blockedNotice');
+  if (fatal) notice = fatal.status === 402 ? t('chat.expiredNotice') : fatal.status === 404 ? t('chat.loadFailed') : t('errors.forbidden');
+  else if (chat.blocked) notice = t('chat.blockedNotice');
   else if (car && !car.linked) notice = t('chat.unlinkedNotice');
-  else if (car && !car.subscription.active) notice = t('chat.expiredNotice');
-  const canReply = !!thread && !!car && notice === null && !fatal;
+  else if (car && !car.subscription_active) notice = t('chat.expiredNotice');
+  else if (!meta && chat.metaFailed) notice = t('chat.metaFailed');
+  const canReply = !!meta && notice === null;
 
   const submit = async (body: string) => {
     if (!body || busy) return;
@@ -72,17 +75,6 @@ export default function ChatThread() {
     ...chat.pending.map((pending): Row => ({ kind: 'pending', key: `p${pending.key}`, pending })),
   ];
 
-  if (fatal && fatal.status !== 402 && !chat.loaded) {
-    return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.pad}>
-          <ErrorBanner message={fatal.status === 404 ? t('chat.loadFailed') : fatal.message} />
-          <Button label={t('common.back')} variant="secondary" onPress={() => router.back()} />
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   const renderRow = ({ item }: { item: Row }) => {
     if (item.kind === 'pending') {
       const { pending } = item;
@@ -105,7 +97,7 @@ export default function ChatThread() {
                 {pending.error ?? t('chat.failed')}
               </Text>
               <View style={styles.inline}>
-                <Button label={t('chat.retry')} variant="secondary" onPress={() => void submit(pending.body)} />
+                <Button label={t('chat.retry')} variant="secondary" disabled={pending.checking} onPress={() => void submit(pending.body)} />
                 <Button label={t('chat.discard')} variant="link" onPress={() => chat.discard(pending.key)} />
               </View>
             </View>
@@ -153,9 +145,9 @@ export default function ChatThread() {
         <View style={styles.top}>
           <ErrorBanner message={chat.actionError} />
           {chat.pollFailing && !fatal ? <ErrorBanner tone="info" message={t('chat.pollError')} /> : null}
-          {car?.chats_paused && !fatal ? (
+          {car && !fatal ? (
             <View style={styles.pausedBox}>
-              <Text style={styles.noticeText}>{t('chat.pausedNotice')}</Text>
+              {car.chats_paused ? <Text style={styles.noticeText}>{t('chat.pausedNotice')}</Text> : null}
               <Button
                 label={t('chat.pauseSettings')}
                 variant="secondary"
@@ -164,7 +156,7 @@ export default function ChatThread() {
             </View>
           ) : null}
           <Text style={styles.retention}>{t('chat.retention')}</Text>
-          {thread && !thread.blocked && !fatal ? <Button label={t('chat.block')} variant="secondary" onPress={confirmBlock} /> : null}
+          {meta && !chat.blocked && !fatal ? <Button label={t('chat.block')} variant="secondary" onPress={confirmBlock} /> : null}
         </View>
 
         {!chat.loaded ? (
@@ -189,6 +181,8 @@ export default function ChatThread() {
             <Text accessibilityRole="alert" style={styles.noticeText}>
               {notice}
             </Text>
+            {fatal ? <Button label={t('common.retry')} variant="secondary" onPress={chat.clearFatal} /> : null}
+            {!meta && chat.metaFailed && !fatal ? <Button label={t('common.retry')} variant="secondary" onPress={chat.retryMeta} /> : null}
           </View>
         ) : (
           <View style={styles.composer}>

@@ -232,5 +232,8 @@
   "reminders.delete": "Delete",
   "reminders.deleteLabel": "Delete the {type} reminder, {date}",
   "reminders.deleteFailed": "The reminder could not be deleted.",
-  "reminders.loadError": "Reminders could not be loaded."
+  "reminders.loadError": "Reminders could not be loaded.",
+  "chat.maybeSent": "The connection dropped; the message may have been sent. Checking before you try again.",
+  "chat.incoming": "New message: {body}",
+  "chat.metaFailed": "The chat details could not be loaded, so you cannot reply for now."
 }
