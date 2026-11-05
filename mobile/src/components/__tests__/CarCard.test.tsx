@@ -78,3 +78,12 @@ test('CarCard shows an active status and hides one that has run out', () => {
   expect(texts(render({ car: { ...CAR, status: { text: 'Back in 10', expires_at: future } } }).root)).toContain('Back in 10');
   expect(texts(render({ car: { ...CAR, status: { text: 'Back in 10', expires_at: past } } }).root)).not.toContain('Back in 10');
 });
+
+test('an expired CarCard can be opened, which leads to the renewal hard stop', () => {
+  const onOpen = jest.fn();
+  const expired = render({ onOpen, car: { ...CAR, subscription: { active: false, expires_at: '2026-10-01T10:00:00Z' } } });
+  const open = expired.root.findAllByProps({ accessibilityRole: 'button' })[0];
+  expect(open.props.disabled).toBeFalsy();
+  act(() => open.props.onPress());
+  expect(onOpen).toHaveBeenCalledTimes(1);
+});

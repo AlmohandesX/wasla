@@ -181,6 +181,12 @@ export default function ChatThread() {
             <Text accessibilityRole="alert" style={styles.noticeText}>
               {notice}
             </Text>
+            {car && car.linked && !car.subscription_active ? (
+              <Button
+                label={t('expired.renew')}
+                onPress={() => router.push({ pathname: '/cars/[id]/expired', params: { id: String(car.id) } })}
+              />
+            ) : null}
             {fatal ? <Button label={t('common.retry')} variant="secondary" onPress={chat.clearFatal} /> : null}
             {!meta && chat.metaFailed && !fatal ? <Button label={t('common.retry')} variant="secondary" onPress={chat.retryMeta} /> : null}
           </View>

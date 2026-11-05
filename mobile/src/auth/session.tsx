@@ -3,7 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { apiRequest, setSessionHandlers } from '../api/client';
 import { ApiError, toApiError } from '../api/errors';
 import { getLocale, loadLocale } from '../i18n';
-import { resetRegistration, unregisterStoredToken } from '../push/deviceToken';
+import { forgetStoredToken, resetRegistration, unregisterStoredToken } from '../push/deviceToken';
 import { clearToken, getToken, setToken } from './token';
 
 export type User = {
@@ -25,10 +25,12 @@ export type Session = {
   /** Set when the saved session could not be checked because the server was unreachable. */
   bootError: ApiError | null;
   /** Why the owner was signed out without asking to be (shown on the sign-in screen), or null. */
-  signedOutReason: 'unauthenticated' | 'account_suspended' | null;
+  signedOutReason: 'unauthenticated' | 'account_suspended' | 'account_deleted' | null;
   signIn: (email: string, password: string) => Promise<void>;
   register: (input: { name: string; email: string; password: string; consent: boolean }) => Promise<void>;
   signOut: () => Promise<void>;
+  /** Deletes the account (password required), then clears every local trace and ends the session. */
+  deleteAccount: (password: string) => Promise<void>;
   /** Re-reads the account (the "I've verified" check). Returns the fresh user. */
   refresh: () => Promise<User>;
   retryBoot: () => void;
@@ -136,6 +138,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, [user]);
 
+  const deleteAccount = useCallback(async (password: string) => {
+    await apiRequest<void>('account', { method: 'DELETE', body: { password }, timeoutMs: 30000 });
+    await forgetStoredToken();
+    await clearToken();
+    setBootError(null);
+    setSignedOutReason('account_deleted');
+    setUser(null);
+  }, []);
+
   const refresh = useCallback(async () => {
     const me = await apiRequest<User>('me');
     setUser(me);
@@ -148,8 +159,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<Session>(
-    () => ({ user, ready, bootError, signedOutReason, signIn, register, signOut, refresh, retryBoot }),
-    [user, ready, bootError, signedOutReason, signIn, register, signOut, refresh, retryBoot],
+    () => ({ user, ready, bootError, signedOutReason, signIn, register, signOut, deleteAccount, refresh, retryBoot }),
+    [user, ready, bootError, signedOutReason, signIn, register, signOut, deleteAccount, refresh, retryBoot],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

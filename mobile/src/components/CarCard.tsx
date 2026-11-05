@@ -18,7 +18,7 @@ type Props = {
   stealthError?: string | null;
 };
 
-/** A linked car whose tag subscription has run out. Task 21 adds the renewal screen. */
+/** A linked car whose tag subscription has run out. Opening its card leads to the renewal hard stop. */
 export function isExpired(car: Car): boolean {
   return car.linked && !car.subscription.active;
 }
@@ -40,7 +40,6 @@ export function CarCard({ car, onOpen, onToggleStealth, onLinkTag, stealthPendin
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={t('card.openLabel', { model: car.model, plate: car.plate })}
-        disabled={expired}
         onPress={onOpen}
         style={styles.head}
       >

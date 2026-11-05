@@ -162,3 +162,36 @@ describe('accessFor (the route guard decision)', () => {
     expect(accessFor({ ...base, user: USER as never })).toBe('app');
   });
 });
+
+describe('deleteAccount', () => {
+  test('success clears the token and user and leaves a message for the sign-in screen', async () => {
+    await setToken('t');
+    fetchMock.mockResolvedValueOnce(reply(200, USER));
+    await mount();
+    fetchMock.mockResolvedValueOnce(reply(204));
+    await act(async () => {
+      await session.deleteAccount('secret-pass');
+    });
+    const [url, init] = fetchMock.mock.calls[1];
+    expect(url).toContain('/api/v1/account');
+    expect(init.method).toBe('DELETE');
+    expect(JSON.parse(init.body)).toEqual({ password: 'secret-pass' });
+    expect(session.user).toBeNull();
+    expect(session.signedOutReason).toBe('account_deleted');
+    expect(await getToken()).toBeNull();
+  });
+
+  test('a wrong password keeps the session and reports invalid_password', async () => {
+    await setToken('t');
+    fetchMock.mockResolvedValueOnce(reply(200, USER));
+    await mount();
+    fetchMock.mockResolvedValueOnce(reply(422, { code: 'invalid_password', message: 'x' }));
+    let code = '';
+    await act(async () => {
+      await session.deleteAccount('nope').catch((e) => (code = e.code));
+    });
+    expect(code).toBe('invalid_password');
+    expect(session.user).toEqual(USER);
+    expect(await getToken()).toBe('t');
+  });
+});

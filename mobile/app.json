@@ -39,7 +39,8 @@
         {
           "photosPermission": "Wasla needs your photos so you can add a picture of your car."
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true

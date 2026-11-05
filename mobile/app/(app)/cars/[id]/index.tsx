@@ -39,6 +39,19 @@ function CarPhoto({ carId, version }: { carId: number; version: number }) {
   );
 }
 
+/** An expired car has no normal screen: this one sends the owner to its hard stop. */
+function GoToExpired({ carId }: { carId: number }) {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace({ pathname: '/cars/[id]/expired', params: { id: String(carId) } });
+  }, [carId, router]);
+  return (
+    <Screen>
+      <ActivityIndicator size="large" color={colors.primary} accessibilityLabel={t('common.loading')} />
+    </Screen>
+  );
+}
+
 type Target = '/cars/[id]/reminders' | '/cars/[id]/status' | '/cars/[id]/settings' | '/cars/[id]/transfer';
 
 export default function CarDetail() {
@@ -61,6 +74,7 @@ export default function CarDetail() {
   }
 
   const usable = !isExpired(car);
+  if (!usable) return <GoToExpired carId={car.id} />;
   const go = (pathname: Target) => () => router.push({ pathname, params: { id: String(car.id) } });
 
   return (

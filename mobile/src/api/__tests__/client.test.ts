@@ -1,5 +1,5 @@
 import { ApiError } from '../errors';
-import { apiRequest, setSessionHandlers } from '../client';
+import { apiRequest, setExpiredHandler, setSessionHandlers } from '../client';
 import { resolveApiBaseUrl } from '../config';
 import { clearToken, getToken, setToken } from '../../auth/token';
 
@@ -287,4 +287,29 @@ test('an upload that gets 401 signs the session out, and one that times out is a
   );
   const timedOut = await failure(apiRequest('cars/1/photo', { method: 'POST', body: form, timeoutMs: 20 }));
   expect(timedOut.code).toBe('network_error');
+});
+
+describe('subscription_expired', () => {
+  const onExpired = jest.fn();
+  beforeEach(() => {
+    onExpired.mockReset();
+    setExpiredHandler(onExpired);
+  });
+  afterEach(() => setExpiredHandler(null));
+
+  test('a 402 under cars/{id} reports that car only', async () => {
+    await setToken('abc');
+    fetchMock.mockResolvedValue(reply(402, { code: 'subscription_expired', message: 'x' }));
+    const error = await failure(apiRequest('cars/42/status', { method: 'PUT', body: {} }));
+    expect(error.code).toBe('subscription_expired');
+    expect(onExpired).toHaveBeenCalledWith(42);
+    expect(onExpired).toHaveBeenCalledTimes(1);
+  });
+
+  test('a 402 on a path without a car id reports nothing', async () => {
+    await setToken('abc');
+    fetchMock.mockResolvedValue(reply(402, { code: 'subscription_expired', message: 'x' }));
+    await failure(apiRequest('chats/9/messages'));
+    expect(onExpired).not.toHaveBeenCalled();
+  });
 });

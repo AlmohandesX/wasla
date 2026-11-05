@@ -20,7 +20,13 @@ type SessionHandlers = {
 const DEFAULT_TIMEOUT_MS = 15000;
 
 let handlers: SessionHandlers = {};
+let expiredHandler: ((carId: number) => void) | null = null;
 let signOutInFlight: Promise<void> | null = null;
+
+/** Called with the car id when a request under cars/{id} is refused with subscription_expired (402). */
+export function setExpiredHandler(next: ((carId: number) => void) | null): void {
+  expiredHandler = next;
+}
 
 export function setSessionHandlers(next: SessionHandlers): void {
   handlers = next;
@@ -94,6 +100,9 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       await handleUnauthorized(generationSent, 'account_suspended');
     } else if (error.code === 'email_not_verified') {
       handlers.onEmailNotVerified?.();
+    } else if (error.code === 'subscription_expired') {
+      const carId = /^\/*cars\/(\d+)(?:[/?]|$)/.exec(path)?.[1];
+      if (carId) expiredHandler?.(Number(carId));
     }
     throw error;
   }

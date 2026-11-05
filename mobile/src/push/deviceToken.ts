@@ -44,3 +44,16 @@ export async function unregisterStoredToken(): Promise<void> {
     // The backend also drops tokens Expo reports as dead.
   }
 }
+
+/**
+ * After the account is deleted the server has already dropped this phone's push token with it, so there is
+ * nothing to unregister: only the local copy goes.
+ */
+export async function forgetStoredToken(): Promise<void> {
+  registered = null;
+  try {
+    await SecureStore.deleteItemAsync(KEY);
+  } catch {
+    // ignore
+  }
+}

@@ -7,7 +7,7 @@ import { toApiError } from '../../../src/api/errors';
 import { useSession } from '../../../src/auth/session';
 import { useStealth } from '../../../src/cars/useServerSwitch';
 import { Button } from '../../../src/components/Button';
-import { CarCard } from '../../../src/components/CarCard';
+import { CarCard, isExpired } from '../../../src/components/CarCard';
 import { ErrorBanner } from '../../../src/components/ErrorBanner';
 import { LanguageSwitch } from '../../../src/components/LanguageSwitch';
 import { Screen } from '../../../src/components/Screen';
@@ -23,7 +23,9 @@ function CarRow({ car, onUpdated }: { car: Car; onUpdated: (car: Car) => void })
       stealthPendingValue={stealth.pendingValue}
       stealthError={stealth.error}
       onToggleStealth={() => stealth.toggle(car)}
-      onOpen={() => router.push({ pathname: '/cars/[id]', params: { id: String(car.id) } })}
+      onOpen={() =>
+        router.push({ pathname: isExpired(car) ? '/cars/[id]/expired' : '/cars/[id]', params: { id: String(car.id) } })
+      }
       onLinkTag={() => router.push({ pathname: '/cars/scan', params: { carId: String(car.id) } })}
     />
   );
@@ -75,6 +77,8 @@ export default function Cars() {
         <Button label={t('cars.add')} onPress={() => router.push('/cars/scan')} />
         <View style={styles.gap} />
         <Button label={t('cars.chats')} variant="secondary" onPress={() => router.push('/chats')} />
+        <View style={styles.gap} />
+        <Button label={t('account.open')} variant="secondary" onPress={() => router.push('/account')} />
         <View style={styles.gap} />
         <Button label={t('cars.signOut')} variant="secondary" onPress={signOut} />
       </View>

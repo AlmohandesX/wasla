@@ -14,3 +14,15 @@ export function formatDateTime(iso: string): string {
     return date.toLocaleString(locale, options);
   }
 }
+
+/** A UTC ISO timestamp as a calendar date in Istanbul time (for subscription expiry). */
+export function formatDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  const locale = getLocale() === 'tr' ? 'tr-TR' : 'en-GB';
+  try {
+    return date.toLocaleDateString(locale, { dateStyle: 'long', timeZone: TIME_ZONE });
+  } catch {
+    return date.toLocaleDateString(locale, { dateStyle: 'long' });
+  }
+}
