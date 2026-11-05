@@ -49,7 +49,7 @@ class FakeGateway implements PaymentGateway
 
         return $outcome === null
             ? new ProviderPaymentStatus(PaymentStatus::Pending, 0, 'TRY')
-            : new ProviderPaymentStatus(PaymentStatus::from($outcome['status']), $outcome['amount'], 'TRY');
+            : new ProviderPaymentStatus(PaymentStatus::from($outcome['status']), $outcome['amount'], $outcome['currency'] ?? 'TRY');
     }
 
     public function callbackResponse(): Response
@@ -63,9 +63,9 @@ class FakeGateway implements PaymentGateway
     }
 
     /** Scripts what fetchStatus reports for a reference. */
-    public static function setOutcome(string $reference, PaymentStatus $status, int $amountKurus): void
+    public static function setOutcome(string $reference, PaymentStatus $status, int $amountKurus, string $currency = 'TRY'): void
     {
-        Cache::put(self::cacheKey($reference), ['status' => $status->value, 'amount' => $amountKurus], now()->addDay());
+        Cache::put(self::cacheKey($reference), ['status' => $status->value, 'amount' => $amountKurus, 'currency' => $currency], now()->addDay());
     }
 
     private static function cacheKey(string $reference): string

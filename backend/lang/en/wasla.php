@@ -45,4 +45,10 @@ return [
     'push_expiry_body_d30' => 'Your subscription ends in 30 days.',
     'push_expiry_body_d7' => 'Your subscription ends in 7 days.',
     'push_expiry_body_d1' => 'Your subscription ends tomorrow.',
+    'payment_return_title' => 'Back to the app',
+    'payment_return_body' => 'You can close this page and return to the WASLA app. Your subscription updates as soon as the payment is confirmed.',
+    'fake_checkout_title' => 'Test checkout',
+    'fake_checkout_body' => 'Development only. No money moves. Choose how this payment ends.',
+    'fake_checkout_pay' => 'Pay',
+    'fake_checkout_fail' => 'Fail',
 ];

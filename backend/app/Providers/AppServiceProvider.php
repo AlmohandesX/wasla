@@ -81,6 +81,9 @@ class AppServiceProvider extends ServiceProvider
             Limit::perHour(20)->by('pay-h:'.($request->user()?->getAuthIdentifier() ?: $request->ip())),
         ]);
 
+        // Provider retries come from a few addresses, so this is generous; the signature does the real gating.
+        RateLimiter::for('payment-callback', fn (Request $request) => Limit::perMinute(300)->by($request->ip()));
+
         RateLimiter::for('scan', fn (Request $request) => Limit::perMinute(60)->by($request->ip()));
 
         RateLimiter::for('contact-reveal', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));

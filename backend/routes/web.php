@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\FakeGatewayController;
+use App\Http\Controllers\PaymentCallbackController;
 use App\Http\Controllers\VerifyEmailController;
 use App\Http\Controllers\Visitor\ScanController;
 use App\Http\Controllers\Visitor\VisitorChatController;
@@ -50,3 +52,27 @@ Route::prefix('t/{token}/chat')
         Route::post('messages/{message}/report', [VisitorChatController::class, 'report'])
             ->whereNumber('message')->middleware('throttle:chat-write')->name('chat.report');
     });
+
+// Payment provider callback: the only thing that can extend a subscription. Server to server, so no session,
+// cookies or CSRF token; the provider's signature and a status re-check are the authentication.
+Route::withoutMiddleware([
+    EncryptCookies::class,
+    AddQueuedCookiesToResponse::class,
+    StartSession::class,
+    ShareErrorsFromSession::class,
+    PreventRequestForgery::class,
+])->group(function () {
+    Route::post('/payments/callback/{provider}', [PaymentCallbackController::class, 'callback'])
+        ->middleware('throttle:payment-callback')->name('payments.callback');
+    // Reads nothing from the request and writes nothing.
+    Route::get('/payments/return', [PaymentCallbackController::class, 'return'])
+        ->middleware('throttle:api')->name('payments.return');
+});
+
+// Local development checkout for FakeGateway; the route does not exist under any other gateway.
+if (config('wasla.payment_gateway') === 'fake' && ! app()->isProduction()) {
+    Route::get('/fake-gateway/checkout/{reference}', [FakeGatewayController::class, 'show'])
+        ->middleware('throttle:api')->name('fake-gateway.show');
+    Route::post('/fake-gateway/checkout/{reference}/{outcome}', [FakeGatewayController::class, 'complete'])
+        ->whereIn('outcome', ['pay', 'fail'])->middleware('throttle:api')->name('fake-gateway.complete');
+}

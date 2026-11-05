@@ -45,4 +45,10 @@ return [
     'push_expiry_body_d30' => 'Aboneliğinizin bitmesine 30 gün kaldı.',
     'push_expiry_body_d7' => 'Aboneliğinizin bitmesine 7 gün kaldı.',
     'push_expiry_body_d1' => 'Aboneliğiniz yarın sona eriyor.',
+    'payment_return_title' => 'Uygulamaya dönün',
+    'payment_return_body' => 'Bu sayfayı kapatıp WASLA uygulamasına dönebilirsiniz. Ödeme onaylanır onaylanmaz aboneliğiniz güncellenir.',
+    'fake_checkout_title' => 'Test ödemesi',
+    'fake_checkout_body' => 'Yalnızca geliştirme içindir. Para hareketi olmaz. Bu ödemenin nasıl biteceğini seçin.',
+    'fake_checkout_pay' => 'Öde',
+    'fake_checkout_fail' => 'Başarısız yap',
 ];

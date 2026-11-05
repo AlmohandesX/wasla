@@ -10,6 +10,9 @@ use App\Models\Payment;
 use App\Models\Setting;
 use App\Models\Tag;
 use App\Models\User;
+use App\Services\Tags\SubscriptionService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -88,6 +91,83 @@ class RenewalService
         $this->lastPayment = $payment;
 
         return $session;
+    }
+
+    /**
+     * The only code path that extends a subscription. Order matters: verify the signature, find our own record,
+     * ask the provider for the real status (the callback body alone is never trusted), then settle under a row lock.
+     *
+     * @throws InvalidCallback when the signature does not verify; nothing is read or changed before that
+     */
+    public function handleCallback(PaymentGateway $gateway, Request $request): void
+    {
+        try {
+            $callback = $gateway->verifyCallback($request);
+        } catch (InvalidCallback $e) {
+            Log::warning('Payment callback refused: invalid signature.', ['provider' => $gateway->name()]);
+
+            throw $e;
+        }
+
+        $payment = Payment::query()
+            ->where('reference', $callback->reference)
+            ->where('provider', $gateway->name())
+            ->first();
+
+        if ($payment === null) {
+            Log::warning('Payment callback for an unknown reference.', [
+                'provider' => $gateway->name(),
+                'reference' => $callback->reference,
+            ]);
+
+            return;
+        }
+
+        $remote = $gateway->fetchStatus($callback->reference);
+
+        DB::transaction(function () use ($payment, $remote, $gateway) {
+            // Concurrent deliveries queue here; the second one sees the first one's result.
+            $locked = Payment::query()->lockForUpdate()->findOrFail($payment->id);
+
+            // Paid and refunded are final here. A failed payment may still turn paid: the provider has taken
+            // the money, and a late success beats an earlier failure.
+            if (! in_array($locked->status, [PaymentStatus::Pending, PaymentStatus::Failed], true)) {
+                return;
+            }
+
+            if ($remote->status === PaymentStatus::Failed) {
+                if ($locked->status === PaymentStatus::Pending) {
+                    $locked->update(['status' => PaymentStatus::Failed]);
+                }
+
+                return;
+            }
+
+            if ($remote->status !== PaymentStatus::Paid) {
+                return;
+            }
+
+            $reason = match (true) {
+                $remote->paidAmountKurus !== $locked->amount_kurus => 'amount_mismatch',
+                $remote->currency !== $locked->currency => 'currency_mismatch',
+                default => null,
+            };
+
+            if ($reason !== null) {
+                // Money moved but not as asked: leave it for an admin. Ids only, never billing data.
+                $locked->update(['flagged_at' => $locked->flagged_at ?? now(), 'flag_reason' => $reason]);
+                Log::warning('Payment callback does not match the recorded payment.', [
+                    'provider' => $gateway->name(),
+                    'payment_id' => $locked->id,
+                    'reason' => $reason,
+                ]);
+
+                return;
+            }
+
+            $locked->update(['status' => PaymentStatus::Paid, 'paid_at' => now()]);
+            app(SubscriptionService::class)->extendOneYear($locked->tag()->firstOrFail());
+        });
     }
 
     /** The payment recorded by the last successful start(). */
