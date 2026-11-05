@@ -19,49 +19,32 @@ class RenewalService
 
     public const PRICE_SETTING = 'renewal_price_kurus';
 
+    /** amount_kurus is an unsigned 32-bit column. */
+    public const MAX_KURUS = 4294967295;
+
+    private ?Payment $lastPayment = null;
+
     public function __construct(private readonly PaymentGateway $gateway) {}
 
     /**
-     * Opens a hosted checkout and records a pending payment at the price in force right now. It never
+     * Records a pending payment at the price in force right now, then opens a hosted checkout for it.
+     * The row exists before the provider session does, so a paid checkout always has a record. It never
      * extends the subscription: only a verified provider callback does.
      */
-    public function start(User $user, Tag $tag, BillingDetails $billing, string $buyerIp = '0.0.0.0'): CheckoutSession
-    {
-        return $this->startWithPayment($user, $tag, $billing, $buyerIp)[0];
-    }
-
-    /** @return array{CheckoutSession, Payment} */
-    public function startWithPayment(User $user, Tag $tag, BillingDetails $billing, string $buyerIp = '0.0.0.0'): array
+    public function start(User $user, Tag $tag, BillingDetails $billing, string $buyerIp): CheckoutSession
     {
         if ($tag->first_activated_at === null || $tag->revoked_at !== null) {
             throw new RenewalNoTag;
         }
 
         $price = $this->currentPriceKurus();
-
-        try {
-            $session = $this->gateway->startCheckout(new CheckoutRequest(
-                merchantReference: 'W'.strtoupper(bin2hex(random_bytes(12))),
-                amountKurus: $price,
-                currency: self::CURRENCY,
-                buyerEmail: $user->email,
-                buyerIp: $buyerIp,
-                locale: $user->preferredLocale(),
-                description: 'WASLA '.$tag->serial,
-                billing: $billing,
-            ));
-        } catch (Throwable $e) {
-            // Class only: a provider message could echo request data, the national ID included.
-            Log::warning('Payment checkout could not be started.', ['provider' => $this->gateway->name(), 'exception' => $e::class]);
-
-            throw new PaymentUnavailable;
-        }
+        $merchantReference = 'W'.strtoupper(bin2hex(random_bytes(12)));
 
         $payment = Payment::create([
             'tag_id' => $tag->id,
             'user_id' => $user->id,
             'provider' => $this->gateway->name(),
-            'reference' => $session->reference,
+            'reference' => $merchantReference,
             'amount_kurus' => $price,
             'currency' => self::CURRENCY,
             'status' => PaymentStatus::Pending,
@@ -73,7 +56,44 @@ class RenewalService
             'legal_text_version' => (string) config('wasla.legal_text_version'),
         ]);
 
-        return [$session, $payment];
+        try {
+            $session = $this->gateway->startCheckout(new CheckoutRequest(
+                merchantReference: $merchantReference,
+                amountKurus: $price,
+                currency: self::CURRENCY,
+                buyerEmail: $user->email,
+                buyerIp: $buyerIp,
+                locale: $user->preferredLocale(),
+                description: 'WASLA '.$tag->serial,
+                billing: $billing,
+            ));
+
+            if ($session->reference !== $merchantReference) {
+                $payment->update(['reference' => $session->reference]);
+            }
+        } catch (Throwable $e) {
+            // Class only: a provider message could echo request data, the national ID included.
+            Log::warning('Payment checkout could not be started.', ['provider' => $this->gateway->name(), 'exception' => $e::class]);
+            $payment->update([
+                'status' => PaymentStatus::Failed,
+                'billing_name' => null,
+                'billing_address' => null,
+                'billing_city' => null,
+                'billing_national_id' => null,
+            ]);
+
+            throw new PaymentUnavailable;
+        }
+
+        $this->lastPayment = $payment;
+
+        return $session;
+    }
+
+    /** The payment recorded by the last successful start(). */
+    public function lastPayment(): ?Payment
+    {
+        return $this->lastPayment;
     }
 
     private function currentPriceKurus(): int
@@ -82,6 +102,10 @@ class RenewalService
 
         if ($raw === null || ! ctype_digit($raw) || (int) $raw <= 0) {
             throw new RenewalPriceUnavailable;
+        }
+
+        if (strlen(ltrim($raw, '0')) > 10 || (int) $raw > self::MAX_KURUS) {
+            throw new PaymentUnavailable;
         }
 
         return (int) $raw;

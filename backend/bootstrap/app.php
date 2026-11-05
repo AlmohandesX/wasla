@@ -5,6 +5,7 @@ use App\Http\Middleware\EnsureCarSubscriptionActive;
 use App\Http\Middleware\EnsureEmailVerified;
 use App\Http\Middleware\EnsureNotSuspended;
 use App\Http\Middleware\SecurityHeaders;
+use App\Support\RedactNationalId;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -46,6 +47,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // The national ID is never flashed to a session, and BillingDetails masks it in dumps and traces.
         $exceptions->dontFlash(['billing_national_id']);
+        $exceptions->context(fn (Throwable $e, array $context) => RedactNationalId::from($context));
 
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),

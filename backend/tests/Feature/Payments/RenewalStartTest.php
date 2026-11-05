@@ -172,7 +172,7 @@ it('does not leak the national ID when the gateway fails', function () {
 
     $res = startRenewal($user, linkedCar($user))->assertStatus(502)->assertJsonPath('code', 'payment_unavailable');
 
-    expect($res->getContent())->not->toContain(TCKN)->and(Payment::count())->toBe(0);
+    expect($res->getContent())->not->toContain(TCKN)->and(DB::table('payments')->value('status'))->toBe('failed');
     Log::shouldHaveReceived('warning')->withArgs(fn ($msg, $ctx = []) => ! str_contains(json_encode([$msg, $ctx]), TCKN));
 });
 
@@ -270,4 +270,151 @@ it('has a fake gateway that honours the contract', function () {
     $st = $gateway->fetchStatus($s1->reference);
     expect($st->status)->toBe(PaymentStatus::Paid)->and($st->paidAmountKurus)->toBe(79900)->and($st->currency)->toBe('TRY')
         ->and($gateway->callbackResponse()->getStatusCode())->toBe(200);
+});
+
+it('records the pending payment before it calls the gateway', function () {
+    $seen = null;
+    $this->app->instance(PaymentGateway::class, new class($seen) extends FakeGateway
+    {
+        public function __construct(public &$seen) {}
+
+        public function startCheckout(CheckoutRequest $request): CheckoutSession
+        {
+            $this->seen = Payment::where('reference', $request->merchantReference)->value('status');
+
+            return new CheckoutSession('https://pay.example/x', 'PROVIDER-REF-1');
+        }
+    });
+    $user = verifiedOwner();
+
+    startRenewal($user, linkedCar($user))->assertCreated();
+
+    expect($seen->value)->toBe('pending')
+        ->and(Payment::count())->toBe(1)
+        ->and(Payment::first()->reference)->toBe('PROVIDER-REF-1');
+});
+
+it('leaves a failed scrubbed row and no checkout URL when the gateway fails', function () {
+    $this->app->instance(PaymentGateway::class, new class extends FakeGateway
+    {
+        public function startCheckout(CheckoutRequest $request): CheckoutSession
+        {
+            throw new RuntimeException('boom');
+        }
+    });
+    $user = verifiedOwner();
+
+    $res = startRenewal($user, linkedCar($user))->assertStatus(502);
+
+    $row = DB::table('payments')->first();
+    expect($res->getContent())->not->toContain('redirect_url')
+        ->and($row->status)->toBe('failed')
+        ->and($row->billing_name)->toBeNull()->and($row->billing_address)->toBeNull()
+        ->and($row->billing_city)->toBeNull()->and($row->billing_national_id)->toBeNull()
+        ->and($row->amount_kurus)->toBe(79900);
+});
+
+it('never calls the gateway when the payment row cannot be inserted', function () {
+    $called = false;
+    $this->app->instance(PaymentGateway::class, new class($called) extends FakeGateway
+    {
+        public function __construct(public &$called) {}
+
+        public function startCheckout(CheckoutRequest $request): CheckoutSession
+        {
+            $this->called = true;
+
+            return parent::startCheckout($request);
+        }
+    });
+    Payment::creating(fn () => throw new RuntimeException('db down'));
+    $user = verifiedOwner();
+
+    startRenewal($user, linkedCar($user))->assertStatus(500);
+
+    expect($called)->toBeFalse();
+});
+
+it('rejects a price above the column limit before touching anything', function () {
+    setRenewalPrice(4294967296);
+    $called = false;
+    $this->app->instance(PaymentGateway::class, new class($called) extends FakeGateway
+    {
+        public function __construct(public &$called) {}
+
+        public function startCheckout(CheckoutRequest $request): CheckoutSession
+        {
+            $this->called = true;
+
+            return parent::startCheckout($request);
+        }
+    });
+    $user = verifiedOwner();
+
+    startRenewal($user, linkedCar($user))->assertStatus(502)->assertJsonPath('code', 'payment_unavailable');
+
+    expect($called)->toBeFalse()->and(Payment::count())->toBe(0);
+});
+
+it('strips the national ID from exception context in a real log channel', function () {
+    $path = storage_path('logs/ctx-test-'.bin2hex(random_bytes(4)).'.log');
+    config(['logging.default' => 'ctxtest', 'logging.channels.ctxtest' => ['driver' => 'single', 'path' => $path, 'level' => 'debug']]);
+
+    $e = new class('failed') extends RuntimeException
+    {
+        public function context(): array
+        {
+            return ['billing_national_id' => TCKN, 'nested' => ['billing_national_id' => TCKN], 'keep' => 'visible'];
+        }
+    };
+    app(Illuminate\Contracts\Debug\ExceptionHandler::class)->report($e);
+
+    $log = file_get_contents($path);
+    @unlink($path);
+    expect($log)->toContain('visible')->not->toContain(TCKN);
+});
+
+function stalePayment(array $attrs = []): Payment
+{
+    static $n = 0;
+    $n++;
+    $payment = Payment::create(array_merge([
+        'tag_id' => linkedCar(verifiedOwner())->tag->id, 'provider' => 'fake', 'reference' => 'SCRUB'.$n,
+        'amount_kurus' => 79900, 'currency' => 'TRY', 'status' => PaymentStatus::Pending,
+        'billing_name' => 'Ayse', 'billing_address' => 'Adres', 'billing_city' => 'Istanbul', 'billing_national_id' => TCKN,
+        'legal_accepted_at' => now(), 'legal_text_version' => '1',
+    ], $attrs));
+    if (isset($attrs['age_days'])) {
+        $payment->forceFill(['created_at' => now()->subDays($attrs['age_days'])])->saveQuietly();
+    }
+
+    return $payment;
+}
+
+it('scrubs billing data from failed and stale pending payments only', function () {
+    $stale = stalePayment(['age_days' => 8]);
+    $fresh = stalePayment(['age_days' => 2]);
+    $failed = stalePayment(['status' => PaymentStatus::Failed]);
+    $paid = stalePayment(['status' => PaymentStatus::Paid, 'age_days' => 30]);
+    $refunded = stalePayment(['status' => PaymentStatus::Refunded, 'age_days' => 30]);
+
+    $this->artisan('wasla:scrub-billing')->assertSuccessful();
+
+    foreach ([$stale, $failed] as $p) {
+        $row = DB::table('payments')->find($p->id);
+        expect($row->billing_name)->toBeNull()->and($row->billing_address)->toBeNull()
+            ->and($row->billing_city)->toBeNull()->and($row->billing_national_id)->toBeNull()
+            ->and($row->reference)->toBe($p->reference)->and($row->amount_kurus)->toBe(79900)
+            ->and($row->provider)->toBe('fake')->and($row->status)->toBe($p->status->value);
+    }
+    foreach ([$fresh, $paid, $refunded] as $p) {
+        expect($p->fresh()->billing_national_id)->toBe(TCKN)->and($p->fresh()->billing_name)->toBe('Ayse');
+    }
+});
+
+it('schedules the billing scrub daily at 03:00 Istanbul time', function () {
+    $event = collect(app(Illuminate\Console\Scheduling\Schedule::class)->events())
+        ->first(fn ($e) => str_contains($e->command, 'wasla:scrub-billing'));
+
+    expect($event)->not->toBeNull()->and($event->expression)->toBe('0 3 * * *')->and($event->timezone)->toBe('Europe/Istanbul');
 });

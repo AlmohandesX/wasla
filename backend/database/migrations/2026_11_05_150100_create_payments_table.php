@@ -21,10 +21,10 @@ return new class extends Migration
             $table->timestamp('paid_at')->nullable();
             $table->timestamp('refunded_at')->nullable();
             // Encrypted by the model cast (ciphertext is long), so these are text and never indexed.
-            $table->text('billing_name');
-            $table->text('billing_address');
-            $table->text('billing_city');
-            $table->text('billing_national_id');
+            $table->text('billing_name')->nullable();
+            $table->text('billing_address')->nullable();
+            $table->text('billing_city')->nullable();
+            $table->text('billing_national_id')->nullable();
             $table->dateTime('legal_accepted_at');
             $table->string('legal_text_version', 20);
             $table->timestamps();

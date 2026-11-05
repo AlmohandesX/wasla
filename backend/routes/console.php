@@ -11,3 +11,4 @@ Artisan::command('inspire', function () {
 Schedule::command('reminders:send')->dailyAt('09:00')->timezone('Europe/Istanbul')->withoutOverlapping();
 Schedule::command('reminders:expiry')->dailyAt('09:00')->timezone('Europe/Istanbul')->withoutOverlapping();
 Schedule::command('chats:purge')->dailyAt('03:00')->timezone('Europe/Istanbul')->withoutOverlapping();
+Schedule::command('wasla:scrub-billing')->dailyAt('03:00')->timezone('Europe/Istanbul')->withoutOverlapping();

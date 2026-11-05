@@ -19,7 +19,8 @@ class RenewalController extends Controller
     {
         $tag = $car->tag ?? throw new RenewalNoTag;
 
-        [$session, $payment] = $renewals->startWithPayment($request->user(), $tag, $request->billing(), (string) $request->ip());
+        $session = $renewals->start($request->user(), $tag, $request->billing(), (string) $request->ip());
+        $payment = $renewals->lastPayment();
 
         return response()->json(['data' => [
             ...(new PaymentResource($payment))->resolve($request),
