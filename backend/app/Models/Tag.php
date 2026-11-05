@@ -19,6 +19,12 @@ class Tag extends Model
         return $this->belongsTo(Car::class);
     }
 
+    /** TAG_BASE_URL already ends in /t, so the printed URL is {domain}/t/{token}. */
+    public function publicUrl(): string
+    {
+        return rtrim((string) config('wasla.tag_base_url'), '/').'/'.$this->token;
+    }
+
     public function isRevoked(): bool
     {
         return $this->revoked_at !== null;
