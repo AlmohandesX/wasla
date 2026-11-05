@@ -103,3 +103,49 @@ test('a 402, 403 or 404 stops polling and reports it as fatal', async () => {
   await jest.advanceTimersByTimeAsync(60000);
   expect(load).toHaveBeenCalledTimes(1);
 });
+
+test('stop then start while a load is pending leaves exactly one loop and no stray timer', async () => {
+  let release: (m: Message[]) => void = () => undefined;
+  const load = jest.fn().mockImplementationOnce(() => new Promise<Message[]>((r) => (release = r))).mockResolvedValue([]);
+  const { poller } = setup(load);
+  poller.start();
+  await jest.advanceTimersByTimeAsync(0);
+  poller.stop();
+  poller.start();
+  release([]);
+  await jest.advanceTimersByTimeAsync(0); // first load done, the fresh run polls once more
+  expect(load).toHaveBeenCalledTimes(2);
+  await jest.advanceTimersByTimeAsync(20000);
+  expect(load).toHaveBeenCalledTimes(6); // one loop: a poll every 5 s
+  poller.stop();
+  expect(jest.getTimerCount()).toBe(0);
+});
+
+test('a callback that throws is not counted as a failed poll', async () => {
+  const load = jest.fn().mockResolvedValue([]);
+  const onSuccess = jest.fn(() => {
+    throw new Error('render bug');
+  });
+  const onError = jest.fn();
+  const poller = createPoller({ load, onMessages: jest.fn(), onSuccess, onError, onFatal: jest.fn() });
+  poller.start();
+  await jest.advanceTimersByTimeAsync(0);
+  await jest.advanceTimersByTimeAsync(5000); // no back-off: still every 5 s
+  expect(onError).not.toHaveBeenCalled();
+  expect(load).toHaveBeenCalledTimes(2);
+  poller.stop();
+});
+
+test('pollNow during a poll waits for it and then fetches fresh data', async () => {
+  let release: (m: Message[]) => void = () => undefined;
+  const load = jest.fn().mockImplementationOnce(() => new Promise<Message[]>((r) => (release = r))).mockResolvedValue([msg(5)]);
+  const { poller, onMessages } = setup(load);
+  const first = poller.pollNow();
+  const second = poller.pollNow();
+  await jest.advanceTimersByTimeAsync(0);
+  expect(load).toHaveBeenCalledTimes(1);
+  release([]);
+  await Promise.all([first, second]);
+  expect(load).toHaveBeenCalledTimes(2);
+  expect(onMessages).toHaveBeenLastCalledWith([msg(5)]);
+});

@@ -21,49 +21,68 @@ type Options = {
 export function createPoller(o: Options) {
   let cursor = 0;
   let running = false;
-  let inFlight = false;
+  let epoch = 0; // bumped by every start and stop, so a loop from an earlier run can tell it is stale
+  let current: Promise<void> | null = null;
   let failures = 0;
   let lastError: ApiError | null = null;
   let timer: ReturnType<typeof setTimeout> | undefined;
 
-  async function pollNow(): Promise<void> {
-    if (inFlight) return;
-    inFlight = true;
+  /** The callbacks belong to the screen: a bug in one is not a failed poll and must not cause a back-off. */
+  function safely(call: () => void) {
     try {
-      const messages = await o.load(cursor);
-      for (const m of messages) cursor = Math.max(cursor, m.id);
-      failures = 0;
-      lastError = null;
-      o.onMessages(messages);
-      o.onSuccess();
+      call();
+    } catch {
+      // ignored on purpose
+    }
+  }
+
+  async function run(): Promise<void> {
+    let messages: Message[];
+    try {
+      messages = await o.load(cursor);
     } catch (e) {
       const error = toApiError(e);
       failures += 1;
       lastError = error;
       if (FATAL_STATUSES.includes(error.status)) {
         running = false;
-        o.onFatal(error);
+        safely(() => o.onFatal(error));
       } else {
-        o.onError(error);
+        safely(() => o.onError(error));
       }
-    } finally {
-      inFlight = false;
+      return;
     }
+    for (const m of messages) cursor = Math.max(cursor, m.id);
+    failures = 0;
+    lastError = null;
+    safely(() => o.onMessages(messages));
+    safely(() => o.onSuccess());
   }
 
-  async function tick() {
+  /** One poll, never two at once. Called during a poll, it waits for it and then polls again, so the data is fresh. */
+  async function pollNow(): Promise<void> {
+    while (current) await current;
+    current = run().finally(() => {
+      current = null;
+    });
+    await current;
+  }
+
+  async function tick(myEpoch: number) {
     await pollNow();
-    if (running) timer = setTimeout(tick, nextPollDelay(failures, lastError));
+    if (running && myEpoch === epoch) timer = setTimeout(() => void tick(myEpoch), nextPollDelay(failures, lastError));
   }
 
   return {
     start() {
       if (running) return;
       running = true;
-      void tick();
+      epoch += 1;
+      void tick(epoch);
     },
     stop() {
       running = false;
+      epoch += 1;
       if (timer) clearTimeout(timer);
       timer = undefined;
     },

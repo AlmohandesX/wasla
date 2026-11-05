@@ -353,3 +353,20 @@ it('reports a car without a tag on the thread', function () {
         ->assertJsonPath('car.linked', false)
         ->assertJsonPath('car.subscription_active', false);
 });
+
+it('does not show an old thread to the new owner of a reclaimed tag, but still to the old owner', function () {
+    $old = owner();
+    $car = linkedCar($old);
+    $thread = chatThread($car);
+    $tag = $car->tag;
+
+    $this->postJson("/api/v1/cars/{$car->id}/unlink", [], bearer($old))->assertOk();
+    app('auth')->forgetGuards();
+    $new = owner();
+    $this->postJson('/api/v1/tags/claim', ['token' => $tag->token] + carAttrs(), bearer($new))->assertCreated();
+    app('auth')->forgetGuards();
+
+    $this->getJson("/api/v1/chats/{$thread->id}", bearer($new))->assertForbidden();
+    app('auth')->forgetGuards();
+    $this->getJson("/api/v1/chats/{$thread->id}", bearer($old))->assertOk()->assertJsonPath('car.linked', false);
+});
