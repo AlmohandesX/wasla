@@ -16,7 +16,6 @@ class Login extends BaseLogin
     {
         $data = $this->form->getState();
         $throttle = app(LoginThrottle::class);
-        $ip = (string) request()->ip();
 
         // Same normalisation as the API login: throttle on the stored address so collation variants share one counter.
         $normalized = mb_strtolower(trim((string) $data['email']));
@@ -26,7 +25,7 @@ class Login extends BaseLogin
             $user = null;
         }
 
-        if ($throttle->tooManyAttempts($email, $ip)) {
+        if ($throttle->tooManyAttempts($email)) {
             throw ValidationException::withMessages(['data.email' => __('wasla.too_many_attempts')]);
         }
 
@@ -35,7 +34,7 @@ class Login extends BaseLogin
 
         // Owners, suspended admins and unknown emails fail exactly like a wrong password.
         if (! $user || ! $valid || ! $user->isAdmin() || $user->isSuspended()) {
-            $throttle->hit($email, $ip);
+            $throttle->hit($email);
             $this->throwFailureValidationException();
         }
 

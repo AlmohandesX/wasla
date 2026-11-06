@@ -4,62 +4,52 @@ namespace App\Services\Auth;
 
 use Illuminate\Support\Facades\RateLimiter;
 
+/**
+ * Locks one account for 15 minutes after 5 failed logins. Deliberately keyed on the account only, never the
+ * IP address: Turkish mobile networks put many customers behind one shared address (CGNAT), so an IP lock
+ * would shut out everyone on it. Per-IP burst control stays with the route's `throttle:auth` limiter.
+ */
 class LoginThrottle
 {
     public const MAX_ATTEMPTS = 5;
 
     public const DECAY_SECONDS = 900;
 
-    public function tooManyAttempts(string $email, string $ip): bool
+    public function tooManyAttempts(string $email): bool
     {
-        return RateLimiter::tooManyAttempts($this->lockKey($this->accountKey($email)), 1)
-            || RateLimiter::tooManyAttempts($this->lockKey($this->ipKey($ip)), 1);
-    }
-
-    public function hit(string $email, string $ip): void
-    {
-        $this->count($this->accountKey($email));
-        $this->count($this->ipKey($ip));
-    }
-
-    /** Success clears the account counter only, so an attacker's own login cannot reset the IP counter. */
-    public function clearAccount(string $email): void
-    {
-        RateLimiter::clear($this->accountKey($email));
-        RateLimiter::clear($this->lockKey($this->accountKey($email)));
-    }
-
-    public function availableIn(string $email, string $ip): int
-    {
-        return max(
-            RateLimiter::availableIn($this->lockKey($this->accountKey($email))),
-            RateLimiter::availableIn($this->lockKey($this->ipKey($ip))),
-        );
+        return RateLimiter::tooManyAttempts($this->lockKey($email), 1);
     }
 
     /** The counter window starts at the first failure; the lock starts at the failure that reaches the limit. */
-    private function count(string $key): void
+    public function hit(string $email): void
     {
+        $key = $this->accountKey($email);
         RateLimiter::hit($key, self::DECAY_SECONDS);
 
         if (RateLimiter::attempts($key) >= self::MAX_ATTEMPTS) {
-            RateLimiter::clear($this->lockKey($key));
-            RateLimiter::hit($this->lockKey($key), self::DECAY_SECONDS);
+            RateLimiter::clear($this->lockKey($email));
+            RateLimiter::hit($this->lockKey($email), self::DECAY_SECONDS);
         }
     }
 
-    private function lockKey(string $key): string
+    public function clearAccount(string $email): void
     {
-        return $key.':lock';
+        RateLimiter::clear($this->accountKey($email));
+        RateLimiter::clear($this->lockKey($email));
+    }
+
+    public function availableIn(string $email): int
+    {
+        return RateLimiter::availableIn($this->lockKey($email));
+    }
+
+    private function lockKey(string $email): string
+    {
+        return $this->accountKey($email).':lock';
     }
 
     private function accountKey(string $email): string
     {
         return 'login:acct:'.hash('sha256', mb_strtolower(trim($email)));
-    }
-
-    private function ipKey(string $ip): string
-    {
-        return 'login:ip:'.$ip;
     }
 }

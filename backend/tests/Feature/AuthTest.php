@@ -46,13 +46,29 @@ it('locks after 5 failures for 15 minutes', function () {
     login($user->email)->assertOk();
 });
 
-it('locks by IP across different emails', function () {
+it('does not lock a shared IP address after failures on other accounts', function () {
+    $user = owner();
+
+    // Shared mobile networks (CGNAT) put many owners behind one address.
     foreach (range(1, 5) as $i) {
+        $this->travel(1)->minutes();
         login("user{$i}@example.com", 'wrong-password', '10.0.0.9')->assertUnauthorized();
     }
+    $this->travel(1)->minutes();
+    login("user6@example.com", 'wrong-password', '10.0.0.9')->assertUnauthorized()
+        ->assertJsonPath('code', 'invalid_credentials');
 
-    login('user6@example.com', 'wrong-password', '10.0.0.9')->assertStatus(429);
-    login('user6@example.com', 'wrong-password', '10.0.0.10')->assertUnauthorized();
+    login($user->email, PW, '10.0.0.9')->assertOk();
+});
+
+it('locks the account from every IP once it is locked', function () {
+    $user = owner();
+
+    foreach (range(1, 5) as $i) {
+        login($user->email, 'wrong-password', "10.0.5.{$i}")->assertUnauthorized();
+    }
+
+    login($user->email, PW, '10.0.5.99')->assertStatus(429)->assertJsonPath('code', 'too_many_attempts');
 });
 
 it('gives the same answer for an unknown email and a wrong password', function () {
@@ -73,16 +89,16 @@ it('counts failures for unknown emails', function () {
     login('ghost@example.com', 'x', '10.0.1.99')->assertStatus(429);
 });
 
-it('does not reset the IP counter on success', function () {
-    $attacker = owner();
+it('does not let one account lockout spill onto other accounts on the same IP', function () {
+    $victim = owner();
+    $other = owner();
 
-    foreach (range(1, 4) as $i) {
-        login("victim{$i}@example.com", 'x', '10.0.2.1')->assertUnauthorized();
+    foreach (range(1, 5) as $i) {
+        login($victim->email, 'x', '10.0.2.1')->assertUnauthorized();
     }
-    login($attacker->email, PW, '10.0.2.1')->assertOk();
-    login('victim5@example.com', 'x', '10.0.2.1')->assertUnauthorized();
 
-    login($attacker->email, PW, '10.0.2.1')->assertStatus(429);
+    login($victim->email, PW, '10.0.2.1')->assertStatus(429);
+    login($other->email, PW, '10.0.2.1')->assertOk();
 });
 
 it('rejects login for a suspended user', function () {

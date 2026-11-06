@@ -79,6 +79,21 @@ it('locks admin login after 5 failures for 15 minutes', function () {
     expect(auth()->id())->toBe($admin->id);
 });
 
+it('keeps another admin able to log in while one admin account is locked', function () {
+    $locked = adminUser();
+    $other = adminUser();
+
+    foreach (range(1, 5) as $i) {
+        adminLogin($locked->email, 'wrong-password-'.$i)->assertHasErrors(['data.email']);
+    }
+    foreach (range(1, 5) as $i) {
+        adminLogin("nobody{$i}@example.com", 'x')->assertHasErrors(['data.email']);
+    }
+
+    adminLogin($other->email)->assertHasNoErrors();
+    expect(auth()->id())->toBe($other->id);
+});
+
 it('counts email spelling variants against the same account lock', function () {
     $admin = adminUser(['email' => 'boss@example.com']);
 

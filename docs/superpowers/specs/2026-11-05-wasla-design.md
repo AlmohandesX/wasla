@@ -130,7 +130,7 @@ Each item needs an automated test where testable.
 | Area | Requirement |
 |---|---|
 | Secrets | No third-party keys in mobile code. All payment and moderation calls go through Laravel |
-| Login | Lock for 15 minutes after 5 failures, tracked by account and by IP, on owner and admin login |
+| Login | Lock for 15 minutes after 5 failures, tracked by account only, on owner and admin login. No IP lock, because shared Turkish mobile networks (CGNAT) put many customers behind one address; the per-IP `throttle:auth` rate limit (10 per minute) still slows bursts (owner decision, 2026-11-06) |
 | Environment | Boot fails in production if required variables are missing, `APP_DEBUG` is true, or `APP_ENV` is wrong |
 | Authorization | Laravel policies on every owner resource. Admin routes require an admin role. Tests prove user A cannot reach user B's cars, chats or payments |
 | Input | Form Requests on every write. Output escaped by default. Eloquent or bound queries only |

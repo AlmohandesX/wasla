@@ -45,7 +45,6 @@ class AuthController extends Controller
     public function login(LoginRequest $request): JsonResponse
     {
         $normalized = mb_strtolower(trim($request->string('email')->toString()));
-        $ip = (string) $request->ip();
 
         // The column collation treats some different strings as equal (zero-width characters,
         // accents). Throttle on the stored address so those variants share one counter, and
@@ -56,8 +55,8 @@ class AuthController extends Controller
             $user = null;
         }
 
-        if ($this->throttle->tooManyAttempts($email, $ip)) {
-            $retryAfter = $this->throttle->availableIn($email, $ip);
+        if ($this->throttle->tooManyAttempts($email)) {
+            $retryAfter = $this->throttle->availableIn($email);
 
             return response()->json([
                 'code' => 'too_many_attempts',
@@ -71,7 +70,7 @@ class AuthController extends Controller
         $valid = Hash::check($request->input('password'), $user?->password ?? config('wasla.dummy_password_hash'));
 
         if (! $user || ! $valid) {
-            $this->throttle->hit($email, $ip);
+            $this->throttle->hit($email);
 
             return response()->json([
                 'code' => 'invalid_credentials',
