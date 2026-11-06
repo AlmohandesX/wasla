@@ -9,13 +9,31 @@ The backend is Laravel 13 in `backend/`. The mobile app is Expo in `mobile/` and
 - PHP 8.3 or newer (`composer.json` requires `^8.3`) with: `bcmath`, `ctype`, `curl`, `dom`, `fileinfo`, `gd`, `intl`, `mbstring`, `mysql` (pdo_mysql), `openssl`, `tokenizer`, `xml`, `zip`. `gd` is needed for QR and photo handling, `zip` for wave packages, `intl` for Filament.
 - MySQL 8 (the suite passes on MySQL 8.4.13 and MariaDB 10.4). Create a database and a dedicated user; do not use root.
 - Nginx, TLS from Let's Encrypt (certbot) or your provider, Composer 2, Supervisor, cron.
+- **Ubuntu 22.04 ships PHP 8.1**, so add the `ondrej/php` PPA first: `sudo add-apt-repository ppa:ondrej/php && sudo apt update`, then install `php8.3-fpm php8.3-cli` and the `php8.3-*` extensions above. Ubuntu 24.04 ships PHP 8.3 and needs no PPA.
 - Node is not needed on the server. Filament ships prebuilt assets.
 
 ## 2. Domain and TLS
 
 The domain on printed tags is permanent. Decide it before the first real wave (see the launch checklist). `TAG_BASE_URL` (`https://<domain>/t`) is what the QR codes and NFC records contain; tokens survive a later backend change, the domain does not.
 
-Nginx site (adjust paths and domain):
+Do these steps in this order. The TLS site below names certificate files that do not exist yet, so enabling it first makes `nginx -t` fail on a fresh server.
+
+1. **Log format first.** The site uses the `wasla` log format, which must exist before Nginx sees the site. Create `/etc/nginx/conf.d/wasla-log.conf` (contents below).
+2. **Get the certificate over plain HTTP.** Enable a temporary HTTP-only site so certbot can answer its challenge:
+
+   ```nginx
+   server {
+       listen 80;
+       server_name wasla.example;
+       root /var/www/wasla/backend/public;
+       location /.well-known/acme-challenge/ { allow all; }
+   }
+   ```
+
+   Then `sudo nginx -t && sudo systemctl reload nginx`, and `sudo certbot certonly --webroot -w /var/www/wasla/backend/public -d wasla.example`. (`sudo certbot --nginx -d wasla.example` also works, but it edits the site file itself; compare the result with the block below.) Check that `/etc/letsencrypt/live/wasla.example/fullchain.pem` now exists.
+3. **Replace the temporary site with the full site** below, then `sudo nginx -t && sudo systemctl reload nginx`. Certbot's timer renews the certificate; run `sudo certbot renew --dry-run` once to confirm.
+
+Full Nginx site (adjust paths and domain):
 
 ```nginx
 server {
@@ -56,7 +74,7 @@ server {
 }
 ```
 
-`log_format` is only allowed in the `http` context, not inside `server`. Put it in its own file, `/etc/nginx/conf.d/wasla-log.conf` (the default Ubuntu `nginx.conf` includes `conf.d/*.conf` inside `http`), then run `sudo nginx -t && sudo systemctl reload nginx`:
+The log format file from step 1. `log_format` is only allowed in the `http` context, not inside `server`, so it lives in its own file, `/etc/nginx/conf.d/wasla-log.conf` (the default Ubuntu `nginx.conf` includes `conf.d/*.conf` inside `http`). Create it **before** enabling either site:
 
 ```nginx
 log_format wasla '$remote_addr [$time_local] "$request_method $uri" $status $body_bytes_sent';
@@ -156,7 +174,17 @@ sudo chmod -R ug+rwX /var/www/wasla/backend/storage /var/www/wasla/backend/boots
 sudo chmod 640 /var/www/wasla/backend/.env
 ```
 
-The web server and the queue worker must both be able to write `storage/` (wave packages go to `storage/app/private/waves`, small car photos to `storage/app/private/photos`, logs to `storage/logs`). Run PHP-FPM and the worker as users in the same group, or the same user. Nothing under `storage/app/private` is served by URL.
+The web server and the queue worker must both be able to write `storage/` (wave packages go to `storage/app/private/waves`, small car photos to `storage/app/private/photos`, logs to `storage/logs`). Nothing under `storage/app/private` is served by URL.
+
+PHP-FPM runs as `www-data` and the queue worker and cron run as `deploy` (section 7). By default a file one of them creates is `644`, so the other cannot write it: for example the worker creates the day's `storage/logs/laravel-*.log`, and FPM then cannot append to it, which breaks logging. Make new files group-writable and owned by the shared group:
+
+```bash
+sudo usermod -aG www-data deploy
+sudo find /var/www/wasla/backend/storage /var/www/wasla/backend/bootstrap/cache -type d -exec chmod 2775 {} \;   # setgid: new files get the www-data group
+sudo find /var/www/wasla/backend/storage /var/www/wasla/backend/bootstrap/cache -type f -exec chmod 664 {} \;
+```
+
+and give both processes a `002` umask: `umask=002` in the Supervisor program (section 7), and in PHP-FPM add `UMask=0002` to a systemd override (`sudo systemctl edit php8.3-fpm`, under `[Service]`, then `sudo systemctl restart php8.3-fpm`). Start the cron line with `umask 002 &&` too. The simpler alternative is to run the worker and cron as `www-data` as well.
 
 ## 6. Trusted proxies behind TLS
 
@@ -178,6 +206,7 @@ process_name=%(program_name)s_%(process_num)02d
 command=php /var/www/wasla/backend/artisan queue:work --sleep=3 --tries=3 --timeout=3600 --max-time=3600
 directory=/var/www/wasla/backend
 user=deploy
+umask=002
 numprocs=2
 autostart=true
 autorestart=true
@@ -193,7 +222,7 @@ stdout_logfile=/var/log/supervisor/wasla-worker.log
 ### Scheduler
 
 ```cron
-* * * * * deploy cd /var/www/wasla/backend && php artisan schedule:run >> /dev/null 2>&1
+* * * * * deploy umask 002 && cd /var/www/wasla/backend && php artisan schedule:run >> /dev/null 2>&1
 ```
 
 Scheduled in `routes/console.php`, all on the Europe/Istanbul clock:
