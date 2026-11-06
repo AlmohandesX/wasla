@@ -1,7 +1,9 @@
 <?php
 
 use App\Models\Car;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
@@ -148,7 +150,7 @@ it('keeps the old photo and does not return 200 when the storage write fails', f
     $this->postJson(photoUrl($car), ['photo' => photoOfSize(2000)], bearer($user))->assertOk();
     $old = $car->refresh()->photo_path;
 
-    $failing = Mockery::mock(Illuminate\Contracts\Filesystem\Filesystem::class);
+    $failing = Mockery::mock(Filesystem::class);
     $failing->shouldReceive('put')->once()->andReturnFalse();
     $failing->shouldNotReceive('delete');
     Storage::set('photos', $failing);
@@ -158,4 +160,53 @@ it('keeps the old photo and does not return 200 when the storage write fails', f
     $this->postJson(photoUrl($car), ['photo' => photoOfSize(3000)], $mine)->assertStatus(500);
 
     expect($car->refresh()->photo_path)->toBe($old)->and($car->photo_disk)->toBe('photos');
+});
+
+it('removes the photo file when the car is deleted', function () {
+    $user = owner();
+    $car = linkedCar($user);
+    $this->postJson(photoUrl($car), ['photo' => photoOfSize(2000)], bearer($user))->assertOk();
+    $path = $car->refresh()->photo_path;
+    Storage::disk('photos')->assertExists($path);
+
+    $this->deleteJson("/api/v1/cars/{$car->id}", [], bearer($user))->assertNoContent();
+
+    Storage::disk('photos')->assertMissing($path);
+    expect(Car::find($car->id))->toBeNull();
+});
+
+it('still deletes the car and logs without the path when the photo file cannot be removed', function () {
+    $user = owner();
+    $car = linkedCar($user);
+    $this->postJson(photoUrl($car), ['photo' => photoOfSize(2000)], bearer($user))->assertOk();
+    $path = $car->refresh()->photo_path;
+
+    $failing = Mockery::mock(Filesystem::class);
+    $failing->shouldReceive('delete')->once()->andReturnFalse();
+    Storage::set('photos', $failing);
+    Log::spy();
+
+    $mine = bearer($user);
+    app('auth')->forgetGuards();
+    $this->deleteJson("/api/v1/cars/{$car->id}", [], $mine)->assertNoContent();
+
+    expect(Car::find($car->id))->toBeNull();
+    Log::shouldHaveReceived('warning')
+        ->withArgs(fn ($m, $c = []) => $c === ['disk' => 'photos'])->once();
+    assertNotLogged($path);
+});
+
+it('keeps the photo file when the car delete fails', function () {
+    $user = owner();
+    $car = linkedCar($user);
+    $this->postJson(photoUrl($car), ['photo' => photoOfSize(2000)], bearer($user))->assertOk();
+    $path = $car->refresh()->photo_path;
+    Car::deleting(fn () => throw new RuntimeException('db down'));
+
+    $mine = bearer($user);
+    app('auth')->forgetGuards();
+    $this->deleteJson("/api/v1/cars/{$car->id}", [], $mine)->assertStatus(500);
+
+    Storage::disk('photos')->assertExists($path);
+    expect(Car::find($car->id))->not->toBeNull();
 });

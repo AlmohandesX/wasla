@@ -294,5 +294,14 @@
   "renew.privacyLink": "Read the privacy notice",
   "renew.startNew": "Start a new payment",
   "renew.waitOther": "A payment for this car is already in progress. You can start a new one in about {minutes} minutes.",
-  "renew.pendingOver": "The earlier payment page has expired and the payment has not been confirmed. If you did not pay, you can start a new payment."
+  "renew.pendingOver": "The earlier payment page has expired and the payment has not been confirmed. If you did not pay, you can start a new payment.",
+  "removeCar.title": "Remove car",
+  "removeCar.start": "Remove this car",
+  "removeCar.what": "This removes the car from your account for good: its model, plate, photo, emergency contacts, reminders and chat history. It cannot be undone.",
+  "removeCar.sticker": "Its sticker is released: whoever scans it next can claim it, and its expiry date stays as it is.",
+  "removeCar.confirm": "I understand and want to remove this car.",
+  "removeCar.submit": "Remove the car",
+  "removeCar.cancel": "Cancel",
+  "removeCar.releaseFirst": "This car's subscription has ended. Release its sticker first, then you can remove the car.",
+  "removeCar.release": "Release the sticker"
 }

@@ -55,13 +55,15 @@ class TagAdminService
         });
     }
 
+    /** Permanently revokes the tag and lets go of its car, as replace does, so the owner sees the car unlinked. */
     public function revoke(Tag $tag, User $admin, string $reason): void
     {
         $reason = $this->requireReason($reason);
 
         $this->withLockedTag($tag, function (Tag $fresh) use ($admin, $reason) {
-            $fresh->forceFill(['revoked_at' => $fresh->revoked_at ?? now()])->save();
-            $this->audit($admin, 'tag.revoke', 'tag', $fresh->id, $reason, ['car_id' => $fresh->car_id]);
+            $carId = $fresh->car_id;
+            $fresh->forceFill(['car_id' => null, 'revoked_at' => $fresh->revoked_at ?? now()])->save();
+            $this->audit($admin, 'tag.revoke', 'tag', $fresh->id, $reason, ['car_id' => $carId]);
         });
     }
 

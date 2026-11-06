@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -17,6 +17,7 @@ import { pickPhoto } from '../../../../src/cars/pickPhoto';
 import { useChatsPaused } from '../../../../src/cars/useServerSwitch';
 import { Button } from '../../../../src/components/Button';
 import { ErrorBanner } from '../../../../src/components/ErrorBanner';
+import { RemoveCar } from '../../../../src/components/RemoveCar';
 import { Screen } from '../../../../src/components/Screen';
 import { TextField } from '../../../../src/components/TextField';
 import { t, useLocale } from '../../../../src/i18n';
@@ -270,6 +271,19 @@ function ChatsSection({ carId }: { carId: number }) {
   );
 }
 
+function RemoveSection({ carId }: { carId: number }) {
+  const router = useRouter();
+  const { car } = useCar(carId);
+  if (!car) return null;
+  return (
+    <RemoveCar
+      car={car}
+      onRemoved={() => router.dismissTo('/cars')}
+      onReleaseFirst={() => router.push({ pathname: '/cars/[id]/transfer', params: { id: String(carId) } })}
+    />
+  );
+}
+
 export default function Settings() {
   useLocale();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -285,6 +299,9 @@ export default function Settings() {
       </View>
       <View style={styles.section}>
         <Contacts carId={carId} />
+      </View>
+      <View style={styles.section}>
+        <RemoveSection carId={carId} />
       </View>
     </Screen>
   );

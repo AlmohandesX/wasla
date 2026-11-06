@@ -294,5 +294,14 @@
   "renew.privacyLink": "Gizlilik bildirimini oku",
   "renew.startNew": "Yeni ödeme başlat",
   "renew.waitOther": "Bu araç için bir ödeme zaten devam ediyor. Yaklaşık {minutes} dakika sonra yenisini başlatabilirsin.",
-  "renew.pendingOver": "Önceki ödeme sayfasının süresi doldu ve ödeme onaylanmadı. Ödeme yapmadıysan yeni bir ödeme başlatabilirsin."
+  "renew.pendingOver": "Önceki ödeme sayfasının süresi doldu ve ödeme onaylanmadı. Ödeme yapmadıysan yeni bir ödeme başlatabilirsin.",
+  "removeCar.title": "Aracı kaldır",
+  "removeCar.start": "Bu aracı kaldır",
+  "removeCar.what": "Bu işlem aracı hesabınızdan kalıcı olarak kaldırır: modeli, plakası, fotoğrafı, acil durum kişileri, hatırlatıcıları ve sohbet geçmişi silinir. Geri alınamaz.",
+  "removeCar.sticker": "Etiketi serbest bırakılır: onu bir sonraki tarayan kişi sahiplenebilir ve bitiş tarihi olduğu gibi kalır.",
+  "removeCar.confirm": "Anladım, bu aracı kaldırmak istiyorum.",
+  "removeCar.submit": "Aracı kaldır",
+  "removeCar.cancel": "Vazgeç",
+  "removeCar.releaseFirst": "Bu aracın aboneliği sona erdi. Önce etiketini serbest bırakın, ardından aracı kaldırabilirsiniz.",
+  "removeCar.release": "Etiketi serbest bırak"
 }

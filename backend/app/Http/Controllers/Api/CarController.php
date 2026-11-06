@@ -8,6 +8,7 @@ use App\Http\Requests\Cars\StoreCarRequest;
 use App\Http\Requests\Cars\UpdateCarRequest;
 use App\Http\Resources\CarResource;
 use App\Models\Car;
+use App\Services\Cars\CarPhotoStore;
 use App\Services\Moderation\OwnerTextModerator;
 use App\Services\Tags\TagTransfer;
 use Illuminate\Http\JsonResponse;
@@ -15,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 
 class CarController extends Controller
 {
@@ -54,14 +56,23 @@ class CarController extends Controller
         return new CarResource($car->load('tag'));
     }
 
-    public function destroy(DestroyCarRequest $request, Car $car, TagTransfer $transfer): Response
+    /** Deletes the car and releases its tag with the dates kept; the photo file goes only once the delete committed. */
+    public function destroy(DestroyCarRequest $request, Car $car, TagTransfer $transfer, CarPhotoStore $photos): Response
     {
+        $disk = $car->photo_disk;
+        $path = $car->photo_path;
+
         DB::transaction(function () use ($car, $transfer) {
             if ($car->tag !== null) {
                 $transfer->unlink($car->tag);
             }
             $car->delete();
         });
+
+        if ($disk !== null && $path !== null && ! $photos->deleteFile($disk, $path)) {
+            // The disk name only: never the path, which could name the car.
+            Log::warning('A car photo could not be deleted after the car was removed.', ['disk' => $disk]);
+        }
 
         return response()->noContent();
     }

@@ -71,6 +71,14 @@ export function unlinkTag(id: number): Promise<Car> {
   return apiRequest<Car>(`cars/${id}/unlink`, { method: 'POST' });
 }
 
+/**
+ * Removes the car with its photo, emergency contacts, reminders and chat history. A linked sticker is released with
+ * its expiry kept, so anyone can claim it next. Refused (402) while the car's linked sticker is expired.
+ */
+export async function deleteCar(id: number): Promise<void> {
+  await apiRequest<void>(`cars/${id}`, { method: 'DELETE' });
+}
+
 export async function listContacts(carId: number): Promise<Contact[]> {
   return (await apiRequest<{ data: Contact[] }>(`cars/${carId}/contacts`)).data;
 }
