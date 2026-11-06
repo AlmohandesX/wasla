@@ -61,6 +61,20 @@ it('does not lock a shared IP address after failures on other accounts', functio
     login($user->email, PW, '10.0.0.9')->assertOk();
 });
 
+it('rate-limits login bursts per IP for a minute without locking other IPs', function () {
+    $user = owner();
+
+    foreach (range(1, 10) as $i) {
+        login("burst{$i}@example.com", 'x', '10.0.6.1')->assertUnauthorized();
+    }
+
+    login($user->email, PW, '10.0.6.1')->assertStatus(429);
+    login($user->email, PW, '10.0.6.2')->assertOk();
+
+    $this->travel(61)->seconds();
+    login($user->email, PW, '10.0.6.1')->assertOk();
+});
+
 it('locks the account from every IP once it is locked', function () {
     $user = owner();
 

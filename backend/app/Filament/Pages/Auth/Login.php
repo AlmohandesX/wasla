@@ -8,12 +8,21 @@ use Filament\Auth\Http\Responses\Contracts\LoginResponse;
 use Filament\Auth\Pages\Login as BaseLogin;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 
 class Login extends BaseLogin
 {
     public function authenticate(): ?LoginResponse
     {
+        // Per-IP burst control (a one-minute rate limit, never a lockout): this override replaces Filament's own
+        // rateLimit(), and Livewire's update route is outside the `throttle:auth` limiter the API login uses.
+        $burstKey = 'admin-login-ip:'.request()->ip();
+        if (RateLimiter::tooManyAttempts($burstKey, 10)) {
+            throw ValidationException::withMessages(['data.email' => __('wasla.too_many_attempts')]);
+        }
+        RateLimiter::hit($burstKey, 60);
+
         $data = $this->form->getState();
         $throttle = app(LoginThrottle::class);
 

@@ -90,8 +90,29 @@ it('keeps another admin able to log in while one admin account is locked', funct
         adminLogin("nobody{$i}@example.com", 'x')->assertHasErrors(['data.email']);
     }
 
+    // Past the one-minute burst limit, but well inside the 15 minutes an IP lock would have lasted.
+    $this->travel(61)->seconds();
     adminLogin($other->email)->assertHasNoErrors();
     expect(auth()->id())->toBe($other->id);
+});
+
+it('slows a burst of admin login attempts from one IP for a minute without locking other IPs', function () {
+    $admin = adminUser();
+
+    foreach (range(1, 10) as $i) {
+        adminLogin("nobody{$i}@example.com", 'x')->assertHasErrors(['data.email']);
+    }
+
+    // The 11th attempt in the minute is refused even with the right password, and is not counted as a failure.
+    adminLogin($admin->email)->assertHasErrors(['data.email']);
+    expect(auth()->check())->toBeFalse();
+
+    // Livewire test requests cannot change the client IP, so pin that the counter is keyed by IP (not account).
+    expect(\Illuminate\Support\Facades\RateLimiter::attempts('admin-login-ip:127.0.0.1'))->toBe(10)
+        ->and(\Illuminate\Support\Facades\RateLimiter::attempts('admin-login-ip:10.9.9.9'))->toBe(0);
+
+    $this->travel(61)->seconds();
+    adminLogin($admin->email)->assertHasNoErrors();
 });
 
 it('counts email spelling variants against the same account lock', function () {
