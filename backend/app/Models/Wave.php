@@ -1,0 +1,16 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+#[Fillable(['number', 'size', 'status', 'package_path', 'created_by'])]
+class Wave extends Model
+{
+    public function tags(): HasMany
+    {
+        return $this->hasMany(Tag::class);
+    }
+}
