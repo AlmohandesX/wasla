@@ -16,7 +16,7 @@ class VisitorPageHeaders
         return self::apply($next($request));
     }
 
-    /** Turkish unless the browser prefers English. */
+    /** English unless the browser prefers Turkish. */
     public static function useVisitorLocale(Request $request): void
     {
         app()->setLocale($request->getPreferredLanguage(['en', 'tr']) ?? 'en');

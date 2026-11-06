@@ -32,6 +32,18 @@ it('logs in and returns a token', function () {
     expect($user->tokens()->first()->expires_at)->not->toBeNull();
 });
 
+it('stores English for a new owner who sends no locale, and mails them in English', function () {
+    Notification::fake();
+    $body = ['name' => 'Ada', 'email' => 'ada@example.com', 'password' => PW, 'privacy_consent' => true];
+
+    $this->postJson('/api/v1/auth/register', $body)->assertCreated();
+
+    $user = User::where('email', 'ada@example.com')->firstOrFail();
+    expect($user->locale)->toBe('en')->and($user->preferredLocale())->toBe('en');
+    Notification::assertSentTo($user, QueuedVerifyEmail::class,
+        fn ($notification, $channels, $notifiable, $locale) => $locale === 'en');
+});
+
 it('locks after 5 failures for 15 minutes', function () {
     $user = owner();
 
