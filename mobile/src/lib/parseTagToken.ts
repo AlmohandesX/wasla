@@ -15,7 +15,7 @@ function parse(raw: string): URL | null {
  * Returns the token when `scanned` is exactly `<tagBaseUrl>/<token>`, otherwise null. Scheme, host (with port) and
  * path are compared as parsed URLs, never as substrings, so a look-alike domain or an embedded URL does not match.
  * One trailing slash is tolerated because the backend route (`t/{token}`) answers with or without it.
- * Plain http counts only in a development build (`allowHttp`) and only for a local address.
+ * Plain http counts only when `allowHttp` (a development build or the local test APK) and only for a local address.
  */
 export function parseTagToken(scanned: string, tagBaseUrl: string, allowHttp: boolean = allowLocalHttp()): string | null {
   const base = parse(tagBaseUrl);

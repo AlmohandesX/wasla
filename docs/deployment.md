@@ -303,21 +303,23 @@ Expo Go cannot receive remote push (SDK 53+ removed it on Android) and does not 
 9. On the server set `EXPO_ACCESS_TOKEN` if you enable enhanced push security in the Expo dashboard.
 10. Verify: sign in, open the chats list, allow notifications; have a visitor send a message on a tag page; the phone must get a push and tapping it opens the thread.
 
-Release builds only accept `https` API URLs; plain http is accepted only in a development build for localhost or LAN addresses.
+Release builds only accept `https` API URLs; plain http is accepted only in a development build or the `preview` test APK, and only for localhost or LAN addresses.
 
 ### Android test APK (no Apple account, no dev server)
 
 `mobile/eas.json` has a `preview` profile that builds an installable APK pointed at the local backend
-(`http://192.168.1.164:8000`; change both URLs in `eas.json` if the PC's LAN IP changes). It sets
+(`http://192.168.1.164:8000`). If the PC's LAN IP changes, update both URLs in `eas.json` and `APP_URL`/`TAG_BASE_URL` in `backend/.env` (checkout requires the same host), then rebuild the APK: the URLs are baked in at build time. It sets
 `EXPO_PUBLIC_ALLOW_LOCAL_HTTP=1`, which is inlined at build time and lets this build use plain http to a
 localhost/LAN address only, and `mobile/app.config.js` then enables Android cleartext traffic for it. The
 `production` profile sets neither, so store builds stay https-only; give it `EXPO_PUBLIC_API_URL` and
 `EXPO_PUBLIC_TAG_BASE_URL` (https) before the first store build.
 
+Never add `EXPO_PUBLIC_ALLOW_LOCAL_HTTP` as an EAS dashboard environment variable: it would reach other profiles.
+
 1. `npm install -g eas-cli`, `eas login`, then in `mobile/`: `eas init` (once; commit the `projectId` it adds).
-2. `eas build --platform android --profile preview`, open the link it prints on the phone, install the APK.
+2. `eas build --platform android --profile preview` (the first time, let EAS generate the Android keystore), open the link it prints on the phone, install the APK.
 3. Keep `php artisan serve --host=0.0.0.0 --port=8000` and `php artisan queue:work` running on the PC, phone on
-   the same Wi-Fi. Push needs the FCM key from step 5 above; without it the app works and simply offers no push.
+   the same Wi-Fi, and allow PHP through the Windows firewall on private networks (port 8000). Push needs the FCM key from step 5 above; without it the app works and simply offers no push.
 
 ## 13. Not confirmed
 
