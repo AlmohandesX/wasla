@@ -13,13 +13,17 @@ use Filament\Http\Middleware\AuthenticateSession;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
+use Illuminate\Http\Request;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// The domain printed on every sticker: a short translated page, nothing about the framework.
+Route::get('/', function (Request $request) {
+    VisitorPageHeaders::useVisitorLocale($request);
+
+    return response()->view('home')->header('Vary', 'Accept-Language');
+})->middleware('throttle:api');
 
 Route::get('/email/verify/{id}/{hash}', VerifyEmailController::class)
     ->middleware(['signed', 'throttle:auth'])

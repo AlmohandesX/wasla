@@ -18,8 +18,12 @@ class SecurityHeaders
 
     public function handle(Request $request, Closure $next): Response
     {
-        $response = $next($request);
+        return self::apply($request, $next($request));
+    }
 
+    /** Also used for error pages rendered outside the web group (no route matched, or a throttle refused first). */
+    public static function apply(Request $request, Response $response): Response
+    {
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('X-Frame-Options', 'DENY');
         // A page that carries a secret in its URL (the reset link) sets a stricter policy itself.

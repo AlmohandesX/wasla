@@ -7,11 +7,13 @@ use App\Http\Middleware\EnsureEmailVerified;
 use App\Http\Middleware\EnsureNotSuspended;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetApiLocale;
+use App\Http\Middleware\VisitorPageHeaders;
 use App\Support\RedactNationalId;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -64,6 +66,23 @@ return Application::configure(basePath: dirname(__DIR__))
                 'code' => 'too_many_requests',
                 'message' => __('wasla.too_many_requests'),
             ], 429, $e->getHeaders());
+        });
+
+        // HTML error pages (errors/*) speak the visitor's language. An unmatched route or a throttle refusal never
+        // reaches the web middleware, so the locale and the headers are set here as well.
+        $exceptions->render(function (Throwable $e, Request $request) {
+            if (! ($request->is('api/*') || $request->expectsJson())) {
+                VisitorPageHeaders::useVisitorLocale($request);
+            }
+
+            return null;
+        });
+        $exceptions->respond(function (Response $response, Throwable $e, Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return $response;
+            }
+
+            return VisitorPageHeaders::apply(SecurityHeaders::apply($request, $response));
         });
 
         // The national ID is never flashed to a session, and BillingDetails masks it in dumps and traces.

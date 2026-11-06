@@ -11,10 +11,19 @@ class VisitorPageHeaders
 {
     public function handle(Request $request, Closure $next): Response
     {
+        self::useVisitorLocale($request);
+
+        return self::apply($next($request));
+    }
+
+    /** Turkish unless the browser prefers English. */
+    public static function useVisitorLocale(Request $request): void
+    {
         app()->setLocale($request->getPreferredLanguage(['tr', 'en']) ?? 'tr');
+    }
 
-        $response = $next($request);
-
+    public static function apply(Response $response): Response
+    {
         $response->headers->set('X-Robots-Tag', 'noindex, nofollow');
         $response->headers->set('Cache-Control', 'no-store, private');
         $response->headers->set('Vary', 'Accept-Language');
