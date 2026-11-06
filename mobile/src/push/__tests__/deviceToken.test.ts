@@ -5,7 +5,6 @@ jest.mock('expo-secure-store', () => ({
   setItemAsync: jest.fn(async () => undefined),
   deleteItemAsync: jest.fn(async () => undefined),
 }));
-jest.mock('../../api/push', () => ({ unregisterDeviceToken: jest.fn(async () => undefined) }));
 
 test('a token registered for one user is not skipped for the next user on the same phone', async () => {
   await rememberToken(1, 'ExponentPushToken[abc]');

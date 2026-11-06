@@ -183,3 +183,15 @@ it('prints QR codes that decode back to the tag URL', function () {
     // The shipped SVG is produced by the same settings and is a real QR markup.
     expect((new QRCode(WaveService::qrOptions()))->render($url))->toContain('<svg');
 });
+
+it('rewrites the package only about ten times for a full 50000 wave', function () {
+    // The zip is closed (and so rewritten) once per chunk; at 250 a 50k wave rewrote it 200 times.
+    $chunk = (new ReflectionClassConstant(WaveService::class, 'PACKAGE_CHUNK'))->getValue();
+    expect(intdiv(WaveService::MAX_SIZE + $chunk - 1, $chunk))->toBeLessThanOrEqual(10);
+});
+
+it('leaves no work files next to the package', function () {
+    $wave = makeWave(3);
+
+    expect(Storage::disk('local')->allFiles('waves'))->toBe([$wave->package_path]);
+});

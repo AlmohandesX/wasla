@@ -8,6 +8,7 @@ use App\Exceptions\PaymentUnavailable;
 use App\Exceptions\RenewalNoTag;
 use App\Exceptions\RenewalPending;
 use App\Exceptions\RenewalPriceUnavailable;
+use App\Models\Car;
 use App\Models\Payment;
 use App\Models\Setting;
 use App\Models\Tag;
@@ -259,6 +260,13 @@ class RenewalService
 
             if ($tag->id !== $locked->tag_id) {
                 $this->flag($locked, 'settled_on_replacement', $gateway);
+            }
+
+            // The subscription is on the tag, so the extension stands, but the payer no longer holds it: the tag was
+            // released or unlinked (and maybe claimed by someone else), or the payer's account was erased.
+            $holderId = $tag->car_id === null ? null : Car::query()->whereKey($tag->car_id)->value('user_id');
+            if ($locked->user_id === null || $holderId !== $locked->user_id) {
+                $this->flag($locked, 'settled_after_transfer', $gateway);
             }
         });
     }

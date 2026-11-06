@@ -93,7 +93,12 @@ class AuthController extends Controller
 
     public function logout(LogoutRequest $request): Response
     {
-        $request->user()->currentAccessToken()->delete();
+        $user = $request->user();
+        if ($request->filled('device_token')) {
+            // Only the caller's own token: another account's token is never confirmed or removed.
+            $user->deviceTokens()->where('token', $request->string('device_token')->toString())->delete();
+        }
+        $user->currentAccessToken()->delete();
 
         return response()->noContent();
     }

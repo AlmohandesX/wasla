@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\Route;
 
 function pendingPayment(?Tag $tag = null, int $amount = 79900, ?string $reference = null): Payment
 {
-    $user = owner(['email_verified_at' => now()]);
+    // The payer is whoever holds the tag, as when the owner starts a renewal.
+    $user = $tag?->car?->user ?? owner(['email_verified_at' => now()]);
     $tag ??= linkedCar($user, now()->addMonth())->tag;
 
     return Payment::create([

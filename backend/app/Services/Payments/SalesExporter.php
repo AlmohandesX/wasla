@@ -27,7 +27,10 @@ class SalesExporter
         'billing_name', 'billing_address', 'billing_city', 'billing_national_id', 'flag_reason',
     ];
 
-    /** Both ends are inclusive instants, in any timezone; they are compared in UTC, which is how paid_at is stored. */
+    /**
+     * Both ends are inclusive instants, in any timezone; they are compared in UTC, which is how paid_at and refunded_at
+     * are stored. A row appears once, with both dates, whenever its sale or its refund falls in the range.
+     */
     public function toCsv(Carbon $from, Carbon $to, User $admin): StreamedResponse
     {
         $fromUtc = $from->copy()->utc();
@@ -36,7 +39,9 @@ class SalesExporter
         $query = Payment::query()
             ->with('tag:id,serial')
             ->whereIn('status', [PaymentStatus::Paid->value, PaymentStatus::Refunded->value])
-            ->whereBetween('paid_at', [$fromUtc, $toUtc]);
+            // A sale in the range, or a refund made in the range for a sale from an earlier period (the credit note).
+            ->where(fn ($q) => $q->whereBetween('paid_at', [$fromUtc, $toUtc])
+                ->orWhere(fn ($q) => $q->where('status', PaymentStatus::Refunded->value)->whereBetween('refunded_at', [$fromUtc, $toUtc])));
 
         $this->audit($admin, 'payment.export', 'payment_export', $admin->id, 'sales export', [
             'from' => $from->copy()->setTimezone(self::TIMEZONE)->format('Y-m-d'),

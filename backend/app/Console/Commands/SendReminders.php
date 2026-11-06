@@ -23,6 +23,8 @@ class SendReminders extends Command
 
         Reminder::query()
             ->whereIn('due_on', $byDate->keys()->all())
+            // A suspended owner cannot sign in, so they get no pushes; nothing is claimed, so reinstating resumes them.
+            ->whereHas('car.user', fn ($users) => $users->whereNull('suspended_at'))
             ->with('car.user', 'car.tag')
             ->each(function (Reminder $reminder) use ($byDate, $push, $subscriptions) {
                 $tag = $reminder->car->tag;

@@ -1,5 +1,6 @@
 <?php
 
+use App\Providers\AppServiceProvider;
 use Illuminate\Support\Facades\Route;
 
 it('sends security headers on web responses', function () {
@@ -50,15 +51,25 @@ it('marks session cookies HttpOnly and SameSite=Lax', function () {
 it('runs the guard on boot and refuses an unsafe production config', function () {
     config(['wasla.guard_environment' => productionEnv(['APP_DEBUG' => 'true'])]);
 
-    (new \App\Providers\AppServiceProvider($this->app))->boot();
+    (new AppServiceProvider($this->app))->boot();
 })->throws(RuntimeException::class, 'APP_DEBUG');
 
 it('forces https and secure cookies in production', function () {
     config(['wasla.guard_environment' => productionEnv()]);
     $this->app['env'] = 'production';
 
-    (new \App\Providers\AppServiceProvider($this->app))->boot();
+    (new AppServiceProvider($this->app))->boot();
 
     expect(config('session.secure'))->toBeTrue()
         ->and(url('/x'))->toStartWith('https://');
+});
+
+it('lists every variable that the WASLA and Sanctum config read in .env.example', function () {
+    $example = file_get_contents(base_path('.env.example'));
+    foreach (['sanctum', 'wasla'] as $file) {
+        preg_match_all("/env\('([A-Z0-9_]+)'/", file_get_contents(config_path("$file.php")), $m);
+        foreach ($m[1] as $name) {
+            expect(preg_match('/^#? ?'.$name.'=/m', $example))->toBe(1, "$name is missing from .env.example");
+        }
+    }
 });

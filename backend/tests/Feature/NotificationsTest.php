@@ -6,6 +6,8 @@ use App\Models\DeviceToken;
 use App\Models\ModerationEvent;
 use App\Models\Reminder;
 use App\Models\VisitorSession;
+use App\Services\Auth\UserAdminService;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Carbon;
@@ -273,7 +275,7 @@ it('keeps a young empty thread and its visitor session', function () {
 });
 
 it('schedules the daily jobs in Istanbul time', function () {
-    $events = collect(app(Illuminate\Console\Scheduling\Schedule::class)->events());
+    $events = collect(app(Schedule::class)->events());
 
     foreach (['reminders:send' => '0 9 * * *', 'reminders:expiry' => '0 9 * * *', 'chats:purge' => '0 3 * * *'] as $name => $cron) {
         $event = $events->first(fn ($e) => str_contains($e->command, $name));
@@ -281,4 +283,63 @@ it('schedules the daily jobs in Istanbul time', function () {
             ->and($event->expression)->toBe($cron)
             ->and($event->timezone)->toBe('Europe/Istanbul');
     }
+});
+
+it('sends no reminder or expiry push to a suspended owner', function () {
+    Carbon::setTestNow('2026-11-05 10:00:00 UTC');
+    [$user, $car] = pushOwner(now()->addDays(7));
+    $car->reminders()->create(['type' => 'oil_change', 'due_on' => '2026-11-06']);
+    $user->forceFill(['suspended_at' => now()])->save();
+
+    $this->artisan('reminders:send')->assertSuccessful();
+    $this->artisan('reminders:expiry')->assertSuccessful();
+
+    expect(expoMessages())->toBe([]);
+});
+
+it('drops the push token sent with logout', function () {
+    $user = owner(['email_verified_at' => now()]);
+    $user->deviceTokens()->create(['token' => 'ExponentPushToken[this-phone]', 'platform' => 'ios']);
+    $user->deviceTokens()->create(['token' => 'ExponentPushToken[other-phone]', 'platform' => 'ios']);
+
+    $this->postJson('/api/v1/auth/logout', ['device_token' => 'ExponentPushToken[this-phone]'], bearer($user))->assertNoContent();
+
+    expect(DeviceToken::pluck('token')->all())->toBe(['ExponentPushToken[other-phone]'])
+        ->and($user->tokens()->count())->toBe(0);
+});
+
+it('never drops another account token on logout', function () {
+    $other = owner();
+    $other->deviceTokens()->create(['token' => 'ExponentPushToken[theirs]', 'platform' => 'ios']);
+    $user = owner(['email_verified_at' => now()]);
+
+    $this->postJson('/api/v1/auth/logout', ['device_token' => 'ExponentPushToken[theirs]'], bearer($user))->assertNoContent();
+    $this->postJson('/api/v1/auth/logout', [], bearer($user))->assertNoContent();
+
+    expect(DeviceToken::pluck('token')->all())->toBe(['ExponentPushToken[theirs]']);
+});
+
+it('revokes every API token and push token on password reset', function () {
+    $user = owner(['email_verified_at' => now()]);
+    $user->createToken('phone');
+    $user->deviceTokens()->create(['token' => 'ExponentPushToken[lost-phone]', 'platform' => 'android']);
+    $other = owner();
+    $other->deviceTokens()->create(['token' => 'ExponentPushToken[keep]', 'platform' => 'android']);
+    $token = app('auth.password.broker')->createToken($user);
+
+    $this->postJson('/api/v1/auth/reset-password', [
+        'email' => $user->email, 'token' => $token, 'password' => 'brand-new-pass-1',
+    ])->assertOk();
+
+    expect($user->tokens()->count())->toBe(0)
+        ->and(DeviceToken::pluck('token')->all())->toBe(['ExponentPushToken[keep]']);
+});
+
+it('removes every push token of a suspended owner', function () {
+    $user = owner();
+    $user->deviceTokens()->create(['token' => 'ExponentPushToken[suspended]', 'platform' => 'android']);
+
+    app(UserAdminService::class)->suspend($user, adminUser(), 'abuse');
+
+    expect($user->deviceTokens()->count())->toBe(0);
 });

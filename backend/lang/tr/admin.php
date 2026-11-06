@@ -105,7 +105,7 @@ return [
         'export_to' => 'Bitiş (İstanbul tarihi)',
         'flags' => [
             'amount_mismatch' => 'Tutar uyuşmazlığı', 'currency_mismatch' => 'Para birimi uyuşmazlığı', 'refunded_at_provider' => 'Sağlayıcıda iade edilmiş',
-            'paid_on_revoked_tag' => 'İptal edilmiş etikete ödeme', 'settled_on_replacement' => 'Yedek etikete işlendi', 'settlement_failed' => 'İşleme başarısız',
+            'paid_on_revoked_tag' => 'İptal edilmiş etikete ödeme', 'settled_on_replacement' => 'Yedek etikete işlendi', 'settled_after_transfer' => 'Etiket el değiştirdikten sonra işlendi', 'settlement_failed' => 'İşleme başarısız',
         ],
         'statuses' => ['pending' => 'Bekliyor', 'paid' => 'Ödendi', 'failed' => 'Başarısız', 'refunded' => 'İade edildi'],
     ],

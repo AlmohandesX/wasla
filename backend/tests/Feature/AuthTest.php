@@ -4,6 +4,7 @@ use App\Models\User;
 use App\Notifications\QueuedResetPassword;
 use App\Notifications\QueuedVerifyEmail;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\URL;
@@ -258,4 +259,16 @@ it('serves the confirmation page without inline styles', function () {
 
     expect($response->headers->get('Content-Security-Policy'))->toContain("style-src 'self';")
         ->and(public_path('css/auth.css'))->toBeFile();
+});
+
+it('keeps the reset token out of the queue tables', function () {
+    config(['queue.default' => 'database']);
+    $user = owner();
+
+    $this->postJson('/api/v1/auth/forgot-password', ['email' => $user->email])->assertOk();
+
+    $payload = DB::table('jobs')->value('payload');
+    expect($payload)->not->toBeNull()->toContain('QueuedResetPassword')
+        // Encrypted: the serialized notification, with its plaintext token, is not readable in the row.
+        ->and(json_decode($payload, true)['data']['command'])->not->toContain('s:5:"token"');
 });

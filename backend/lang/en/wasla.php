@@ -40,6 +40,8 @@ return [
     'error_car_not_owned' => 'This car does not belong to your account.',
     'error_subscription_expired' => 'Subscription expired. Please renew to keep using this car.',
     'error_message_blocked' => 'This text is not allowed. Please change it and try again.',
+    'error_moderation_limit' => 'You have changed your texts many times today. Please try again tomorrow.',
+    'contacts_limit' => 'A car can have at most :max emergency contacts.',
     'error_chat_unavailable' => 'Chat is not available.',
     'error_chats_paused' => 'The owner is not accepting new messages right now.',
     'error_renewal_no_tag' => 'This car has no activated tag to renew.',

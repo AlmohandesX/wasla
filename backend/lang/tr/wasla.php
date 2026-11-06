@@ -40,6 +40,8 @@ return [
     'error_car_not_owned' => 'Bu araç hesabınıza ait değil.',
     'error_subscription_expired' => 'Abonelik süresi doldu. Bu aracı kullanmaya devam etmek için lütfen yenileyin.',
     'error_message_blocked' => 'Bu metne izin verilmiyor. Lütfen değiştirip tekrar deneyin.',
+    'error_moderation_limit' => 'Bugün metinlerinizi çok kez değiştirdiniz. Lütfen yarın tekrar deneyin.',
+    'contacts_limit' => 'Bir araç en fazla :max acil durum kişisine sahip olabilir.',
     'error_chat_unavailable' => 'Sohbet kullanılamıyor.',
     'error_chats_paused' => 'Sahibi şu an yeni mesaj kabul etmiyor.',
     'error_renewal_no_tag' => 'Bu araca bağlı etkin bir etiket yok.',

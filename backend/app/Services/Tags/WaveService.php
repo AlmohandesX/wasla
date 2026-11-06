@@ -27,8 +27,11 @@ class WaveService
 
     private const INSERT_BATCH = 1000;
 
-    /** QR SVGs are written to the zip in chunks of this size, which bounds memory. */
-    private const PACKAGE_CHUNK = 250;
+    /**
+     * QR SVGs (about 25 KB each) are staged as files and added to the zip in chunks of this size. Each chunk closes the
+     * zip, which rewrites it, so a 50k wave rewrites it 10 times; staging on disk keeps memory flat whatever the size.
+     */
+    private const PACKAGE_CHUNK = 5000;
 
     public function create(int $size, User $admin): Wave
     {
@@ -170,7 +173,12 @@ class WaveService
         $final = $disk->path($relative);
         $workZip = $final.'.part';
         $csvPath = $final.'.csv.part';
+        $stage = $final.'.svg.part';
         @unlink($workZip);
+        $this->removeStage($stage);
+        if (! @mkdir($stage, 0700, true)) {
+            throw new RuntimeException('Cannot create the wave staging directory.');
+        }
 
         $qrOptions = self::qrOptions();
 
@@ -179,7 +187,7 @@ class WaveService
 
         try {
             Tag::query()->where('wave_id', $wave->id)->select(['id', 'serial', 'token'])
-                ->chunkById(self::PACKAGE_CHUNK, function ($tags) use ($qrOptions, $csv, $workZip) {
+                ->chunkById(self::PACKAGE_CHUNK, function ($tags) use ($qrOptions, $csv, $workZip, $stage) {
                     $zip = new ZipArchive;
                     if ($zip->open($workZip, ZipArchive::CREATE) !== true) {
                         throw new RuntimeException('Cannot open the wave package for writing.');
@@ -187,11 +195,17 @@ class WaveService
                     foreach ($tags as $tag) {
                         $url = $tag->publicUrl();
                         fwrite($csv, $tag->serial.','.$url."\n");
-                        $zip->addFromString("qr/{$tag->serial}.svg", (new QRCode($qrOptions))->render($url));
+                        $file = $stage.'/'.$tag->serial.'.svg';
+                        if (file_put_contents($file, (new QRCode($qrOptions))->render($url)) === false) {
+                            throw new RuntimeException('Cannot stage a QR code.');
+                        }
+                        $zip->addFile($file, "qr/{$tag->serial}.svg");
                     }
+                    // The staged files are read during the close, so they can only go after it.
                     if (! $zip->close()) {
                         throw new RuntimeException('Cannot write the wave package.');
                     }
+                    $this->removeStage($stage, keepDirectory: true);
                 });
             fclose($csv);
 
@@ -213,8 +227,19 @@ class WaveService
             }
             @unlink($csvPath);
             @unlink($workZip);
+            $this->removeStage($stage);
         }
 
         return $relative;
+    }
+
+    private function removeStage(string $stage, bool $keepDirectory = false): void
+    {
+        foreach (glob($stage.'/*.svg') ?: [] as $file) {
+            @unlink($file);
+        }
+        if (! $keepDirectory) {
+            @rmdir($stage);
+        }
     }
 }

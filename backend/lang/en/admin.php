@@ -105,7 +105,7 @@ return [
         'export_to' => 'To (Istanbul date)',
         'flags' => [
             'amount_mismatch' => 'Amount mismatch', 'currency_mismatch' => 'Currency mismatch', 'refunded_at_provider' => 'Refunded at provider',
-            'paid_on_revoked_tag' => 'Paid on revoked tag', 'settled_on_replacement' => 'Settled on replacement tag', 'settlement_failed' => 'Settlement failed',
+            'paid_on_revoked_tag' => 'Paid on revoked tag', 'settled_on_replacement' => 'Settled on replacement tag', 'settled_after_transfer' => 'Settled after the tag changed hands', 'settlement_failed' => 'Settlement failed',
         ],
         'statuses' => ['pending' => 'Pending', 'paid' => 'Paid', 'failed' => 'Failed', 'refunded' => 'Refunded'],
     ],

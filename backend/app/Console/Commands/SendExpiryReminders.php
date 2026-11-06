@@ -28,6 +28,8 @@ class SendExpiryReminders extends Command
                 ->whereNull('revoked_at')
                 ->where('expires_at', '>=', $day->copy()->utc())
                 ->where('expires_at', '<', $day->copy()->addDay()->utc())
+                // A suspended owner cannot sign in or renew, so they get no pushes.
+                ->whereHas('car.user', fn ($users) => $users->whereNull('suspended_at'))
                 ->with('car.user')
                 ->each(function (Tag $tag) use ($days, $push) {
                     // The expiry date is in the marker, so a renewed tag gets its notices again next year.

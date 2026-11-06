@@ -1,7 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
 
-import { unregisterDeviceToken } from '../api/push';
-
 const KEY = 'wasla.pushToken';
 
 /**
@@ -27,22 +25,20 @@ export async function rememberToken(userId: number, token: string): Promise<void
   }
 }
 
-/** Best effort, called while the session is still valid: the owner is signing out whether or not this works. */
-export async function unregisterStoredToken(): Promise<void> {
+/**
+ * Hands over this phone's push token for the logout request, which drops it on the server together with the
+ * session, and forgets it locally. Null when this phone never registered one.
+ */
+export async function takeStoredToken(): Promise<string | null> {
   let token = registered?.token ?? null;
+  registered = null;
   try {
     token = token ?? (await SecureStore.getItemAsync(KEY));
+    await SecureStore.deleteItemAsync(KEY);
   } catch {
     // ignore
   }
-  registered = null;
-  if (!token) return;
-  try {
-    await unregisterDeviceToken(token);
-    await SecureStore.deleteItemAsync(KEY);
-  } catch {
-    // The backend also drops tokens Expo reports as dead.
-  }
+  return token;
 }
 
 /**

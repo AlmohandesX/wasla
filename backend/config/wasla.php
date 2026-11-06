@@ -33,6 +33,9 @@ return [
         'thresholds' => [],
         // Provider calls per Istanbul day; past it, messages pass on the blacklist alone and are flagged.
         'daily_cap' => (int) env('MODERATION_DAILY_CAP', 5000),
+        // Owner texts (status, default message, contact labels) one owner may have checked per Istanbul day; past it
+        // the write is refused, so no single account can spend the platform cap.
+        'owner_daily_cap' => 50,
     ],
 
     'chat' => [

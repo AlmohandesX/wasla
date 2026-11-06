@@ -15,4 +15,10 @@ class UpdateContactRequest extends StoreContactRequest
             'position' => ['sometimes', 'integer', 'min:0', 'max:65535'],
         ];
     }
+
+    /** Editing a contact does not add one, so the per-car cap does not apply. */
+    public function after(): array
+    {
+        return [];
+    }
 }

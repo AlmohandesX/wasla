@@ -236,3 +236,20 @@ test('a different user signing in does not inherit a payment in progress', async
   });
   expect(pendingFor(5)).toBeNull();
 });
+
+test('signing out sends this phone push token with logout so the server drops it', async () => {
+  await setToken('t');
+  mockStore.set('wasla.pushToken', 'ExponentPushToken[phone]');
+  fetchMock.mockResolvedValueOnce(reply(200, USER));
+  await mount();
+  fetchMock.mockResolvedValue(reply(204));
+  await act(async () => {
+    await session.signOut();
+  });
+
+  const logout = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/auth/logout'));
+  expect(logout).toBeDefined();
+  expect(JSON.parse(logout![1].body)).toEqual({ device_token: 'ExponentPushToken[phone]' });
+  expect(mockStore.has('wasla.pushToken')).toBe(false);
+  expect(session.user).toBeNull();
+});

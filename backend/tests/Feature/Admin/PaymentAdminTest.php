@@ -379,3 +379,19 @@ it('translates the flag reason in the table', function () {
 
     Livewire::test(ManagePayments::class)->assertSee(__('admin.payments.flags.paid_on_revoked_tag'));
 });
+
+it('lists a refund in the period it was made, also when the sale was in an earlier period', function () {
+    [$tag, , $user] = adminClaimedTag();
+    $payment = adminSettledPayment($tag, $user->id);
+    app(RenewalService::class)->markRefunded($payment, $this->admin, 'customer asked');
+    $payment->update(['paid_at' => Carbon::parse('2030-01-15 09:00:00', 'UTC'), 'refunded_at' => Carbon::parse('2030-02-10 09:00:00', 'UTC')]);
+
+    $january = adminExportRows('2030-01-01', '2030-01-31');
+    $february = adminExportRows('2030-02-01', '2030-02-28');
+
+    expect(array_column($january, 'reference'))->toBe([$payment->reference])
+        ->and(array_column($february, 'reference'))->toBe([$payment->reference])
+        ->and($february[0]['status'])->toBe('refunded')
+        ->and($february[0]['refunded_at'])->toBe('2030-02-10 12:00:00')
+        ->and(adminExportRows('2030-03-01', '2030-03-31'))->toBe([]);
+});

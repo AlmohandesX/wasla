@@ -6,6 +6,7 @@ use App\Enums\ModerationDecision;
 use App\Models\BlacklistTerm;
 use App\Models\ModerationEvent;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class ModerationPipeline
 {
@@ -76,7 +77,14 @@ class ModerationPipeline
         $key = 'moderation:calls:'.now(config('wasla.display_timezone'))->toDateString();
         Cache::add($key, 0, now()->addDays(2));
 
-        return Cache::increment($key) <= (int) config('wasla.moderation.daily_cap');
+        $cap = (int) config('wasla.moderation.daily_cap');
+        $calls = Cache::increment($key);
+        if ($calls === $cap + 1) {
+            // Once a day, at the first call past the cap: from here every message passes on the blacklist alone, flagged.
+            Log::error('Moderation daily cap reached; messages fall back to the blacklist until tomorrow.', ['cap' => $cap]);
+        }
+
+        return $calls <= $cap;
     }
 
     private function finish(string $text, array $context, bool $record, ModerationResult $result): ModerationResult

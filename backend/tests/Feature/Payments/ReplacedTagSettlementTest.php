@@ -5,6 +5,8 @@ use App\Models\Payment;
 use App\Models\Tag;
 use App\Services\Payments\Drivers\FakeGateway;
 use App\Services\Tags\TagAdminService;
+use App\Services\Tags\TagClaimer;
+use App\Services\Tags\TagTransfer;
 use Illuminate\Support\Facades\Log;
 
 function paymentForTag(Tag $tag, int $userId): Payment
@@ -118,4 +120,36 @@ it('never replaces an earlier flag, and logs the one it could not record', funct
     expect($payment->status)->toBe(PaymentStatus::Paid)->and($payment->flag_reason)->toBe('amount_mismatch');
     Log::shouldHaveReceived('warning')->withArgs(fn ($m, $c = []) => ($c['payment_id'] ?? null) === $payment->id
         && ($c['skipped_flag'] ?? null) === 'settled_on_replacement')->once();
+});
+
+it('flags a payment that settles after the tag passed to someone else, and still extends the tag', function () {
+    [$tag, , $payer] = adminClaimedTag();
+    $payment = paymentForTag($tag, $payer->id);
+    app(TagAdminService::class)->forceRelease($tag, adminUser(), 'sold car');
+    app(TagClaimer::class)->claim(owner(), $tag->token, carAttrs());
+    $expiry = $tag->fresh()->expires_at;
+
+    payCallback($payment);
+
+    expect($payment->fresh()->flag_reason)->toBe('settled_after_transfer')
+        ->and($tag->fresh()->expires_at->equalTo($expiry->copy()->addYear()))->toBeTrue();
+});
+
+it('flags a payment that settles on a tag left unlinked since checkout', function () {
+    [$tag, $car, $payer] = adminClaimedTag();
+    $payment = paymentForTag($tag, $payer->id);
+    app(TagTransfer::class)->unlink($tag);
+
+    payCallback($payment);
+
+    expect($payment->fresh()->flag_reason)->toBe('settled_after_transfer');
+});
+
+it('does not flag a payment that settles while the payer still holds the tag', function () {
+    [$tag, , $payer] = adminClaimedTag();
+    $payment = paymentForTag($tag, $payer->id);
+
+    payCallback($payment);
+
+    expect($payment->fresh()->flag_reason)->toBeNull();
 });

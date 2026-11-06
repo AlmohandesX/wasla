@@ -13,6 +13,7 @@ class LogoutRequest extends FormRequest
 
     public function rules(): array
     {
-        return [];
+        // This phone's push token, so it stops getting pushes even if the app's own unregister call failed.
+        return ['device_token' => ['nullable', 'string', 'max:255']];
     }
 }

@@ -23,6 +23,7 @@ class UserAdminService
         DB::transaction(function () use ($user, $admin, $reason) {
             $user->forceFill(['suspended_at' => $user->suspended_at ?? now()])->save();
             $user->tokens()->delete();
+            $user->deviceTokens()->delete();
             $this->audit($admin, 'user.suspend', 'user', $user->id, $reason);
         });
     }

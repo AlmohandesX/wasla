@@ -4,7 +4,7 @@ import { apiRequest, setSessionHandlers } from '../api/client';
 import { ApiError, toApiError } from '../api/errors';
 import { getLocale, loadLocale } from '../i18n';
 import { clearAllPending } from '../lib/pendingRenewals';
-import { forgetStoredToken, resetRegistration, unregisterStoredToken } from '../push/deviceToken';
+import { forgetStoredToken, resetRegistration, takeStoredToken } from '../push/deviceToken';
 import { clearToken, getToken, setToken } from './token';
 
 export type User = {
@@ -131,10 +131,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     try {
       // With no user (the boot error screen) there is nothing to revoke and the server may be unreachable.
-      // Otherwise revoke the token and drop this phone's push token together, each with a short timeout:
+      // Otherwise one short request revokes the session and drops this phone's push token on the server:
       // signing out locally must not wait on the server.
       if (user && (await getToken())) {
-        await Promise.allSettled([unregisterStoredToken(), apiRequest<void>('auth/logout', { method: 'POST', timeoutMs: 3000 })]);
+        const deviceToken = await takeStoredToken();
+        await apiRequest<void>('auth/logout', {
+          method: 'POST',
+          body: deviceToken ? { device_token: deviceToken } : {},
+          timeoutMs: 3000,
+        });
       }
     } catch {
       // Ignored on purpose.
