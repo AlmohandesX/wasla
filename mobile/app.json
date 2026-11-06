@@ -8,6 +8,8 @@
     "scheme": "wasla",
     "userInterfaceStyle": "light",
     "android": {
+      "package": "com.wasla.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

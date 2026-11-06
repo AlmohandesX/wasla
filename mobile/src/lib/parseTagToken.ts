@@ -1,4 +1,4 @@
-import { isLocalHost } from '../api/config';
+import { allowLocalHttp, isLocalHost } from '../api/config';
 
 /** The backend's canonical token shape (TokenGenerator::isWellFormed): 16 base62 characters. */
 const TOKEN = /^[0-9A-Za-z]{16}$/;
@@ -17,7 +17,7 @@ function parse(raw: string): URL | null {
  * One trailing slash is tolerated because the backend route (`t/{token}`) answers with or without it.
  * Plain http counts only in a development build (`allowHttp`) and only for a local address.
  */
-export function parseTagToken(scanned: string, tagBaseUrl: string, allowHttp: boolean = __DEV__): string | null {
+export function parseTagToken(scanned: string, tagBaseUrl: string, allowHttp: boolean = allowLocalHttp()): string | null {
   const base = parse(tagBaseUrl);
   const url = parse(scanned);
   if (!base || !url) return null;

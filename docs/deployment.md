@@ -295,7 +295,7 @@ Expo Go cannot receive remote push (SDK 53+ removed it on Android) and does not 
 1. `cd mobile && npm install -g eas-cli && eas login`.
 2. `npx expo install expo-dev-client` (it is not yet a dependency of the app; add it and commit the change).
 3. `eas init` creates the EAS project and writes its `projectId` into `app.json` under `expo.extra.eas.projectId`. The app reads that value (`mobile/src/push/register.ts` takes `Constants.expoConfig.extra.eas.projectId`, falling back to `Constants.easConfig.projectId`) and registers for push only when it exists. Commit the `projectId` (it is not a secret).
-4. `eas build:configure`, then add a `development` profile with `"developmentClient": true` and `"distribution": "internal"` in `eas.json`.
+4. Add a `development` profile with `"developmentClient": true` and `"distribution": "internal"` in `eas.json`.
 5. Android: `eas build --profile development --platform android`, install the APK on the phone. For push on Android you need an FCM server credential: create a Firebase project, add the Android app (package name from `app.json` or `eas.json`), and run `eas credentials` to upload the FCM V1 service account key.
 6. iOS: needs the Apple Developer Program (see launch checklist), then `eas build --profile development --platform ios`; EAS manages the APNs key.
 7. Start Metro with `npx expo start --dev-client`, scan the QR code in the development build.
@@ -305,6 +305,20 @@ Expo Go cannot receive remote push (SDK 53+ removed it on Android) and does not 
 
 Release builds only accept `https` API URLs; plain http is accepted only in a development build for localhost or LAN addresses.
 
+### Android test APK (no Apple account, no dev server)
+
+`mobile/eas.json` has a `preview` profile that builds an installable APK pointed at the local backend
+(`http://192.168.1.164:8000`; change both URLs in `eas.json` if the PC's LAN IP changes). It sets
+`EXPO_PUBLIC_ALLOW_LOCAL_HTTP=1`, which is inlined at build time and lets this build use plain http to a
+localhost/LAN address only, and `mobile/app.config.js` then enables Android cleartext traffic for it. The
+`production` profile sets neither, so store builds stay https-only; give it `EXPO_PUBLIC_API_URL` and
+`EXPO_PUBLIC_TAG_BASE_URL` (https) before the first store build.
+
+1. `npm install -g eas-cli`, `eas login`, then in `mobile/`: `eas init` (once; commit the `projectId` it adds).
+2. `eas build --platform android --profile preview`, open the link it prints on the phone, install the APK.
+3. Keep `php artisan serve --host=0.0.0.0 --port=8000` and `php artisan queue:work` running on the PC, phone on
+   the same Wi-Fi. Push needs the FCM key from step 5 above; without it the app works and simply offers no push.
+
 ## 13. Not confirmed
 
 See the list at the end of the verification section of `docs/launch-checklist.md` and the "Unconfirmed in this guide" list below.
@@ -312,5 +326,5 @@ See the list at the end of the verification section of `docs/launch-checklist.md
 Unconfirmed in this guide:
 
 - Nothing in sections 2 to 10 has run on a real Ubuntu server; Nginx, Supervisor, certbot and cron snippets are standard but untested here.
-- `expo-dev-client` is not yet in `mobile/package.json`; `eas.json` and a `projectId` do not exist yet. Section 12 describes creating them.
+- `expo-dev-client` is not yet in `mobile/package.json` and no `projectId` exists yet; `eas.json` has only the `preview` (test APK) and `production` profiles. Section 12 describes adding a `development` profile.
 - The exact Android package name and the FCM / APNs credentials are not configured in the repo.

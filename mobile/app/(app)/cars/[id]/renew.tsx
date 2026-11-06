@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getCar } from '../../../../src/api/cars';
-import { getApiBaseUrl } from '../../../../src/api/config';
+import { allowLocalHttp, getApiBaseUrl } from '../../../../src/api/config';
 import { fieldError, toApiError, type ApiError } from '../../../../src/api/errors';
 import { startRenewal } from '../../../../src/api/renewals';
 import { Button } from '../../../../src/components/Button';
@@ -153,7 +153,7 @@ export default function Renew() {
   }, [watchedUntil, phase]);
 
   const openCheckout = async (url: string) => {
-    if (!isAllowedCheckoutUrl(url, getApiBaseUrl(), __DEV__)) {
+    if (!isAllowedCheckoutUrl(url, getApiBaseUrl(), allowLocalHttp())) {
       setNotice(t('renew.badUrl'));
       setPhase('pending');
       return;

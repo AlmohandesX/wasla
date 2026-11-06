@@ -15,8 +15,8 @@ export function isLocalHost(host: string): boolean {
 
 /**
  * EXPO_PUBLIC_API_URL is the server origin; the API lives under /api/v1.
- * https is always accepted. Plain http is accepted only in a development build and only for a
- * localhost or LAN address, so a release build can never send tokens over cleartext.
+ * https is always accepted. Plain http is accepted only when allowLocalHttp() (a development build or a local
+ * test build) and only for a localhost or LAN address, so a store build can never send tokens over cleartext.
  */
 export function resolveApiBaseUrl(raw: string | undefined, isDev: boolean): string {
   if (!raw) throw configError();
@@ -33,9 +33,19 @@ export function resolveApiBaseUrl(raw: string | undefined, isDev: boolean): stri
   return `${url.origin}${url.pathname.replace(/\/+$/, '')}/api/v1`;
 }
 
+/**
+ * Whether plain http to a localhost/LAN address is allowed: in a development build, or in a test build made with
+ * EXPO_PUBLIC_ALLOW_LOCAL_HTTP=1 (the EAS "preview" profile, for testing against a server on the local network).
+ * The value is inlined at build time, so a store build without it can never be switched to cleartext.
+ */
+export function allowLocalHttp(): boolean {
+  // Must stay a literal property access so Expo can inline it into the bundle.
+  return __DEV__ || process.env.EXPO_PUBLIC_ALLOW_LOCAL_HTTP === '1';
+}
+
 export function getApiBaseUrl(): string {
   // Must stay a literal property access so Expo can inline it into the bundle.
-  return resolveApiBaseUrl(process.env.EXPO_PUBLIC_API_URL, __DEV__);
+  return resolveApiBaseUrl(process.env.EXPO_PUBLIC_API_URL, allowLocalHttp());
 }
 
 /** EXPO_PUBLIC_TAG_BASE_URL is the printed tag prefix and already ends in /t, so a tag URL is `<base>/<token>`. */
