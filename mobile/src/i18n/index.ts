@@ -5,12 +5,12 @@ import en from './en.json';
 import tr from './tr.json';
 
 export type Locale = 'tr' | 'en';
-export const LOCALES: Locale[] = ['tr', 'en'];
+export const LOCALES: Locale[] = ['en', 'tr'];
 
 const dictionaries: Record<Locale, Record<string, string>> = { tr, en };
 const STORE_KEY = 'wasla.locale';
 
-let current: Locale = 'tr'; // Turkish is the default.
+let current: Locale = 'en'; // English is the default; Turkish is the second language.
 const listeners = new Set<() => void>();
 
 export function getLocale(): Locale {
@@ -49,11 +49,11 @@ export function useLocale(): Locale {
 }
 
 export function hasKey(key: string): boolean {
-  return key in dictionaries[current] || key in dictionaries.tr;
+  return key in dictionaries[current] || key in dictionaries.en;
 }
 
 export function t(key: string, params?: Record<string, string | number>): string {
-  const template = dictionaries[current][key] ?? dictionaries.tr[key] ?? key;
+  const template = dictionaries[current][key] ?? dictionaries.en[key] ?? key;
   if (!params) return template;
   return template.replace(/\{(\w+)\}/g, (match, name: string) =>
     name in params ? String(params[name]) : match,

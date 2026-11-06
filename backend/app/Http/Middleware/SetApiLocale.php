@@ -8,15 +8,15 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Locale for API responses: the first supported language in Accept-Language, else the signed-in owner's
- * saved locale, else Turkish. An unsupported language (say "fr") is not a preference, so it falls through.
+ * saved locale, else English (the default). An unsupported language (say "fr") is not a preference, so it falls through.
  */
 class SetApiLocale
 {
-    private const SUPPORTED = ['tr', 'en'];
+    private const SUPPORTED = ['en', 'tr'];
 
     public function handle(Request $request, Closure $next): Response
     {
-        app()->setLocale($this->fromHeader($request) ?? $this->fromOwner($request) ?? 'tr');
+        app()->setLocale($this->fromHeader($request) ?? $this->fromOwner($request) ?? 'en');
 
         $response = $next($request);
         $response->headers->set('Vary', 'Accept-Language, Authorization');

@@ -122,7 +122,7 @@ it('serves translated admin strings and Filament own Turkish strings', function 
         }
     }
     expect(array_keys(Arr::dot(trans('admin', [], 'tr'))))->toBe(array_keys(Arr::dot(trans('admin', [], 'en'))))
-        ->and(app()->getLocale())->toBe('tr')
+        ->and(app()->getLocale())->toBe('en')
         ->and(trans('filament-panels::auth/pages/login.title', [], 'tr'))->not->toBe('filament-panels::auth/pages/login.title');
 });
 

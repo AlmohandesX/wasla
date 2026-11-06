@@ -51,7 +51,7 @@ test('attaches the bearer token from secure storage', async () => {
   const [url, init] = fetchMock.mock.calls[0];
   expect(url).toBe('http://192.168.1.20:8000/api/v1/me');
   expect(init.headers.Authorization).toBe('Bearer abc123');
-  expect(init.headers['Accept-Language']).toBe('tr');
+  expect(init.headers['Accept-Language']).toBe('en');
   expect(init.headers.Accept).toBe('application/json');
 });
 

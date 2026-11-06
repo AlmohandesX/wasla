@@ -15,24 +15,26 @@ it('picks the locale from Accept-Language', function () {
         ->assertUnauthorized()->assertJsonPath('message', 'The email or password is incorrect.');
 });
 
-it('falls back to the signed-in owner locale, then Turkish', function () {
-    $user = owner(['email_verified_at' => null, 'locale' => 'en']);
-    $english = 'You need to verify your email address for this action.';
+it('falls back to the signed-in owner locale, then English', function () {
+    $user = owner(['email_verified_at' => null, 'locale' => 'tr']);
+    $turkish = 'Bu işlem için e-posta adresinizi doğrulamanız gerekir.';
 
     $this->getJson('/api/v1/cars', bearer($user) + ['Accept-Language' => ''])
-        ->assertForbidden()->assertJsonPath('message', $english);
+        ->assertForbidden()->assertJsonPath('message', $turkish);
 
     // An unsupported language is not a preference: the owner's own locale applies.
     $this->getJson('/api/v1/cars', bearer($user) + ['Accept-Language' => 'fr'])
-        ->assertForbidden()->assertJsonPath('message', $english);
+        ->assertForbidden()->assertJsonPath('message', $turkish);
 
     // An explicit supported language wins over the saved one.
-    $this->getJson('/api/v1/cars', bearer($user) + ['Accept-Language' => 'tr'])
-        ->assertForbidden()->assertJsonPath('message', 'Bu işlem için e-posta adresinizi doğrulamanız gerekir.');
+    $this->getJson('/api/v1/cars', bearer($user) + ['Accept-Language' => 'en'])
+        ->assertForbidden()->assertJsonPath('message', 'You need to verify your email address for this action.');
 
     app('auth')->forgetGuards(); // one process serves every request here; a real request starts clean
     $this->postJson('/api/v1/auth/login', LOGIN_BAD, ['Accept-Language' => ''])
-        ->assertJsonPath('message', 'E-posta veya şifre hatalı.');
+        ->assertJsonPath('message', 'The email or password is incorrect.');
+    $this->postJson('/api/v1/auth/login', LOGIN_BAD, ['Accept-Language' => 'ar'])
+        ->assertJsonPath('message', 'The email or password is incorrect.');
 });
 
 it('translates validation messages and the privacy_consent attribute', function () {

@@ -1,7 +1,8 @@
 <?php
 
-// The test client sends an English Accept-Language by default; blank it so the tests mean "no preference".
-beforeEach(fn () => $this->withHeader('Accept-Language', ''));
+// The test client sends an English Accept-Language by default; ask for Turkish so the Turkish copy is pinned.
+// English, the default, is covered by its own test below.
+beforeEach(fn () => $this->withHeader('Accept-Language', 'tr'));
 
 function resetLink(?string $email = null): array
 {
@@ -9,6 +10,14 @@ function resetLink(?string $email = null): array
 
     return [$user, app('auth.password.broker')->createToken($user)];
 }
+
+it('shows the reset form in English when no language is asked for', function () {
+    [$user, $token] = resetLink();
+
+    $this->withHeader('Accept-Language', '')
+        ->get('/reset-password?'.http_build_query(['token' => $token, 'email' => $user->email]))
+        ->assertOk()->assertSee('<html lang="en">', false)->assertDontSee('Yeni şifre');
+});
 
 it('shows the reset form in Turkish with strict headers', function () {
     [$user, $token] = resetLink();

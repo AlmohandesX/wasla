@@ -93,7 +93,7 @@ Screens: login, register, forgot password, my cars, add car by scanning, car det
 - **Dynamic status:** presets plus custom text up to 140 characters, with a duration. Expiry is evaluated at read time, so reverting to the default message needs no scheduled job. Custom text passes moderation.
 - **Reminders:** oil change and license renewal dates per car. Sent through the Expo push service by a daily scheduled job in `Europe/Istanbul`. Remote push cannot be tested in Expo Go since SDK 53, so full push testing waits for a development build.
 - **Chat:** thread list, reply, block visitor, report. Polling every few seconds while open, and a push notification for new messages.
-- **Language:** Turkish by default, plus English, all strings translatable from day one (builder's call). Turkish copy needs review by a native speaker.
+- **Language:** English by default everywhere (app, admin, visitor pages, API replies and emails), plus Turkish, all strings translatable from day one. A visitor whose browser prefers Turkish, an app user who picks Turkish, and an owner whose saved language is Turkish get Turkish (owner decision, 2026-11-06; originally Turkish by default). Turkish copy needs review by a native speaker.
 
 ## 5. Visitor page
 

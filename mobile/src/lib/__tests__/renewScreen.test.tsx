@@ -48,16 +48,16 @@ function input(tree: ReturnType<typeof create>, label: string): ReactTestInstanc
 
 async function fillAndSubmit(tree: ReturnType<typeof create>) {
   const set = (label: string, value: string) => act(() => input(tree, label).props.onChangeText(value));
-  await set('Ad soyad', 'Ayse Yilmaz');
-  await set('Fatura adresi', 'Moda Cd. 1');
-  await set('Şehir', 'Istanbul');
-  await set('Telefon numarası', '0532 123 45 67');
-  await set('T.C. kimlik numarası', VALID_ID);
+  await set('Full name (name and surname)', 'Ayse Yilmaz');
+  await set('Billing address', 'Moda Cd. 1');
+  await set('City', 'Istanbul');
+  await set('Phone number', '0532 123 45 67');
+  await set('National ID number (TC Kimlik No)', VALID_ID);
   await act(async () => tree.root.findByProps({ accessibilityRole: 'checkbox' }).props.onPress());
   await act(async () => {
     tree.root
       .findAll((n) => n.props.accessibilityRole === 'button' && typeof n.props.onPress === 'function')
-      .find((n) => n.props.accessibilityLabel === 'Ödemeye geç')!
+      .find((n) => n.props.accessibilityLabel === 'Continue to payment')!
       .props.onPress();
   });
 }
@@ -76,7 +76,7 @@ test('the national ID is masked, sent once, and cleared from state afterwards', 
   await act(async () => {
     tree = create(<Renew />);
   });
-  const field = input(tree, 'T.C. kimlik numarası');
+  const field = input(tree, 'National ID number (TC Kimlik No)');
   expect(field.props.secureTextEntry).toBe(true);
   expect(field.props.keyboardType).toBe('number-pad');
   expect(field.props.autoComplete).toBe('off');
@@ -89,7 +89,7 @@ test('the national ID is masked, sent once, and cleared from state afterwards', 
   // Success came from the backend poll, and the screen shows the new expiry from the server.
   expect(mockPoll).toHaveBeenCalledWith(9, expect.objectContaining({ intervalMs: 3000 }));
   const text = tree.root.findAll((n) => (n.type as unknown) === 'Text').map((n) => n.children.join('')).join('|');
-  expect(text).toContain('Ödeme alındı');
+  expect(text).toContain('Payment received');
   expect(text).toContain('2028');
 });
 
@@ -98,10 +98,10 @@ test('an invalid national ID is refused before any request', async () => {
   await act(async () => {
     tree = create(<Renew />);
   });
-  await act(async () => input(tree, 'T.C. kimlik numarası').props.onChangeText('12345678901'));
+  await act(async () => input(tree, 'National ID number (TC Kimlik No)').props.onChangeText('12345678901'));
   await act(async () =>
     tree.root
-      .findAll((n) => n.props.accessibilityRole === 'button' && n.props.accessibilityLabel === 'Ödemeye geç')[0]
+      .findAll((n) => n.props.accessibilityRole === 'button' && n.props.accessibilityLabel === 'Continue to payment')[0]
       .props.onPress(),
   );
   expect(mockStartRenewal).not.toHaveBeenCalled();
@@ -127,27 +127,27 @@ test('a pending result says the payment is being confirmed and offers another ch
   });
   await fillAndSubmit(tree);
   const text = tree.root.findAll((n) => (n.type as unknown) === 'Text').map((n) => n.children.join('')).join('|');
-  expect(text).toContain('Ödemen doğrulanıyor');
-  expect(text).toContain('Tekrar kontrol et');
-  expect(text).not.toContain('tamamlanmadı');
+  expect(text).toContain('Confirming your payment');
+  expect(text).toContain('Check again');
+  expect(text).not.toContain('not completed');
 });
 
 test('after a refused request the national ID field is empty again and the server message shows', async () => {
-  mockStartRenewal.mockRejectedValue(new ApiError(422, 'validation_failed', 'x', { fields: { billing_name: ['Ad soyad gerekli.'] } }));
+  mockStartRenewal.mockRejectedValue(new ApiError(422, 'validation_failed', 'x', { fields: { billing_name: ['Full name gerekli.'] } }));
   let tree!: ReturnType<typeof create>;
   await act(async () => {
     tree = create(<Renew />);
   });
   await fillAndSubmit(tree);
-  expect(input(tree, 'T.C. kimlik numarası').props.value).toBe('');
-  expect(tree.root.findAll((n) => n.props.children === 'Ad soyad gerekli.').length).toBeGreaterThan(0);
+  expect(input(tree, 'National ID number (TC Kimlik No)').props.value).toBe('');
+  expect(tree.root.findAll((n) => n.props.children === 'Full name gerekli.').length).toBeGreaterThan(0);
   expect(mockOpen).not.toHaveBeenCalled();
 });
 
 const textOf = (tree: ReturnType<typeof create>) =>
   tree.root.findAll((n) => (n.type as unknown) === 'Text').map((n) => n.children.join('')).join('|');
 const payButton = (tree: ReturnType<typeof create>) =>
-  tree.root.findAll((n) => n.props.accessibilityRole === 'button' && n.props.accessibilityLabel === 'Ödemeye geç')[0];
+  tree.root.findAll((n) => n.props.accessibilityRole === 'button' && n.props.accessibilityLabel === 'Continue to payment')[0];
 
 test('a double tap starts only one payment', async () => {
   let resolve!: (v: unknown) => void;
@@ -158,11 +158,11 @@ test('a double tap starts only one payment', async () => {
     tree = create(<Renew />);
   });
   const set = (label: string, value: string) => act(() => input(tree, label).props.onChangeText(value));
-  await set('Ad soyad', 'Ayse Yilmaz');
-  await set('Fatura adresi', 'Moda Cd. 1');
-  await set('Şehir', 'Istanbul');
-  await set('Telefon numarası', '0532 123 45 67');
-  await set('T.C. kimlik numarası', VALID_ID);
+  await set('Full name (name and surname)', 'Ayse Yilmaz');
+  await set('Billing address', 'Moda Cd. 1');
+  await set('City', 'Istanbul');
+  await set('Phone number', '0532 123 45 67');
+  await set('National ID number (TC Kimlik No)', VALID_ID);
   await act(async () => tree.root.findByProps({ accessibilityRole: 'checkbox' }).props.onPress());
   const press = payButton(tree).props.onPress;
   // Two taps in the same tick, before React has re-rendered the button as busy.
@@ -188,12 +188,12 @@ test('leaving and coming back shows the pending screen for the same payment, wit
   await act(async () => {
     tree = create(<Renew />);
   });
-  expect(textOf(tree)).toContain('Ödemen doğrulanıyor');
-  expect(textOf(tree)).toContain('Tekrar kontrol et');
-  expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'T.C. kimlik numarası')).toHaveLength(0);
+  expect(textOf(tree)).toContain('Confirming your payment');
+  expect(textOf(tree)).toContain('Check again');
+  expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'National ID number (TC Kimlik No)')).toHaveLength(0);
   mockPoll.mockResolvedValue('paid');
   await act(async () =>
-    tree.root.findAll((n) => n.props.accessibilityLabel === 'Tekrar kontrol et' && n.props.onPress)[0].props.onPress(),
+    tree.root.findAll((n) => n.props.accessibilityLabel === 'Check again' && n.props.onPress)[0].props.onPress(),
   );
   expect(mockPoll).toHaveBeenLastCalledWith(9, expect.anything());
   expect(mockStartRenewal).toHaveBeenCalledTimes(1);
@@ -210,7 +210,7 @@ test('a 409 renewal_pending polls the payment it names and never opens a second 
   await fillAndSubmit(tree);
   expect(mockPoll).toHaveBeenCalledWith(42, expect.anything());
   expect(mockOpen).not.toHaveBeenCalled();
-  expect(textOf(tree)).toContain('Ödeme alındı');
+  expect(textOf(tree)).toContain('Payment received');
 });
 
 test('returning to the app restarts the poll with a fresh deadline while the payment is unsettled', async () => {
@@ -231,7 +231,7 @@ test('returning to the app restarts the poll with a fresh deadline while the pay
   mockPoll.mockResolvedValueOnce('paid');
   await act(async () => handler?.('active'));
   expect(mockPoll).toHaveBeenCalledTimes(2);
-  expect(textOf(tree)).toContain('Ödeme alındı');
+  expect(textOf(tree)).toContain('Payment received');
 });
 
 test('losing focus empties the national ID field', async () => {
@@ -239,10 +239,10 @@ test('losing focus empties the national ID field', async () => {
   await act(async () => {
     tree = create(<Renew />);
   });
-  await act(async () => input(tree, 'T.C. kimlik numarası').props.onChangeText(VALID_ID));
-  expect(input(tree, 'T.C. kimlik numarası').props.value).toBe(VALID_ID);
+  await act(async () => input(tree, 'National ID number (TC Kimlik No)').props.onChangeText(VALID_ID));
+  expect(input(tree, 'National ID number (TC Kimlik No)').props.value).toBe(VALID_ID);
   await act(async () => (globalThis as unknown as { __blur: () => void }).__blur());
-  expect(input(tree, 'T.C. kimlik numarası').props.value).toBe('');
+  expect(input(tree, 'National ID number (TC Kimlik No)').props.value).toBe('');
 });
 
 test('the text fields stop at the lengths the server accepts', async () => {
@@ -250,9 +250,9 @@ test('the text fields stop at the lengths the server accepts', async () => {
   await act(async () => {
     tree = create(<Renew />);
   });
-  expect(input(tree, 'Ad soyad').props.maxLength).toBe(120);
-  expect(input(tree, 'Fatura adresi').props.maxLength).toBe(300);
-  expect(input(tree, 'Şehir').props.maxLength).toBe(80);
+  expect(input(tree, 'Full name (name and surname)').props.maxLength).toBe(120);
+  expect(input(tree, 'Billing address').props.maxLength).toBe(300);
+  expect(input(tree, 'City').props.maxLength).toBe(80);
 });
 
 test('the legal line carries the draft marker and opens the privacy notice', async () => {
@@ -260,7 +260,7 @@ test('the legal line carries the draft marker and opens the privacy notice', asy
   await act(async () => {
     tree = create(<Renew />);
   });
-  expect(textOf(tree)).toContain('TASLAK');
+  expect(textOf(tree)).toContain('DRAFT');
   await act(async () =>
     tree.root.findAll((n) => n.props.accessibilityRole === 'button' && n.props.accessibilityState?.expanded === false)[0].props.onPress(),
   );
@@ -277,11 +277,11 @@ describe('an abandoned checkout', () => {
     await act(async () => {
       tree = create(<Renew />);
     });
-    expect(textOf(tree)).toContain('Ödemen doğrulanıyor');
-    const startNew = tree.root.findAll((n) => n.props.accessibilityLabel === 'Yeni ödeme başlat' && n.props.onPress)[0];
+    expect(textOf(tree)).toContain('Confirming your payment');
+    const startNew = tree.root.findAll((n) => n.props.accessibilityLabel === 'Start a new payment' && n.props.onPress)[0];
     expect(startNew).toBeDefined();
     await act(async () => startNew.props.onPress());
-    expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'T.C. kimlik numarası').length).toBeGreaterThan(0);
+    expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'National ID number (TC Kimlik No)').length).toBeGreaterThan(0);
     expect(pendingFor(5)).toBeNull();
   });
 
@@ -292,8 +292,8 @@ describe('an abandoned checkout', () => {
     await act(async () => {
       tree = create(<Renew />);
     });
-    expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Yeni ödeme başlat')).toHaveLength(0);
-    await act(async () => tree.root.findAll((n) => n.props.accessibilityLabel === 'Ödeme sayfasını tekrar aç' && n.props.onPress)[0].props.onPress());
+    expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Start a new payment')).toHaveLength(0);
+    await act(async () => tree.root.findAll((n) => n.props.accessibilityLabel === 'Open the payment page again' && n.props.onPress)[0].props.onPress());
     expect(mockOpen).toHaveBeenCalledWith(URL);
   });
 
@@ -305,8 +305,8 @@ describe('an abandoned checkout', () => {
     });
     await fillAndSubmit(tree);
     expect(mockPoll).not.toHaveBeenCalled();
-    expect(textOf(tree)).toContain('13 dakika');
-    expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Tekrar kontrol et')).toHaveLength(0);
+    expect(textOf(tree)).toContain('13 minutes');
+    expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Check again')).toHaveLength(0);
   });
 });
 
@@ -337,8 +337,8 @@ describe('a phone with the wrong clock', () => {
       checkout_expires_at: new Date(server - 1000).toISOString(), // absolute time looks like 3 h in the future to this phone
       checkout_expires_in: 0,
     });
-    expect(label(tree, 'Yeni ödeme başlat')).toHaveLength(1);
-    expect(label(tree, 'Ödeme sayfasını tekrar aç')).toHaveLength(0);
+    expect(label(tree, 'Start a new payment')).toHaveLength(1);
+    expect(label(tree, 'Open the payment page again')).toHaveLength(0);
   });
 
   test('hours fast: a checkout the server says is still payable can be reopened', async () => {
@@ -348,8 +348,8 @@ describe('a phone with the wrong clock', () => {
       checkout_expires_at: new Date(server + 20 * 60_000).toISOString(), // absolute time looks 5 h in the past
       checkout_expires_in: 20 * 60,
     });
-    expect(label(tree, 'Ödeme sayfasını tekrar aç')).toHaveLength(1);
-    expect(label(tree, 'Yeni ödeme başlat')).toHaveLength(0);
+    expect(label(tree, 'Open the payment page again')).toHaveLength(1);
+    expect(label(tree, 'Start a new payment')).toHaveLength(0);
   });
 });
 
@@ -367,7 +367,7 @@ describe('a screen left open', () => {
       tree = create(<Renew />);
     });
     await fillAndSubmit(tree);
-    const startNew = () => tree.root.findAll((n) => n.props.accessibilityLabel === 'Yeni ödeme başlat' && n.props.onPress);
+    const startNew = () => tree.root.findAll((n) => n.props.accessibilityLabel === 'Start a new payment' && n.props.onPress);
     expect(startNew()).toHaveLength(0);
     await act(async () => {
       jest.advanceTimersByTime(91_000);

@@ -4,8 +4,8 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Testing\TestResponse;
 
-// Symfony's test requests send Accept-Language: en-us unless told otherwise; an empty one means Turkish.
-const TURKISH = ['Accept-Language' => ''];
+// Symfony's test requests send Accept-Language: en-us unless told otherwise. English is the default; Turkish is asked for.
+const TURKISH = ['Accept-Language' => 'tr-TR,tr;q=0.9'];
 
 const STRICT_CSP_START = "default-src 'self'; script-src 'self'; style-src 'self';";
 
@@ -92,6 +92,10 @@ it('serves a minimal translated WASLA page at the root instead of the framework 
     $tr = $this->get('/', TURKISH)->assertOk();
     assertPlainPage($tr);
     $tr->assertSee('WASLA')->assertSee(__('pages.home_body', [], 'tr'));
+
+    // No preference, or an unsupported language, gets English.
+    $this->get('/', ['Accept-Language' => ''])->assertOk()->assertSee(__('pages.home_body', [], 'en'));
+    $this->get('/', ['Accept-Language' => 'ar'])->assertOk()->assertSee(__('pages.home_body', [], 'en'));
 
     $this->get('/', ['Accept-Language' => 'en'])->assertOk()->assertSee(__('pages.home_body', [], 'en'));
 });

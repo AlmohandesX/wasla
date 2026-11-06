@@ -147,13 +147,14 @@ it('sends noindex', function () {
     $this->get('/t/'.tagFixture()->token)->assertHeader('X-Robots-Tag', 'noindex, nofollow');
 });
 
-it('uses Turkish by default and English on Accept-Language en', function () {
+it('uses English by default and Turkish on Accept-Language tr', function () {
     $tag = scanTag();
 
-    $this->get("/t/{$tag->token}", ['Accept-Language' => ''])->assertSee('Sahibine mesaj gönder')->assertSee('<html lang="tr">', false);
-    $this->get("/t/{$tag->token}", ['Accept-Language' => 'en-GB,en;q=0.8'])
-        ->assertSee('Message the owner')->assertSee('<html lang="en">', false);
-    $this->get("/t/{$tag->token}", ['Accept-Language' => 'de'])->assertSee('Sahibine mesaj gönder');
+    $this->get("/t/{$tag->token}", ['Accept-Language' => ''])->assertSee('Message the owner')->assertSee('<html lang="en">', false);
+    $this->get("/t/{$tag->token}", ['Accept-Language' => 'tr-TR,tr;q=0.9,en;q=0.8'])
+        ->assertSee('Sahibine mesaj gönder')->assertSee('<html lang="tr">', false);
+    $this->get("/t/{$tag->token}", ['Accept-Language' => 'de'])->assertSee('Message the owner');
+    $this->get("/t/{$tag->token}", ['Accept-Language' => 'ar'])->assertSee('Message the owner');
 });
 
 it('escapes owner text', function () {
@@ -178,7 +179,7 @@ it('shows only the plain neutral copy and no tag data on a neutral page', functi
     scanContact($tag, 'Gizli Etiket');
     $tag->car->update(['stealth_enabled' => true]);
 
-    foreach (['en-GB,en;q=0.8' => 'This tag is not active', '' => 'Bu etiket etkin değil'] as $lang => $title) {
+    foreach (['en-GB,en;q=0.8' => 'This tag is not active', '' => 'This tag is not active', 'tr' => 'Bu etiket etkin değil'] as $lang => $title) {
         $html = $this->get("/t/{$tag->token}", ['Accept-Language' => $lang])->assertOk()->getContent();
 
         expect($html)->toContain($title)

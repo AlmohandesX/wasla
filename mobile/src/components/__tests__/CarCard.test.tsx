@@ -49,8 +49,8 @@ test('CarCard looks clearly different when stealth is on', () => {
   const off = render();
   const on = render({ car: { ...CAR, stealth_enabled: true } });
 
-  expect(texts(off.root)).not.toContain('Gizli mod açık');
-  expect(texts(on.root)).toContain('Gizli mod açık'); // a label, not just a color
+  expect(texts(off.root)).not.toContain('Stealth on');
+  expect(texts(on.root)).toContain('Stealth on'); // a label, not just a color
 
   const onStyle = flatStyle(card(on));
   const offStyle = flatStyle(card(off));
@@ -61,14 +61,14 @@ test('CarCard looks clearly different when stealth is on', () => {
 
 test('CarCard never claims stealth is on while the request is still pending', () => {
   const pending = render({ stealthPendingValue: true });
-  expect(texts(pending.root)).not.toContain('Gizli mod açık');
-  expect(texts(pending.root)).toContain('Güncelleniyor');
+  expect(texts(pending.root)).not.toContain('Stealth on');
+  expect(texts(pending.root)).toContain('Updating');
   expect(flatStyle(card(pending)).borderStyle).not.toBe('dashed');
 });
 
 test('CarCard shows the expired state and does not offer the stealth switch', () => {
   const expired = render({ car: { ...CAR, subscription: { active: false, expires_at: '2026-10-01T10:00:00Z' } } });
-  expect(texts(expired.root)).toContain('Etiketin süresi doldu');
+  expect(texts(expired.root)).toContain('This tag has expired');
   expect(expired.root.findAllByProps({ accessibilityRole: 'switch' })).toHaveLength(0);
 });
 

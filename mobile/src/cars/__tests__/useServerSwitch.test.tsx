@@ -62,7 +62,7 @@ test('a refused request rolls back and shows an error', async () => {
   await act(async () => hook.toggle(CAR));
   expect(onUpdated).not.toHaveBeenCalled();
   expect(hook.pendingValue).toBeNull();
-  expect(hook.error).toContain('Gizli mod');
+  expect(hook.error).toContain('stealth');
   expect(mockGetCar).not.toHaveBeenCalled();
 });
 
@@ -119,5 +119,5 @@ test('the chats-paused switch behaves the same way', async () => {
   onUpdated.mockClear();
   await act(async () => hook.toggle(CAR));
   expect(onUpdated).not.toHaveBeenCalled();
-  expect(hook.error).toContain('Sohbet');
+  expect(hook.error).toContain('chat setting');
 });

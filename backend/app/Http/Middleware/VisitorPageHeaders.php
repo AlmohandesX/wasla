@@ -6,7 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-/** Shared by every public scan route: locale from Accept-Language (Turkish default), noindex, never cached. */
+/** Shared by every public scan route: locale from Accept-Language (English default; Turkish when the browser prefers it), noindex, never cached. */
 class VisitorPageHeaders
 {
     public function handle(Request $request, Closure $next): Response
@@ -19,7 +19,7 @@ class VisitorPageHeaders
     /** Turkish unless the browser prefers English. */
     public static function useVisitorLocale(Request $request): void
     {
-        app()->setLocale($request->getPreferredLanguage(['tr', 'en']) ?? 'tr');
+        app()->setLocale($request->getPreferredLanguage(['en', 'tr']) ?? 'en');
     }
 
     public static function apply(Response $response): Response

@@ -53,7 +53,7 @@ describe('chat screen', () => {
     await act(async () => {
       tree = create(<ChatThread />);
     });
-    const renew = tree.root.findAll((n) => n.props.accessibilityRole === 'button' && n.props.accessibilityLabel === 'Aboneliği yenile')[0];
+    const renew = tree.root.findAll((n) => n.props.accessibilityRole === 'button' && n.props.accessibilityLabel === 'Renew subscription')[0];
     expect(renew).toBeDefined();
     act(() => renew.props.onPress());
     expect(mockPush).toHaveBeenCalledWith({ pathname: '/cars/[id]/expired', params: { id: '7' } });
@@ -65,7 +65,7 @@ describe('chat screen', () => {
     await act(async () => {
       tree = create(<ChatThread />);
     });
-    expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Aboneliği yenile')).toHaveLength(0);
+    expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Renew subscription')).toHaveLength(0);
   });
 });
 
@@ -75,37 +75,37 @@ describe('account screen', () => {
     await act(async () => {
       tree = create(<Account />);
     });
-    await act(async () => tree.root.findAll((n) => n.props.accessibilityLabel === 'Hesabımı sil' && n.props.onPress)[0].props.onPress());
+    await act(async () => tree.root.findAll((n) => n.props.accessibilityLabel === 'Delete my account' && n.props.onPress)[0].props.onPress());
     return tree;
   }
   const confirm = async (tree: ReturnType<typeof create>) => {
     await act(async () =>
-      tree.root.findAll((n) => n.props.accessibilityLabel === 'Şifren' && typeof n.props.onChangeText === 'function')[0].props.onChangeText('pw'),
+      tree.root.findAll((n) => n.props.accessibilityLabel === 'Your password' && typeof n.props.onChangeText === 'function')[0].props.onChangeText('pw'),
     );
     await act(async () =>
-      tree.root.findAll((n) => n.props.accessibilityLabel === 'Hesabımı kalıcı olarak sil' && n.props.onPress)[0].props.onPress(),
+      tree.root.findAll((n) => n.props.accessibilityLabel === 'Permanently delete my account' && n.props.onPress)[0].props.onPress(),
     );
   };
 
   test('shows the warning about erased data and claimable tags', async () => {
     const tree = await openDelete();
-    expect(textOf(tree)).toContain('kalıcı olarak silinir');
-    expect(textOf(tree)).toContain('bedava bir yıl');
+    expect(textOf(tree)).toContain('permanently erases');
+    expect(textOf(tree)).toContain('free year');
   });
 
   test('a 429 shows the retry time in minutes', async () => {
     mockDeleteAccount.mockRejectedValue(new ApiError(429, 'too_many_requests', 'x', { retryAfter: 125 }));
     const tree = await openDelete();
     await confirm(tree);
-    expect(textOf(tree)).toContain('3 dakika');
+    expect(textOf(tree)).toContain('3 minutes');
   });
 
   test('a wrong password is shown beside the password field and the field is emptied', async () => {
-    mockDeleteAccount.mockRejectedValue(new ApiError(422, 'invalid_password', 'Şifre doğru değil.'));
+    mockDeleteAccount.mockRejectedValue(new ApiError(422, 'invalid_password', 'That password is not correct.'));
     const tree = await openDelete();
     await confirm(tree);
-    expect(textOf(tree)).toContain('Şifre doğru değil.');
-    expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Şifren' && typeof n.props.onChangeText === 'function')[0].props.value).toBe('');
+    expect(textOf(tree)).toContain('That password is not correct.');
+    expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Your password' && typeof n.props.onChangeText === 'function')[0].props.value).toBe('');
   });
 });
 

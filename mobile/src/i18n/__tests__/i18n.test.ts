@@ -8,7 +8,7 @@ jest.mock('expo-secure-store', () => ({
   deleteItemAsync: jest.fn(async () => undefined),
 }));
 
-afterEach(() => setLocale('tr'));
+afterEach(() => setLocale('en'));
 
 test('tr.json and en.json have identical keys', () => {
   expect(Object.keys(tr).sort()).toEqual(Object.keys(en).sort());
@@ -23,8 +23,13 @@ test('no translation is empty and placeholders match across languages', () => {
   }
 });
 
-test('Turkish is the default and keeps its special characters', () => {
-  expect(getLocale()).toBe('tr');
+test('English is the default', () => {
+  expect(getLocale()).toBe('en');
+  expect(t('home.title', { name: 'Ada' })).toBe('Hello, Ada');
+});
+
+test('Turkish is the second language and keeps its special characters', () => {
+  setLocale('tr');
   expect(t('login.forgot')).toBe('Şifremi unuttum');
   expect(t('errors.invalid_credentials')).toContain('şifre');
 });

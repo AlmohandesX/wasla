@@ -1,6 +1,6 @@
 # WASLA
 
-WASLA is a QR and NFC sticker service for cars. A driver sticks a tag on the car; anyone who scans it lands on a plain page where they can leave a note or start an anonymous chat with the owner, without ever seeing the plate, the owner's name or a phone number. The owner manages the car in a mobile app (stealth mode, status messages, emergency contacts, reminders, chat), and each tag carries a one-year subscription that is renewed through a hosted card checkout (iyzico or PayTR). Messages are checked by a blacklist and OpenAI moderation. Turkish is the default language, English the second.
+WASLA is a QR and NFC sticker service for cars. A driver sticks a tag on the car; anyone who scans it lands on a plain page where they can leave a note or start an anonymous chat with the owner, without ever seeing the plate, the owner's name or a phone number. The owner manages the car in a mobile app (stealth mode, status messages, emergency contacts, reminders, chat), and each tag carries a one-year subscription that is renewed through a hosted card checkout (iyzico or PayTR). Messages are checked by a blacklist and OpenAI moderation. English is the default language, Turkish the second.
 
 The design is in `docs/superpowers/specs/2026-11-05-wasla-design.md`.
 
