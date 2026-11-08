@@ -67,8 +67,11 @@ export default function Account() {
   };
 
   return (
-    <Screen title={t('account.title')}>
+    <Screen title={t('account.title')} tabbed>
       {user ? <Text style={styles.email}>{t('account.signedInAs', { email: user.email })}</Text> : null}
+      <Text accessibilityRole="header" style={styles.section}>
+        {t('language.label')}
+      </Text>
       <LanguageSwitch />
       <Button label={t('account.signOut')} variant="secondary" onPress={signOut} />
 
@@ -108,7 +111,8 @@ export default function Account() {
 }
 
 const styles = StyleSheet.create({
-  email: { fontSize: fontSize.body, color: colors.textMuted, marginBottom: spacing.md },
+  email: { fontSize: fontSize.body, color: colors.textMuted, marginBottom: spacing.lg },
+  section: { fontSize: fontSize.body, fontWeight: '700', color: colors.text, marginBottom: spacing.sm },
   danger: {
     marginTop: spacing.xl,
     padding: spacing.md,

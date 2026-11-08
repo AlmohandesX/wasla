@@ -47,6 +47,7 @@ function Navigator() {
       <Stack.Protected guard={access !== 'app'}>
         <Stack.Screen name="(auth)" />
       </Stack.Protected>
+      <Stack.Screen name="index" />
       <Stack.Screen name="reset-password" />
     </Stack>
   );

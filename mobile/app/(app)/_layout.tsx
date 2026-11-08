@@ -45,14 +45,19 @@ export default function AppLayout() {
   return (
     <Stack
       screenOptions={{
+        // A solid white header with the screen laid out below it. On iOS 26+ the native header is otherwise a
+        // see-through "Liquid Glass" bar that screens draw underneath, which put chat text behind the Back
+        // button and the status bar. Setting both options keeps the opaque bar on every iOS version.
+        headerTransparent: false,
+        headerStyle: { backgroundColor: colors.surface },
+        headerShadowVisible: true,
+        contentStyle: { backgroundColor: colors.surface },
         headerTintColor: colors.primaryDark,
         headerTitleStyle: { color: colors.text },
         headerBackTitle: t('common.back'),
       }}
     >
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="cars/index" options={{ headerShown: false }} />
-      <Stack.Screen name="chats/index" options={{ title: t('chats.title') }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="chats/[id]" options={{ title: t('chat.title') }} />
       <Stack.Screen name="cars/scan" options={{ title: t('scan.title') }} />
       <Stack.Screen name="cars/[id]/index" options={{ title: t('cars.title') }} />
@@ -62,7 +67,6 @@ export default function AppLayout() {
       <Stack.Screen name="cars/[id]/transfer" options={{ title: t('detail.transfer') }} />
       <Stack.Screen name="cars/[id]/expired" options={{ title: '' }} />
       <Stack.Screen name="cars/[id]/renew" options={{ title: t('renew.title') }} />
-      <Stack.Screen name="account/index" options={{ title: t('account.title') }} />
     </Stack>
   );
 }

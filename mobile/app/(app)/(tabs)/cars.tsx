@@ -9,9 +9,10 @@ import { useStealth } from '../../../src/cars/useServerSwitch';
 import { Button } from '../../../src/components/Button';
 import { CarCard, isExpired } from '../../../src/components/CarCard';
 import { ErrorBanner } from '../../../src/components/ErrorBanner';
-import { LanguageSwitch } from '../../../src/components/LanguageSwitch';
+import { Fab, FAB_HEIGHT } from '../../../src/components/Fab';
 import { Screen } from '../../../src/components/Screen';
 import { t, useLocale } from '../../../src/i18n';
+import { firstName } from '../../../src/lib/firstName';
 import { colors, fontSize, spacing } from '../../../src/theme';
 
 function CarRow({ car, onUpdated }: { car: Car; onUpdated: (car: Car) => void }) {
@@ -34,7 +35,8 @@ function CarRow({ car, onUpdated }: { car: Car; onUpdated: (car: Car) => void })
 export default function Cars() {
   useLocale();
   const router = useRouter();
-  const { user, signOut } = useSession();
+  const { user } = useSession();
+  const name = firstName(user?.name);
   const [cars, setCars] = useState<Car[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -63,32 +65,29 @@ export default function Cars() {
   }, []);
 
   return (
-    <Screen title={t('cars.title')}>
-      <Text style={styles.greeting}>{t('home.title', { name: user?.name ?? '' })}</Text>
-      <LanguageSwitch />
-      {error ? <ErrorBanner message={`${t('cars.loadError')} ${error}`} /> : null}
-      {cars === null && loading ? (
-        <ActivityIndicator size="large" color={colors.primary} accessibilityLabel={t('common.loading')} />
-      ) : null}
-      {cars === null && error && !loading ? <Button label={t('common.retry')} onPress={load} /> : null}
-      {cars?.length === 0 ? <Text style={styles.empty}>{t('cars.empty')}</Text> : null}
-      {cars?.map((car) => <CarRow key={car.id} car={car} onUpdated={replace} />)}
-      <View style={styles.actions}>
-        <Button label={t('cars.add')} onPress={() => router.push('/cars/scan')} />
-        <View style={styles.gap} />
-        <Button label={t('cars.chats')} variant="secondary" onPress={() => router.push('/chats')} />
-        <View style={styles.gap} />
-        <Button label={t('account.open')} variant="secondary" onPress={() => router.push('/account')} />
-        <View style={styles.gap} />
-        <Button label={t('cars.signOut')} variant="secondary" onPress={signOut} />
-      </View>
-    </Screen>
+    <View style={styles.flex}>
+      <Screen title={t('cars.title')} tabbed bottomSpace={FAB_HEIGHT + spacing.md}>
+        <Text style={styles.greeting}>{name ? t('home.title', { name }) : t('home.titleNoName')}</Text>
+        {error ? <ErrorBanner message={`${t('cars.loadError')} ${error}`} /> : null}
+        {cars === null && loading ? (
+          <ActivityIndicator size="large" color={colors.primary} accessibilityLabel={t('common.loading')} />
+        ) : null}
+        {cars === null && error && !loading ? <Button label={t('common.retry')} onPress={load} /> : null}
+        {cars?.length === 0 ? <Text style={styles.empty}>{t('cars.empty')}</Text> : null}
+        {cars?.map((car) => <CarRow key={car.id} car={car} onUpdated={replace} />)}
+      </Screen>
+      <Fab
+        icon="qr-code-outline"
+        label={t('cars.addShort')}
+        accessibilityLabel={t('cars.add')}
+        onPress={() => router.push('/cars/scan')}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  greeting: { fontSize: fontSize.body, color: colors.textMuted, marginBottom: spacing.sm },
+  flex: { flex: 1 },
+  greeting: { fontSize: fontSize.body + 2, fontWeight: '600', color: colors.text, marginBottom: spacing.sm },
   empty: { fontSize: fontSize.body, color: colors.text, marginVertical: spacing.lg },
-  actions: { marginTop: spacing.md },
-  gap: { height: spacing.sm },
 });

@@ -1,7 +1,7 @@
 import { act, create } from 'react-test-renderer';
 
 import ChatThread from '../../../app/(app)/chats/[id]';
-import Account from '../../../app/(app)/account/index';
+import Account from '../../../app/(app)/(tabs)/account';
 import AppLayout from '../../../app/(app)/_layout';
 import { ApiError } from '../../api/errors';
 import { setExpiredHandler } from '../../api/client';
@@ -33,6 +33,7 @@ jest.mock('../../auth/session', () => ({
 }));
 jest.mock('../../push/register', () => ({ enablePush: jest.fn(), listenForChatTaps: () => () => undefined }));
 jest.mock('../../chat/useThread', () => ({ useThread: () => mockThread }));
+jest.mock('expo-router/react-navigation', () => ({ useHeaderHeight: () => 0 }));
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -70,6 +71,27 @@ describe('chat screen', () => {
 });
 
 describe('account screen', () => {
+  test('switches the app language from the Account tab', async () => {
+    let tree!: ReturnType<typeof create>;
+    await act(async () => {
+      tree = create(<Account />);
+    });
+    const option = (label: string) =>
+      tree.root.findAll((n) => n.props.accessibilityRole === 'radio' && typeof n.props.onPress === 'function')
+        .find((n) => n.findAll((c) => (c.type as unknown) === 'Text' && c.children.join('') === label).length > 0)!;
+    expect(textOf(tree)).toContain('Language');
+
+    try {
+      await act(async () => option('Türkçe').props.onPress());
+      expect(textOf(tree)).toContain('Dil');
+      expect(textOf(tree)).toContain('Hesap');
+      expect(option('Türkçe').props.accessibilityState).toEqual({ selected: true });
+    } finally {
+      await act(async () => option('English').props.onPress());
+    }
+    expect(textOf(tree)).toContain('Account');
+  });
+
   async function openDelete() {
     let tree!: ReturnType<typeof create>;
     await act(async () => {

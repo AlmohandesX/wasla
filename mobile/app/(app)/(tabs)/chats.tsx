@@ -109,7 +109,7 @@ export default function Chats() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['left', 'right', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       {threads === null && !error ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.primary} accessibilityLabel={t('common.loading')} />
@@ -123,6 +123,9 @@ export default function Chats() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} colors={[colors.primary]} />}
           ListHeaderComponent={
             <View>
+              <Text accessibilityRole="header" style={styles.title}>
+                {t('chats.title')}
+              </Text>
               {error ? <ErrorBanner message={`${t('chats.loadError')} ${error}`} /> : null}
               {error && threads === null ? <Button label={t('common.retry')} onPress={load} /> : null}
               {user ? <PushPrompt userId={user.id} /> : null}
@@ -138,7 +141,8 @@ export default function Chats() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.surface },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  content: { padding: spacing.md, flexGrow: 1 },
+  content: { padding: spacing.lg, flexGrow: 1 },
+  title: { fontSize: fontSize.title, fontWeight: '700', color: colors.text, marginBottom: spacing.lg },
   empty: { fontSize: fontSize.body, color: colors.text, marginVertical: spacing.lg },
   row: {
     minHeight: touchTarget,

@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useHeaderHeight } from 'expo-router/react-navigation';
+import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../../../src/components/Button';
@@ -31,6 +32,7 @@ function Bubble({ own, label, body, status }: { own: boolean; label: string; bod
 export default function ChatThread() {
   useLocale();
   const router = useRouter();
+  const headerHeight = useHeaderHeight();
   const { id, blocked: blockedParam } = useLocalSearchParams<{ id: string; blocked?: string }>();
   const threadId = Number(id);
   // The list passes what it already knows so the blocked state shows at once.
@@ -141,7 +143,13 @@ export default function ChatThread() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom', 'left', 'right']}>
-      <KeyboardAvoidingView style={styles.flex} behavior="padding">
+      {/* The opaque header sits above this view, so the keyboard offset must include its height or the
+          composer ends up partly behind the keyboard on iOS. */}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior="padding"
+        keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
+      >
         <View style={styles.top}>
           <ErrorBanner message={chat.actionError} />
           {chat.pollFailing && !fatal ? <ErrorBanner tone="info" message={t('chat.pollError')} /> : null}
