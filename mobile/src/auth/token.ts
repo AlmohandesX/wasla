@@ -1,4 +1,4 @@
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from '../lib/secureStorage';
 
 // The only place the API token is stored. Never AsyncStorage, never logged.
 const KEY = 'wasla.token';

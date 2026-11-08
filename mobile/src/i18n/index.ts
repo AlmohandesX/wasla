@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from '../lib/secureStorage';
 
 import en from './en.json';
 import tr from './tr.json';
