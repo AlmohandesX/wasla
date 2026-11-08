@@ -60,6 +60,22 @@ describe('chat screen', () => {
     expect(mockPush).toHaveBeenCalledWith({ pathname: '/cars/[id]/expired', params: { id: '7' } });
   });
 
+  test('a blacklisted word is sent as *** and the input still clears', async () => {
+    const send = jest.fn(async () => true);
+    mockThread = { ...base, send, meta: { id: 1, car: { id: 7, model: 'Clio', linked: true, chats_paused: false, subscription_active: true } } };
+    let tree!: ReturnType<typeof create>;
+    await act(async () => {
+      tree = create(<ChatThread />);
+    });
+    const input = () => tree.root.findAll((n) => n.props.accessibilityLabel === 'Your message' && typeof n.props.onChangeText === 'function')[0];
+    await act(async () => input().props.onChangeText('  you badword_en  '));
+    const sendButton = tree.root.findAll((n) => n.props.accessibilityRole === 'button' && n.props.accessibilityLabel === 'Send')[0];
+    await act(async () => sendButton.props.onPress());
+
+    expect(send).toHaveBeenCalledWith('you ***');
+    expect(input().props.value).toBe('');
+  });
+
   test('an active car shows no Renew button', async () => {
     mockThread = { ...base, meta: { id: 1, car: { id: 7, model: 'Clio', linked: true, chats_paused: false, subscription_active: true } } };
     let tree!: ReturnType<typeof create>;

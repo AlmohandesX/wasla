@@ -8,6 +8,7 @@ import { Button } from '../../../src/components/Button';
 import { ErrorBanner } from '../../../src/components/ErrorBanner';
 import { useThread, type Pending } from '../../../src/chat/useThread';
 import { t, useLocale } from '../../../src/i18n';
+import { censor } from '../../../src/lib/blacklist';
 import { formatDateTime } from '../../../src/lib/format';
 import type { Message } from '../../../src/lib/mergeMessages';
 import { colors, fontSize, radius, spacing, touchTarget } from '../../../src/theme';
@@ -54,10 +55,14 @@ export default function ChatThread() {
   else if (!meta && chat.metaFailed) notice = t('chat.metaFailed');
   const canReply = !!meta && notice === null;
 
-  const submit = async (body: string) => {
+  // Blacklisted words are replaced with *** before the message leaves the phone. Censoring is idempotent, so
+  // a Retry of an already censored message sends it unchanged.
+  const submit = async (typed: string) => {
+    const body = censor(typed);
     if (!body || busy) return;
     const ok = await chat.send(body);
-    if (ok) setText((current) => (current.trim() === body ? '' : current));
+    // Compared with what was typed, not the censored text, or the box would not clear after a censored send.
+    if (ok) setText((current) => (current.trim() === typed ? '' : current));
   };
 
   const confirmBlock = () =>
