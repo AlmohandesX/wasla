@@ -10,7 +10,7 @@ import { Screen } from '../../../../src/components/Screen';
 import { TextField } from '../../../../src/components/TextField';
 import { t, useLocale } from '../../../../src/i18n';
 import { formatDueDate, parseDateInput, todayInIstanbul } from '../../../../src/lib/dates';
-import { colors, fontSize, radius, spacing, touchTarget } from '../../../../src/theme';
+import { colors, font, fontSize, radius, spacing, touchTarget } from '../../../../src/theme';
 
 export default function Reminders() {
   useLocale();
@@ -123,12 +123,12 @@ export default function Reminders() {
 }
 
 const styles = StyleSheet.create({
-  note: { fontSize: fontSize.small, color: colors.textMuted, marginBottom: spacing.md },
-  empty: { fontSize: fontSize.body, color: colors.text, marginBottom: spacing.md },
+  note: { fontFamily: font.regular, fontSize: fontSize.small, color: colors.textMuted, marginBottom: spacing.md },
+  empty: { fontFamily: font.regular, fontSize: fontSize.body, color: colors.text, marginBottom: spacing.md },
   item: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm, gap: spacing.sm },
-  itemText: { flex: 1, fontSize: fontSize.body, fontWeight: '600', color: colors.text },
+  itemText: { flex: 1, fontSize: fontSize.body, fontFamily: font.semibold, color: colors.text },
   form: { marginTop: spacing.lg },
-  label: { fontSize: fontSize.small, fontWeight: '600', color: colors.text, marginBottom: spacing.xs },
+  label: { fontSize: fontSize.small, fontFamily: font.semibold, color: colors.text, marginBottom: spacing.xs },
   types: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
   type: {
     flex: 1,
@@ -141,6 +141,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
   },
   typeSelected: { borderWidth: 2, borderColor: colors.primaryDark, backgroundColor: colors.primaryTint },
-  typeText: { fontSize: fontSize.body, color: colors.text, textAlign: 'center' },
-  typeTextSelected: { fontWeight: '700', color: colors.primaryDark },
+  typeText: { fontFamily: font.regular, fontSize: fontSize.body, color: colors.text, textAlign: 'center' },
+  typeTextSelected: { fontFamily: font.bold, color: colors.primaryDark },
 });

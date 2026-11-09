@@ -34,7 +34,7 @@ export default function Login() {
   }
 
   return (
-    <Screen title={t('login.title')}>
+    <Screen logo title={t('login.title')}>
       <LanguageSwitch />
       <ErrorBanner tone="info" message={reset === '1' && !error ? t('reset.done') : null} />
       <ErrorBanner message={error ? (error.fields ? null : error.message) : signedOutReason ? messageFor(signedOutReason) : null} />

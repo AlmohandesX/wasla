@@ -8,7 +8,7 @@ import { Button } from '../../src/components/Button';
 import { ErrorBanner } from '../../src/components/ErrorBanner';
 import { Screen } from '../../src/components/Screen';
 import { t, useLocale } from '../../src/i18n';
-import { colors, fontSize, spacing } from '../../src/theme';
+import { colors, font, fontSize, spacing } from '../../src/theme';
 
 export default function VerifyEmail() {
   useLocale();
@@ -48,7 +48,7 @@ export default function VerifyEmail() {
   }
 
   return (
-    <Screen title={t('verify.title')}>
+    <Screen logo title={t('verify.title')}>
       <Text style={styles.intro}>{t('verify.intro', { email: user?.email ?? '' })}</Text>
       <ErrorBanner message={error?.message} />
       <ErrorBanner tone="info" message={notice} />
@@ -62,6 +62,6 @@ export default function VerifyEmail() {
 }
 
 const styles = StyleSheet.create({
-  intro: { fontSize: fontSize.body, color: colors.text, marginBottom: spacing.md },
+  intro: { fontFamily: font.regular, fontSize: fontSize.body, color: colors.text, marginBottom: spacing.md },
   gap: { height: spacing.sm },
 });

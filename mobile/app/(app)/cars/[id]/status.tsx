@@ -12,7 +12,7 @@ import { Screen } from '../../../../src/components/Screen';
 import { TextField } from '../../../../src/components/TextField';
 import { t, useLocale } from '../../../../src/i18n';
 import { formatDateTime } from '../../../../src/lib/format';
-import { colors, fontSize, radius, spacing, touchTarget } from '../../../../src/theme';
+import { colors, font, fontSize, radius, spacing, touchTarget } from '../../../../src/theme';
 
 const DURATIONS = [1, 15, 60, 480, 1440, 10080]; // minutes; the backend allows 1 to 10080
 
@@ -140,10 +140,10 @@ export default function StatusScreen() {
 }
 
 const styles = StyleSheet.create({
-  intro: { fontSize: fontSize.body, color: colors.text, marginBottom: spacing.md },
+  intro: { fontFamily: font.regular, fontSize: fontSize.body, color: colors.text, marginBottom: spacing.md },
   current: { marginBottom: spacing.md },
-  currentText: { fontSize: fontSize.body, color: colors.text, marginBottom: spacing.sm },
-  groupLabel: { fontSize: fontSize.small, fontWeight: '600', color: colors.text, marginBottom: spacing.xs },
+  currentText: { fontFamily: font.regular, fontSize: fontSize.body, color: colors.text, marginBottom: spacing.sm },
+  groupLabel: { fontSize: fontSize.small, fontFamily: font.semibold, color: colors.text, marginBottom: spacing.xs },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.lg },
   chip: {
     minHeight: touchTarget,
@@ -154,6 +154,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { fontSize: fontSize.body, color: colors.text },
-  chipTextSelected: { color: colors.surface, fontWeight: '700' },
+  chipText: { fontFamily: font.regular, fontSize: fontSize.body, color: colors.text },
+  chipTextSelected: { color: colors.surface, fontFamily: font.bold },
 });

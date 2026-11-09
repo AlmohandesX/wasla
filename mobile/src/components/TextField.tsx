@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
 
 import { t, useLocale } from '../i18n';
-import { colors, fontSize, radius, spacing, touchTarget } from '../theme';
+import { colors, font, fontSize, radius, spacing, touchTarget } from '../theme';
 
 type Props = Omit<TextInputProps, 'style'> & {
   label: string;
@@ -60,7 +60,7 @@ export function TextField({ label, error, hint, secureTextEntry, ...input }: Pro
 
 const styles = StyleSheet.create({
   wrap: { marginBottom: spacing.md },
-  label: { fontSize: fontSize.small, fontWeight: '600', color: colors.text, marginBottom: spacing.xs },
+  label: { fontSize: fontSize.small, fontFamily: font.semibold, color: colors.text, marginBottom: spacing.xs },
   box: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -72,9 +72,9 @@ const styles = StyleSheet.create({
   },
   boxFocused: { borderColor: colors.primary, borderWidth: 2 },
   boxError: { borderColor: colors.danger, borderWidth: 2 },
-  input: { flex: 1, minHeight: touchTarget, paddingHorizontal: 12, fontSize: fontSize.body, color: colors.text },
+  input: { flex: 1, minHeight: touchTarget, paddingHorizontal: 12, fontFamily: font.regular, fontSize: fontSize.body, color: colors.text },
   reveal: { minHeight: touchTarget, minWidth: touchTarget, paddingHorizontal: 12, justifyContent: 'center' },
-  revealText: { color: colors.primaryDark, fontSize: fontSize.small, fontWeight: '600' },
-  error: { color: colors.danger, fontSize: fontSize.small, marginTop: spacing.xs },
-  hint: { color: colors.textMuted, fontSize: fontSize.small, marginTop: spacing.xs },
+  revealText: { color: colors.primaryDark, fontSize: fontSize.small, fontFamily: font.semibold },
+  error: { color: colors.danger, fontFamily: font.regular, fontSize: fontSize.small, marginTop: spacing.xs },
+  hint: { color: colors.textMuted, fontFamily: font.regular, fontSize: fontSize.small, marginTop: spacing.xs },
 });

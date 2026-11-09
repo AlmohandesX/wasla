@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { colors, fontSize, radius, spacing } from '../theme';
+import { colors, font, fontSize, radius, spacing } from '../theme';
 
 type Props = { message?: string | null; tone?: 'error' | 'info' };
 
@@ -21,7 +21,7 @@ const styles = StyleSheet.create({
   box: { borderRadius: radius, borderWidth: 1, padding: spacing.md, marginBottom: spacing.md },
   error: { backgroundColor: colors.dangerTint, borderColor: colors.danger },
   info: { backgroundColor: colors.primaryTint, borderColor: colors.primary },
-  text: { fontSize: fontSize.body },
+  text: { fontFamily: font.regular, fontSize: fontSize.body },
   errorText: { color: colors.danger },
   infoText: { color: colors.text },
 });

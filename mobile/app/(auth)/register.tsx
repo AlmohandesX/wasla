@@ -12,7 +12,7 @@ import { LinkText } from '../../src/components/LinkText';
 import { Screen } from '../../src/components/Screen';
 import { TextField } from '../../src/components/TextField';
 import { t, useLocale } from '../../src/i18n';
-import { colors, fontSize, radius, spacing } from '../../src/theme';
+import { colors, font, fontSize, radius, spacing } from '../../src/theme';
 
 export default function Register() {
   useLocale();
@@ -42,7 +42,7 @@ export default function Register() {
   }
 
   return (
-    <Screen title={t('register.title')}>
+    <Screen logo title={t('register.title')}>
       <LanguageSwitch />
       <ErrorBanner message={error ? (error.code === 'validation_failed' ? t('errors.validation_failed') : error.message) : null} />
       <TextField
@@ -116,8 +116,8 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.md,
   },
-  noticeTitle: { fontSize: fontSize.body, fontWeight: '700', color: colors.text },
-  draft: { fontSize: fontSize.small, fontWeight: '700', color: colors.danger, marginVertical: spacing.xs },
-  noticeBody: { fontSize: fontSize.small, color: colors.text, lineHeight: 20 },
+  noticeTitle: { fontSize: fontSize.body, fontFamily: font.bold, color: colors.text },
+  draft: { fontSize: fontSize.small, fontFamily: font.bold, color: colors.danger, marginVertical: spacing.xs },
+  noticeBody: { fontFamily: font.regular, fontSize: fontSize.small, color: colors.text, lineHeight: 20 },
   links: { marginTop: spacing.md },
 });

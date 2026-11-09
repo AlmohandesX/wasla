@@ -31,8 +31,15 @@ Do not change these without the owner's say-so.
 
 The wordmark is live text in Manrope. Figma has Manrope built in, so the SVGs import with the right font. Before sending a file to a printer, outline the text in Figma (select the text, then Flatten, Ctrl+E) so it does not depend on the font being installed.
 
+## In the app
+
+- Tokens live in `mobile/src/theme/index.ts`. Navy is `primary` and `text`; orange is `accent`, used only as a fill behind navy content (the add-car button, unread badges, the loading spinner), because white or orange-on-white text fails contrast.
+- Text uses the `font` faces (Manrope 400 to 800) instead of `fontWeight`, since Android picks a face by name.
+- `Logo` (`mobile/src/components/Logo.tsx`) shows `assets/images/logo.png` or `logo-white.png`. Screens opt in with `<Screen logo>`.
+- Icons, splash and in-app logo images are rendered by `node brand/scripts/render-icons.mjs`. Re-run it after any logo change.
+
 ## Still to do
 
-- App icon and splash screen from the mark
 - Sticker layout: logo next to the QR code at real size
-- Brand guidelines page and the app's theme tokens (`mobile/src/theme/index.ts`)
+- Visitor page (`backend`, `/t/{token}`) and admin panel in the new brand
+- Brand guidelines page

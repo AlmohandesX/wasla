@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { LOCALES, setLocale, t, useLocale } from '../i18n';
-import { colors, fontSize, radius, spacing, touchTarget } from '../theme';
+import { colors, font, fontSize, radius, spacing, touchTarget } from '../theme';
 
 export function LanguageSwitch() {
   const current = useLocale();
@@ -37,6 +37,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   selected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  text: { fontSize: fontSize.body, color: colors.text },
-  selectedText: { color: colors.surface, fontWeight: '600' },
+  text: { fontFamily: font.regular, fontSize: fontSize.body, color: colors.text },
+  selectedText: { color: colors.surface, fontFamily: font.semibold },
 });

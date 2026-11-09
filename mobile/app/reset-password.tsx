@@ -11,7 +11,7 @@ import { LinkText } from '../src/components/LinkText';
 import { Screen } from '../src/components/Screen';
 import { TextField } from '../src/components/TextField';
 import { t, useLocale } from '../src/i18n';
-import { colors, fontSize, spacing } from '../src/theme';
+import { colors, font, fontSize, spacing } from '../src/theme';
 
 // Outside both route guards on purpose: the emailed link must open this screen whether or not anyone is signed in.
 export default function ResetPassword() {
@@ -30,7 +30,7 @@ export default function ResetPassword() {
 
   if (!token || !email) {
     return (
-      <Screen title={t('reset.title')}>
+      <Screen logo title={t('reset.title')}>
         <ErrorBanner message={t('reset.incomplete')} />
         {!user ? (
           <Link href="/forgot-password" asChild>
@@ -62,7 +62,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <Screen title={t('reset.title')}>
+    <Screen logo title={t('reset.title')}>
       <Text style={styles.intro}>{t('reset.intro')}</Text>
       <Text style={styles.email}>{email}</Text>
       <ErrorBanner message={error && !error.fields ? error.message : null} />
@@ -101,7 +101,7 @@ export default function ResetPassword() {
 }
 
 const styles = StyleSheet.create({
-  intro: { fontSize: fontSize.body, color: colors.text, marginBottom: spacing.xs },
-  email: { fontSize: fontSize.body, fontWeight: '600', color: colors.text, marginBottom: spacing.md },
+  intro: { fontFamily: font.regular, fontSize: fontSize.body, color: colors.text, marginBottom: spacing.xs },
+  email: { fontSize: fontSize.body, fontFamily: font.semibold, color: colors.text, marginBottom: spacing.md },
   links: { marginTop: spacing.md },
 });

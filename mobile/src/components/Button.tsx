@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
 
-import { colors, fontSize, radius, touchTarget } from '../theme';
+import { colors, font, fontSize, radius, touchTarget } from '../theme';
 
 type Props = {
   label: string;
@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
   tintPressed: { backgroundColor: colors.primaryTint },
   focused: { borderColor: colors.text },
   inactive: { opacity: 0.55 },
-  label: { fontSize: fontSize.body, fontWeight: '600', textAlign: 'center' },
+  label: { fontSize: fontSize.body, fontFamily: font.semibold, textAlign: 'center' },
   labelFilled: { color: colors.surface },
   labelPlain: { color: colors.primaryDark },
   labelDanger: { color: colors.danger },

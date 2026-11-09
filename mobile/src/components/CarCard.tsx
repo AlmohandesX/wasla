@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Car } from '../api/cars';
 import { t, useLocale } from '../i18n';
 import { formatDateTime } from '../lib/format';
-import { colors, fontSize, radius, spacing, touchTarget } from '../theme';
+import { colors, font, fontSize, radius, spacing, touchTarget } from '../theme';
 import { Button } from './Button';
 import { ErrorBanner } from './ErrorBanner';
 
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderStyle: 'solid',
-    borderColor: colors.border,
+    borderColor: colors.divider,
     borderRadius: radius,
     padding: spacing.md,
     marginBottom: spacing.md,
@@ -112,18 +112,18 @@ const styles = StyleSheet.create({
   cardStealth: { backgroundColor: colors.text, borderStyle: 'dashed', borderColor: colors.surface, borderWidth: 2 },
   cardExpired: { backgroundColor: colors.dangerTint, borderColor: colors.danger },
   head: { minHeight: touchTarget, justifyContent: 'center' },
-  model: { fontSize: fontSize.body + 2, fontWeight: '700', color: colors.text },
-  plate: { fontSize: fontSize.body, color: colors.textMuted, marginTop: spacing.xs },
+  model: { fontSize: fontSize.body + 2, fontFamily: font.bold, color: colors.text },
+  plate: { fontFamily: font.regular, fontSize: fontSize.body, color: colors.textMuted, marginTop: spacing.xs },
   textStealth: { color: colors.surface },
-  status: { fontSize: fontSize.small, color: colors.text, marginTop: spacing.sm },
+  status: { fontFamily: font.regular, fontSize: fontSize.small, color: colors.text, marginTop: spacing.sm },
   notice: { marginTop: spacing.sm },
-  noticeTitle: { fontSize: fontSize.body, fontWeight: '700', color: colors.danger },
-  noticeBody: { fontSize: fontSize.small, color: colors.text, marginTop: spacing.xs },
+  noticeTitle: { fontSize: fontSize.body, fontFamily: font.bold, color: colors.danger },
+  noticeBody: { fontFamily: font.regular, fontSize: fontSize.small, color: colors.text, marginTop: spacing.xs },
   switchRow: { flexDirection: 'row', alignItems: 'center', minHeight: touchTarget, marginTop: spacing.sm },
   switchRowStealth: {},
   switchText: { flex: 1, marginLeft: spacing.md },
-  switchLabel: { fontSize: fontSize.body, fontWeight: '600', color: colors.text },
-  switchHint: { fontSize: fontSize.small, color: colors.surface, marginTop: spacing.xs },
+  switchLabel: { fontSize: fontSize.body, fontFamily: font.semibold, color: colors.text },
+  switchHint: { fontFamily: font.regular, fontSize: fontSize.small, color: colors.surface, marginTop: spacing.xs },
   track: {
     width: 48,
     height: 28,

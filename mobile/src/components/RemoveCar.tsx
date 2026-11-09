@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { deleteCar, type Car } from '../api/cars';
 import { toApiError } from '../api/errors';
 import { t } from '../i18n';
-import { colors, fontSize, radius, spacing } from '../theme';
+import { colors, font, fontSize, radius, spacing } from '../theme';
 import { Button } from './Button';
 import { Checkbox } from './Checkbox';
 import { ErrorBanner } from './ErrorBanner';
@@ -67,8 +67,8 @@ export function RemoveCar({ car, onRemoved, onReleaseFirst }: Props) {
 }
 
 const styles = StyleSheet.create({
-  heading: { fontSize: fontSize.body + 2, fontWeight: '700', color: colors.text, marginBottom: spacing.sm },
-  note: { fontSize: fontSize.small, color: colors.textMuted, marginBottom: spacing.sm },
+  heading: { fontSize: fontSize.body + 2, fontFamily: font.bold, color: colors.text, marginBottom: spacing.sm },
+  note: { fontFamily: font.regular, fontSize: fontSize.small, color: colors.textMuted, marginBottom: spacing.sm },
   stack: { gap: spacing.sm },
   warning: {
     backgroundColor: colors.dangerTint,
@@ -78,6 +78,6 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.md,
   },
-  warningText: { fontSize: fontSize.body, fontWeight: '600', color: colors.danger },
-  body: { fontSize: fontSize.small, color: colors.text, marginTop: spacing.sm },
+  warningText: { fontSize: fontSize.body, fontFamily: font.semibold, color: colors.danger },
+  body: { fontFamily: font.regular, fontSize: fontSize.small, color: colors.text, marginTop: spacing.sm },
 });

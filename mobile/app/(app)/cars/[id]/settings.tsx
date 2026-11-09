@@ -22,7 +22,7 @@ import { Screen } from '../../../../src/components/Screen';
 import { TextField } from '../../../../src/components/TextField';
 import { t, useLocale } from '../../../../src/i18n';
 import { normalizePhone } from '../../../../src/lib/phone';
-import { colors, fontSize, radius, spacing, touchTarget } from '../../../../src/theme';
+import { colors, font, fontSize, radius, spacing, touchTarget } from '../../../../src/theme';
 
 /** The message to show beside a field: a moderation refusal about this text, or the server's validation message. */
 function beside(error: ApiError | null, field: string): string | undefined {
@@ -309,8 +309,8 @@ export default function Settings() {
 
 const styles = StyleSheet.create({
   section: { marginTop: spacing.xl },
-  heading: { fontSize: fontSize.body + 2, fontWeight: '700', color: colors.text, marginBottom: spacing.sm },
-  note: { fontSize: fontSize.small, color: colors.textMuted, marginBottom: spacing.sm },
+  heading: { fontSize: fontSize.body + 2, fontFamily: font.bold, color: colors.text, marginBottom: spacing.sm },
+  note: { fontFamily: font.regular, fontSize: fontSize.small, color: colors.textMuted, marginBottom: spacing.sm },
   stack: { gap: spacing.sm },
   warning: {
     backgroundColor: colors.dangerTint,
@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.md,
   },
-  warningText: { fontSize: fontSize.small, fontWeight: '600', color: colors.danger },
+  warningText: { fontSize: fontSize.small, fontFamily: font.semibold, color: colors.danger },
   switchRow: {
     minHeight: touchTarget,
     justifyContent: 'center',
@@ -330,8 +330,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   switchRowOn: { borderWidth: 2, borderStyle: 'dashed', borderColor: colors.primaryDark, backgroundColor: colors.primaryTint },
-  switchLabel: { fontSize: fontSize.body, fontWeight: '600', color: colors.text },
+  switchLabel: { fontSize: fontSize.body, fontFamily: font.semibold, color: colors.text },
   contact: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
   contactText: { flex: 1, marginRight: spacing.sm },
-  contactLabel: { fontSize: fontSize.body, fontWeight: '600', color: colors.text },
+  contactLabel: { fontSize: fontSize.body, fontFamily: font.semibold, color: colors.text },
 });

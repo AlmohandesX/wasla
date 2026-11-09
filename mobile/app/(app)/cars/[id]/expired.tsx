@@ -9,7 +9,7 @@ import { ErrorBanner } from '../../../../src/components/ErrorBanner';
 import { Screen } from '../../../../src/components/Screen';
 import { t, useLocale } from '../../../../src/i18n';
 import { formatDate } from '../../../../src/lib/format';
-import { colors, fontSize, radius, spacing } from '../../../../src/theme';
+import { colors, font, fontSize, radius, spacing } from '../../../../src/theme';
 
 /** The hard stop for one car whose subscription ended. Renewal, release and account settings stay reachable. */
 export default function Expired() {
@@ -57,7 +57,7 @@ export default function Expired() {
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: fontSize.title, fontWeight: '700', color: colors.danger, marginBottom: spacing.md },
+  title: { fontSize: fontSize.title, fontFamily: font.bold, color: colors.danger, marginBottom: spacing.md },
   box: {
     backgroundColor: colors.dangerTint,
     borderColor: colors.danger,
@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.lg,
   },
-  body: { fontSize: fontSize.body, color: colors.text },
+  body: { fontFamily: font.regular, fontSize: fontSize.body, color: colors.text },
   actions: { gap: spacing.sm },
-  hint: { fontSize: fontSize.small, color: colors.textMuted, marginTop: spacing.sm },
+  hint: { fontFamily: font.regular, fontSize: fontSize.small, color: colors.textMuted, marginTop: spacing.sm },
 });

@@ -3,7 +3,7 @@ import { Tabs } from 'expo-router/js-tabs';
 import type { ComponentProps } from 'react';
 
 import { t, useLocale } from '../../../src/i18n';
-import { colors } from '../../../src/theme';
+import { colors, font } from '../../../src/theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 // The tab bar passes React Native's wider colour type; it only ever gives us the tint strings set below.
@@ -26,9 +26,9 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
-        tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
-        tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
-        sceneStyle: { backgroundColor: colors.surface },
+        tabBarLabelStyle: { fontSize: 12, fontFamily: font.semibold },
+        tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.divider },
+        sceneStyle: { backgroundColor: colors.background },
       }}
     >
       <Tabs.Screen

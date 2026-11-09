@@ -13,7 +13,7 @@ import { Screen } from '../../../src/components/Screen';
 import { TextField } from '../../../src/components/TextField';
 import { parseTagToken } from '../../../src/lib/parseTagToken';
 import { t, useLocale } from '../../../src/i18n';
-import { colors, fontSize, radius, spacing } from '../../../src/theme';
+import { colors, font, fontSize, radius, spacing } from '../../../src/theme';
 
 /** After a rejected (not-ours) code, ignore the camera for this long so one bad code does not flood the screen. */
 const REJECT_PAUSE_MS = 2500;
@@ -195,7 +195,7 @@ export default function Scan() {
 }
 
 const styles = StyleSheet.create({
-  body: { fontSize: fontSize.body, color: colors.text, marginBottom: spacing.md },
+  body: { fontFamily: font.regular, fontSize: fontSize.body, color: colors.text, marginBottom: spacing.md },
   stack: { gap: spacing.sm },
   cameraBox: { height: 320, borderRadius: radius, overflow: 'hidden', backgroundColor: colors.text, marginBottom: spacing.md },
   camera: { flex: 1 },

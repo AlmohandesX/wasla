@@ -10,7 +10,7 @@ import { Checkbox } from '../../../../src/components/Checkbox';
 import { ErrorBanner } from '../../../../src/components/ErrorBanner';
 import { Screen } from '../../../../src/components/Screen';
 import { t, useLocale } from '../../../../src/i18n';
-import { colors, fontSize, radius, spacing } from '../../../../src/theme';
+import { colors, font, fontSize, radius, spacing } from '../../../../src/theme';
 
 export default function Transfer() {
   useLocale();
@@ -70,6 +70,6 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.lg,
   },
-  warningText: { fontSize: fontSize.body, fontWeight: '600', color: colors.danger },
-  stays: { fontSize: fontSize.small, color: colors.text, marginTop: spacing.sm },
+  warningText: { fontSize: fontSize.body, fontFamily: font.semibold, color: colors.danger },
+  stays: { fontFamily: font.regular, fontSize: fontSize.small, color: colors.text, marginTop: spacing.sm },
 });

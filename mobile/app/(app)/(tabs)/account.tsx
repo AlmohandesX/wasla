@@ -10,7 +10,7 @@ import { LanguageSwitch } from '../../../src/components/LanguageSwitch';
 import { Screen } from '../../../src/components/Screen';
 import { TextField } from '../../../src/components/TextField';
 import { t, useLocale } from '../../../src/i18n';
-import { colors, fontSize, radius, spacing } from '../../../src/theme';
+import { colors, font, fontSize, radius, spacing } from '../../../src/theme';
 
 export default function Account() {
   useLocale();
@@ -111,8 +111,8 @@ export default function Account() {
 }
 
 const styles = StyleSheet.create({
-  email: { fontSize: fontSize.body, color: colors.textMuted, marginBottom: spacing.lg },
-  section: { fontSize: fontSize.body, fontWeight: '700', color: colors.text, marginBottom: spacing.sm },
+  email: { fontFamily: font.regular, fontSize: fontSize.body, color: colors.textMuted, marginBottom: spacing.lg },
+  section: { fontSize: fontSize.body, fontFamily: font.bold, color: colors.text, marginBottom: spacing.sm },
   danger: {
     marginTop: spacing.xl,
     padding: spacing.md,
@@ -121,8 +121,8 @@ const styles = StyleSheet.create({
     borderRadius: radius,
     backgroundColor: colors.dangerTint,
   },
-  dangerTitle: { fontSize: fontSize.body + 2, fontWeight: '700', color: colors.danger, marginBottom: spacing.sm },
-  warning: { fontSize: fontSize.body, fontWeight: '600', color: colors.danger },
-  warningBody: { fontSize: fontSize.small, color: colors.text, marginVertical: spacing.sm },
+  dangerTitle: { fontSize: fontSize.body + 2, fontFamily: font.bold, color: colors.danger, marginBottom: spacing.sm },
+  warning: { fontSize: fontSize.body, fontFamily: font.semibold, color: colors.danger },
+  warningBody: { fontFamily: font.regular, fontSize: fontSize.small, color: colors.text, marginVertical: spacing.sm },
   gap: { height: spacing.sm },
 });

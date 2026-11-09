@@ -57,6 +57,9 @@ const assets = [
   { file: 'android-icon-monochrome.png', w: 1024, h: 1024, svg: placed(1024, 1.95, 512, 512, { ink: WHITE, accent: WHITE }) },
   // Splash: white logo on the navy splash background, transparent around it.
   { file: 'splash-icon.png', w: 1200, h: 900, svg: `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="-4 -18 288 216">${lockup({ ink: WHITE, accent: SIGNAL })}</svg>` },
+  // In-app logos at 3x of the 288 x 216 lockup, transparent.
+  { file: 'logo.png', w: 864, h: 648, svg: `<svg xmlns="http://www.w3.org/2000/svg" width="864" height="648" viewBox="-4 -18 288 216">${lockup({ ink: NAVY, accent: SIGNAL })}</svg>` },
+  { file: 'logo-white.png', w: 864, h: 648, svg: `<svg xmlns="http://www.w3.org/2000/svg" width="864" height="648" viewBox="-4 -18 288 216">${lockup({ ink: WHITE, accent: SIGNAL })}</svg>` },
   { file: 'favicon.png', w: 48, h: 48, svg: placed(48, 3.3 * 48 / 1024, 24, 24, { ink: WHITE, accent: SIGNAL }, NAVY) },
 ];
 

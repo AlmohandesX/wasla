@@ -12,7 +12,7 @@ import { ErrorBanner } from '../../../src/components/ErrorBanner';
 import { t, useLocale } from '../../../src/i18n';
 import { formatDateTime } from '../../../src/lib/format';
 import { enablePush, getPushState, type PushState } from '../../../src/push/register';
-import { colors, fontSize, radius, spacing, touchTarget } from '../../../src/theme';
+import { colors, font, fontSize, radius, spacing, touchTarget } from '../../../src/theme';
 
 function PushPrompt({ userId }: { userId: number }) {
   const [state, setState] = useState<PushState | null>(null);
@@ -139,15 +139,15 @@ export default function Chats() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.surface },
+  safe: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   content: { padding: spacing.lg, flexGrow: 1 },
-  title: { fontSize: fontSize.title, fontWeight: '700', color: colors.text, marginBottom: spacing.lg },
-  empty: { fontSize: fontSize.body, color: colors.text, marginVertical: spacing.lg },
+  title: { fontSize: fontSize.title, fontFamily: font.bold, color: colors.text, marginBottom: spacing.lg },
+  empty: { fontFamily: font.regular, fontSize: fontSize.body, color: colors.text, marginVertical: spacing.lg },
   row: {
     minHeight: touchTarget,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.divider,
     borderRadius: radius,
     padding: spacing.md,
     marginBottom: spacing.sm,
@@ -155,13 +155,13 @@ const styles = StyleSheet.create({
   },
   rowUnread: { borderColor: colors.primary, borderWidth: 2, backgroundColor: colors.primaryTint },
   rowHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  car: { fontSize: fontSize.body, fontWeight: '600', color: colors.text },
-  carUnread: { fontWeight: '800' },
-  badge: { minWidth: 24, paddingHorizontal: 8, borderRadius: 12, backgroundColor: colors.primaryDark, alignItems: 'center' },
-  badgeText: { color: colors.surface, fontSize: fontSize.small, fontWeight: '700' },
-  preview: { fontSize: fontSize.body, color: colors.text, marginTop: spacing.xs },
-  meta: { fontSize: fontSize.small, color: colors.textMuted, marginTop: spacing.xs },
+  car: { fontSize: fontSize.body, fontFamily: font.semibold, color: colors.text },
+  carUnread: { fontFamily: font.extrabold },
+  badge: { minWidth: 24, paddingHorizontal: 8, borderRadius: 12, backgroundColor: colors.accent, alignItems: 'center' },
+  badgeText: { color: colors.primary, fontSize: fontSize.small, fontFamily: font.bold },
+  preview: { fontFamily: font.regular, fontSize: fontSize.body, color: colors.text, marginTop: spacing.xs },
+  meta: { fontFamily: font.regular, fontSize: fontSize.small, color: colors.textMuted, marginTop: spacing.xs },
   prompt: { borderWidth: 1, borderColor: colors.primary, borderRadius: radius, padding: spacing.md, marginBottom: spacing.md, backgroundColor: colors.primaryTint },
-  promptTitle: { fontSize: fontSize.body, fontWeight: '700', color: colors.text, marginBottom: spacing.xs },
-  promptBody: { fontSize: fontSize.body, color: colors.text, marginBottom: spacing.sm },
+  promptTitle: { fontSize: fontSize.body, fontFamily: font.bold, color: colors.text, marginBottom: spacing.xs },
+  promptBody: { fontFamily: font.regular, fontSize: fontSize.body, color: colors.text, marginBottom: spacing.sm },
 });

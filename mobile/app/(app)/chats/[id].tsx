@@ -10,7 +10,7 @@ import { useThread, type Pending } from '../../../src/chat/useThread';
 import { t, useLocale } from '../../../src/i18n';
 import { formatDateTime } from '../../../src/lib/format';
 import type { Message } from '../../../src/lib/mergeMessages';
-import { colors, fontSize, radius, spacing, touchTarget } from '../../../src/theme';
+import { colors, font, fontSize, radius, spacing, touchTarget } from '../../../src/theme';
 
 const MAX_LENGTH = 500;
 
@@ -243,32 +243,32 @@ export default function ChatThread() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.surface },
+  safe: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
   pad: { padding: spacing.lg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   top: { paddingHorizontal: spacing.md, paddingTop: spacing.sm },
-  retention: { fontSize: fontSize.small, color: colors.textMuted, marginBottom: spacing.sm },
+  retention: { fontFamily: font.regular, fontSize: fontSize.small, color: colors.textMuted, marginBottom: spacing.sm },
   listContent: { padding: spacing.md, flexGrow: 1 },
-  empty: { fontSize: fontSize.body, color: colors.textMuted, textAlign: 'center', marginTop: spacing.xl },
+  empty: { fontFamily: font.regular, fontSize: fontSize.body, color: colors.textMuted, textAlign: 'center', marginTop: spacing.xl },
   rowOwn: { alignItems: 'flex-end', marginBottom: spacing.md },
   rowVisitor: { alignItems: 'flex-start', marginBottom: spacing.md },
   bubble: { maxWidth: '85%', borderRadius: radius, padding: spacing.sm + 2, borderWidth: 1 },
   bubbleOwn: { backgroundColor: colors.primaryTint, borderColor: colors.primary },
   bubbleVisitor: { backgroundColor: colors.surface, borderColor: colors.border },
   bubbleFailed: { borderColor: colors.danger, borderStyle: 'dashed' },
-  who: { fontSize: fontSize.small, fontWeight: '700', color: colors.primaryDark, marginBottom: 2 },
-  body: { fontSize: fontSize.body, color: colors.text },
-  removed: { fontSize: fontSize.body, color: colors.textMuted, fontStyle: 'italic' },
+  who: { fontSize: fontSize.small, fontFamily: font.bold, color: colors.primaryDark, marginBottom: 2 },
+  body: { fontFamily: font.regular, fontSize: fontSize.body, color: colors.text },
+  removed: { fontFamily: font.regular, fontSize: fontSize.body, color: colors.textMuted, fontStyle: 'italic' },
   inline: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
-  meta: { fontSize: fontSize.small, color: colors.textMuted },
+  meta: { fontFamily: font.regular, fontSize: fontSize.small, color: colors.textMuted },
   pendingActions: { alignItems: 'flex-end' },
-  failedText: { fontSize: fontSize.small, color: colors.danger, marginTop: spacing.xs },
+  failedText: { fontFamily: font.regular, fontSize: fontSize.small, color: colors.danger, marginTop: spacing.xs },
   reportButton: { minHeight: touchTarget, minWidth: touchTarget, justifyContent: 'center', paddingHorizontal: spacing.sm },
-  reportText: { fontSize: fontSize.small, fontWeight: '600', color: colors.danger },
+  reportText: { fontSize: fontSize.small, fontFamily: font.semibold, color: colors.danger },
   pausedBox: { backgroundColor: colors.primaryTint, borderRadius: radius, padding: spacing.md, marginBottom: spacing.sm },
   noticeBox: { padding: spacing.md, backgroundColor: colors.primaryTint, borderTopWidth: 1, borderColor: colors.border },
-  noticeText: { fontSize: fontSize.body, color: colors.text, marginBottom: spacing.sm },
+  noticeText: { fontFamily: font.regular, fontSize: fontSize.body, color: colors.text, marginBottom: spacing.sm },
   composer: { padding: spacing.md, borderTopWidth: 1, borderColor: colors.border, gap: spacing.sm },
   input: {
     minHeight: touchTarget,
@@ -278,8 +278,8 @@ const styles = StyleSheet.create({
     borderRadius: radius,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    fontSize: fontSize.body,
+    fontFamily: font.regular, fontSize: fontSize.body,
     color: colors.text,
   },
-  sendError: { fontSize: fontSize.small, color: colors.danger },
+  sendError: { fontFamily: font.regular, fontSize: fontSize.small, color: colors.danger },
 });

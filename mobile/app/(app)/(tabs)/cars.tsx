@@ -13,7 +13,7 @@ import { Fab, FAB_HEIGHT } from '../../../src/components/Fab';
 import { Screen } from '../../../src/components/Screen';
 import { t, useLocale } from '../../../src/i18n';
 import { firstName } from '../../../src/lib/firstName';
-import { colors, fontSize, spacing } from '../../../src/theme';
+import { colors, font, fontSize, spacing } from '../../../src/theme';
 
 function CarRow({ car, onUpdated }: { car: Car; onUpdated: (car: Car) => void }) {
   const router = useRouter();
@@ -66,7 +66,7 @@ export default function Cars() {
 
   return (
     <View style={styles.flex}>
-      <Screen title={t('cars.title')} tabbed bottomSpace={FAB_HEIGHT + spacing.md}>
+      <Screen logo title={t('cars.title')} tabbed bottomSpace={FAB_HEIGHT + spacing.md}>
         <Text style={styles.greeting}>{name ? t('home.title', { name }) : t('home.titleNoName')}</Text>
         {error ? <ErrorBanner message={`${t('cars.loadError')} ${error}`} /> : null}
         {cars === null && loading ? (
@@ -88,6 +88,6 @@ export default function Cars() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  greeting: { fontSize: fontSize.body + 2, fontWeight: '600', color: colors.text, marginBottom: spacing.sm },
-  empty: { fontSize: fontSize.body, color: colors.text, marginVertical: spacing.lg },
+  greeting: { fontSize: fontSize.body + 2, fontFamily: font.semibold, color: colors.text, marginBottom: spacing.sm },
+  empty: { fontFamily: font.regular, fontSize: fontSize.body, color: colors.text, marginVertical: spacing.lg },
 });

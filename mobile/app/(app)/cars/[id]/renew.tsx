@@ -18,7 +18,7 @@ import { isAllowedCheckoutUrl } from '../../../../src/lib/checkoutUrl';
 import { formatDate } from '../../../../src/lib/format';
 import { forgetPending, expiryFromSeconds, isOver, pendingFor, rememberPending } from '../../../../src/lib/pendingRenewals';
 import { pollPayment } from '../../../../src/lib/pollPayment';
-import { colors, fontSize, radius, spacing } from '../../../../src/theme';
+import { colors, font, fontSize, radius, spacing } from '../../../../src/theme';
 
 type Phase = 'form' | 'starting' | 'checking' | 'pending' | 'paid' | 'failed';
 type LocalErrors = Partial<Record<'name' | 'address' | 'city' | 'phone' | 'nationalId' | 'legal', string>>;
@@ -391,8 +391,8 @@ export default function Renew() {
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: fontSize.title, fontWeight: '700', color: colors.text, marginBottom: spacing.lg },
-  intro: { fontSize: fontSize.body, color: colors.text, marginBottom: spacing.lg },
+  title: { fontSize: fontSize.title, fontFamily: font.bold, color: colors.text, marginBottom: spacing.lg },
+  intro: { fontFamily: font.regular, fontSize: fontSize.body, color: colors.text, marginBottom: spacing.lg },
   pendingBox: {
     backgroundColor: colors.primaryTint,
     borderColor: colors.primary,
@@ -401,10 +401,10 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.lg,
   },
-  pendingText: { fontSize: fontSize.body, color: colors.text },
+  pendingText: { fontFamily: font.regular, fontSize: fontSize.body, color: colors.text },
   gap: { height: spacing.sm },
-  draft: { fontSize: fontSize.small, fontWeight: '700', color: colors.danger, marginBottom: spacing.xs },
+  draft: { fontSize: fontSize.small, fontFamily: font.bold, color: colors.danger, marginBottom: spacing.xs },
   privacyLink: { minHeight: 44, justifyContent: 'center' },
-  privacyLinkText: { color: colors.primaryDark, fontSize: fontSize.body, textDecorationLine: 'underline' },
-  privacyBody: { fontSize: fontSize.small, color: colors.text, marginBottom: spacing.md },
+  privacyLinkText: { color: colors.primaryDark, fontFamily: font.regular, fontSize: fontSize.body, textDecorationLine: 'underline' },
+  privacyBody: { fontFamily: font.regular, fontSize: fontSize.small, color: colors.text, marginBottom: spacing.md },
 });

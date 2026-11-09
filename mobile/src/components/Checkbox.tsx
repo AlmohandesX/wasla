@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, fontSize, radius, spacing, touchTarget } from '../theme';
+import { colors, font, fontSize, radius, spacing, touchTarget } from '../theme';
 
 type Props = { label: string; checked: boolean; onChange: (checked: boolean) => void; error?: string };
 
@@ -65,6 +65,6 @@ const styles = StyleSheet.create({
     borderColor: colors.surface,
     transform: [{ rotate: '45deg' }, { translateY: -1 }],
   },
-  label: { flex: 1, fontSize: fontSize.body, color: colors.text },
-  error: { color: colors.danger, fontSize: fontSize.small, marginTop: spacing.xs },
+  label: { flex: 1, fontFamily: font.regular, fontSize: fontSize.body, color: colors.text },
+  error: { color: colors.danger, fontFamily: font.regular, fontSize: fontSize.small, marginTop: spacing.xs },
 });

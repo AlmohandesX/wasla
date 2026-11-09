@@ -11,7 +11,7 @@ import { CarCard, isExpired } from '../../../../src/components/CarCard';
 import { ErrorBanner } from '../../../../src/components/ErrorBanner';
 import { Screen } from '../../../../src/components/Screen';
 import { t, useLocale } from '../../../../src/i18n';
-import { colors, fontSize, radius, spacing } from '../../../../src/theme';
+import { colors, font, fontSize, radius, spacing } from '../../../../src/theme';
 
 function CarPhoto({ carId, version }: { carId: number; version: number }) {
   const [token, setToken] = useState<string | null>(null);
@@ -112,6 +112,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  photoEmptyText: { fontSize: fontSize.small, color: colors.textMuted },
+  photoEmptyText: { fontFamily: font.regular, fontSize: fontSize.small, color: colors.textMuted },
   actions: { gap: spacing.sm },
 });

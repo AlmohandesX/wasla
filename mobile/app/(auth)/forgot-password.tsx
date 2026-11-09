@@ -10,7 +10,7 @@ import { LinkText } from '../../src/components/LinkText';
 import { Screen } from '../../src/components/Screen';
 import { TextField } from '../../src/components/TextField';
 import { t, useLocale } from '../../src/i18n';
-import { colors, fontSize, spacing } from '../../src/theme';
+import { colors, font, fontSize, spacing } from '../../src/theme';
 
 export default function ForgotPassword() {
   useLocale();
@@ -34,7 +34,7 @@ export default function ForgotPassword() {
   }
 
   return (
-    <Screen title={t('forgot.title')}>
+    <Screen logo title={t('forgot.title')}>
       <Text style={styles.intro}>{t('forgot.intro')}</Text>
       <ErrorBanner message={error && !error.fields ? error.message : null} />
       <ErrorBanner tone="info" message={sent ? t('forgot.sent') : null} />
@@ -61,6 +61,6 @@ export default function ForgotPassword() {
 }
 
 const styles = StyleSheet.create({
-  intro: { fontSize: fontSize.body, color: colors.text, marginBottom: spacing.md },
+  intro: { fontFamily: font.regular, fontSize: fontSize.body, color: colors.text, marginBottom: spacing.md },
   links: { marginTop: spacing.md },
 });

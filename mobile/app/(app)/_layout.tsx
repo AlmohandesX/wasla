@@ -5,7 +5,7 @@ import { setExpiredHandler } from '../../src/api/client';
 import { useSession } from '../../src/auth/session';
 import { t, useLocale } from '../../src/i18n';
 import { enablePush, listenForChatTaps } from '../../src/push/register';
-import { colors } from '../../src/theme';
+import { colors, font } from '../../src/theme';
 
 export default function AppLayout() {
   useLocale();
@@ -51,9 +51,9 @@ export default function AppLayout() {
         headerTransparent: false,
         headerStyle: { backgroundColor: colors.surface },
         headerShadowVisible: true,
-        contentStyle: { backgroundColor: colors.surface },
+        contentStyle: { backgroundColor: colors.background },
         headerTintColor: colors.primaryDark,
-        headerTitleStyle: { color: colors.text },
+        headerTitleStyle: { color: colors.text, fontFamily: font.bold },
         headerBackTitle: t('common.back'),
       }}
     >
