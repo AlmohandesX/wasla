@@ -50,8 +50,11 @@ The plain SVGs keep the wordmark as live Manrope text, which Figma imports with 
 - The template is `backend/resources/stickers/sticker-70.svg`, made by `brand/scripts/outline-logo.py`; `App\Services\Tags\StickerRenderer` places each QR in it. `brand/sticker/sample-70mm.svg` is a sample with a dummy link.
 - Ask the printer: is the sticker stuck inside the glass and read from outside (then it is printed on the adhesive side, usually mirrored), and where does the NFC chip sit so it is not under the QR?
 
+## Admin panel
+
+Filament (`backend/app/Providers/Filament/AdminPanelProvider.php`): brand name Beni Bul, the logo (larger on the sign-in card), the favicon, Manrope from `/css/admin-font.css`, and a hand-set navy palette with `#14213D` at shade 600, the shade Filament uses for buttons and links.
+
 ## Still to do
 
-- Admin panel (Filament) colors and logo
 - Native Turkish speaker to check the renamed strings ("Beni Bul'da", "Beni Bul'a") and the sticker line "Okut, sahibine ulaş"
 - Brand guidelines page

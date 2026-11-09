@@ -13,6 +13,7 @@ use App\Filament\Resources\UserResource;
 use App\Filament\Resources\WaveResource;
 use App\Filament\Support\InitialsAvatarProvider;
 use App\Http\Middleware\SecurityHeaders;
+use Filament\FontProviders\LocalFontProvider;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -30,6 +31,15 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class AdminPanelProvider extends PanelProvider
 {
+    /**
+     * Filament puts buttons and links on shade 600; generating a palette from #14213D would make 600 a mid blue, so
+     * the shades are set by hand with the brand navy at 600 (15.6:1 with white text).
+     */
+    private const NAVY = [
+        50 => '#F2F4F8', 100 => '#E8EBF2', 200 => '#C9D0DF', 300 => '#9AA6C0', 400 => '#6A7AA0', 500 => '#3D4F7A',
+        600 => '#14213D', 700 => '#0F1A31', 800 => '#0B1428', 900 => '#080F1E', 950 => '#050A14',
+    ];
+
     public function panel(Panel $panel): Panel
     {
         return $panel
@@ -37,11 +47,17 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login(Login::class)
-            ->brandName('WASLA')
-            // White surfaces with royal blue as the one accent colour.
-            ->colors(['primary' => Color::hex('#4169E1'), 'gray' => Color::Slate])
+            // Beni Bul brand (brand/README.md): navy as the one accent colour, the logo, and Manrope.
+            ->brandName('Beni Bul')
+            ->brandLogo(asset('img/beni-bul-logo.svg'))
+            // Larger on the sign-in card, compact in the top bar.
+            ->brandLogoHeight(fn (): string => request()->routeIs('filament.admin.auth.login') ? '5.5rem' : '2.75rem')
+            ->favicon(asset('img/favicon.png'))
+            ->colors(['primary' => self::NAVY, 'gray' => Color::Slate])
             ->darkMode(false)
-            // Filament's default avatar and font come from third-party hosts the admin CSP does not allow.
+            // Filament's default avatar and font come from third-party hosts the admin CSP does not allow, so the
+            // avatar is drawn locally and Manrope is served from /fonts.
+            ->font('Manrope', url: asset('css/admin-font.css'), provider: LocalFontProvider::class)
             ->defaultAvatarProvider(InitialsAvatarProvider::class)
             ->resources([
                 UserResource::class, TagResource::class, WaveResource::class, PaymentResource::class,
