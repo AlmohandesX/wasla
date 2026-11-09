@@ -48,13 +48,17 @@ The plain SVGs keep the wordmark as live Manrope text, which Figma imports with 
 - 70 x 70 mm square, 4.5 mm rounded corners (approved 2026-11-09): navy frame and band with the white logo, a white panel with the QR code, "Okut, sahibine ulaş" under it. No serial on the face; the owner sees it in the app.
 - Every wave package now has `stickers/<serial>.svg` next to `qr/<serial>.svg` and `tags.csv`. Each sticker is print-ready: 74 x 74 mm artboard with 2 mm bleed, all text outlined, and the die line on a separate `CutContour` layer (magenta, not printed).
 - The template is `backend/resources/stickers/sticker-70.svg`, made by `brand/scripts/outline-logo.py`; `App\Services\Tags\StickerRenderer` places each QR in it. `brand/sticker/sample-70mm.svg` is a sample with a dummy link.
-- Ask the printer: is the sticker stuck inside the glass and read from outside (then it is printed on the adhesive side, usually mirrored), and where does the NFC chip sit so it is not under the QR?
+- No NFC chip for now (owner, 2026-11-09): the sticker is QR only.
+- Ask the printer: is the sticker stuck inside the glass and read from outside? Then it is printed on the adhesive side, usually mirrored.
 
 ## Admin panel
 
 Filament (`backend/app/Providers/Filament/AdminPanelProvider.php`): brand name Beni Bul, the logo (larger on the sign-in card), the favicon, Manrope from `/css/admin-font.css`, and a hand-set navy palette with `#14213D` at shade 600, the shade Filament uses for buttons and links.
 
+## Done
+
+- The Turkish strings ("Beni Bul'da", "Beni Bul'a") and the sticker line "Okut, sahibine ulaş" were checked by a Turkish speaker (owner, 2026-11-09).
+
 ## Still to do
 
-- Native Turkish speaker to check the renamed strings ("Beni Bul'da", "Beni Bul'a") and the sticker line "Okut, sahibine ulaş"
 - Brand guidelines page
