@@ -27,9 +27,10 @@ Do not change these without the owner's say-so.
 | `logo/beni-bul-logo-white.svg` | On navy or dark backgrounds (connector stays orange) |
 | `logo/beni-bul-logo-mono.svg` | One-color print, engraving, fax-like contexts |
 | `logo/beni-bul-mark.svg` | Symbol only, no words: app icon, favicon, small spaces |
+| `logo/*-outlined.svg` | Same logos with the words as paths: no font needed. Send these to printers |
 | `preview.html` | Open in a browser to see all versions |
 
-The wordmark is live text in Manrope. Figma has Manrope built in, so the SVGs import with the right font. Before sending a file to a printer, outline the text in Figma (select the text, then Flatten, Ctrl+E) so it does not depend on the font being installed.
+The plain SVGs keep the wordmark as live Manrope text, which Figma imports with the right font. The `-outlined` files are made by `python brand/scripts/outline-logo.py` (needs fontTools) and need no font at all.
 
 ## In the app
 
@@ -38,8 +39,13 @@ The wordmark is live text in Manrope. Figma has Manrope built in, so the SVGs im
 - `Logo` (`mobile/src/components/Logo.tsx`) shows `assets/images/logo.png` or `logo-white.png`. Screens opt in with `<Screen logo>`.
 - Icons, splash and in-app logo images are rendered by `node brand/scripts/render-icons.mjs`. Re-run it after any logo change.
 
+## Visitor pages
+
+`backend/public/css/visitor.css` and the visitor, plain and reset-password layouts: Manrope self-hosted as four subset woff2 files (about 16 KB each, Latin + Turkish, `backend/public/fonts/manrope-*.woff2`), the orange rule on top, and the outlined logo from `backend/public/img/`.
+
 ## Still to do
 
 - Sticker layout: logo next to the QR code at real size
-- Visitor page (`backend`, `/t/{token}`) and admin panel in the new brand
+- Admin panel (Filament) colors and logo
+- Native Turkish speaker to check the renamed strings ("Beni Bul'da", "Beni Bul'a")
 - Brand guidelines page

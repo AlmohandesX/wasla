@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'title' => 'WASLA',
+    'title' => 'Beni Bul',
     'note_label' => 'Bu araçtan bir not',
     'message_owner' => 'Sahibine mesaj gönder',
     'message_hint' => 'Telefon numarası paylaşılmaz. Mesajlaşma anonimdir.',
@@ -15,8 +15,8 @@ return [
     'neutral_title' => 'Bu etiket etkin değil',
     'neutral_body' => 'Burada gösterilecek bir şey yok.',
     'unclaimed_title' => 'Bu etiket henüz kullanıma alınmadı',
-    'unclaimed_body' => 'Bu WASLA etiketinin sahibi yok. Araç sahibiyseniz etiketi birkaç dakikada kullanıma alabilirsiniz.',
-    'unclaimed_step_1' => 'WASLA uygulamasını telefonunuza indirin.',
+    'unclaimed_body' => 'Bu Beni Bul etiketinin sahibi yok. Araç sahibiyseniz etiketi birkaç dakikada kullanıma alabilirsiniz.',
+    'unclaimed_step_1' => 'Beni Bul uygulamasını telefonunuza indirin.',
     'unclaimed_step_2' => 'Hesap oluşturup e-postanızı doğrulayın.',
     'unclaimed_step_3' => 'Etiketi okutup aracınızla eşleştirin.',
     'chat_label' => 'Anonim sohbet',
@@ -32,12 +32,12 @@ return [
     'chat_owner' => 'Sahibi',
     'chat_report' => 'Bildir',
     'chat_reported' => 'Bildirildi',
-    'chat_report_confirm' => "Bu mesaj WASLA'ya bildirilsin mi? Ekibimiz inceleyecek.",
+    'chat_report_confirm' => "Bu mesaj Beni Bul'a bildirilsin mi? Ekibimiz inceleyecek.",
     'chat_removed' => 'Moderatör tarafından kaldırıldı',
     'chat_error' => 'Mesaj gönderilemedi. Lütfen tekrar deneyin.',
     'chat_limited' => 'Çok fazla mesaj gönderildi. Birkaç dakika bekleyip tekrar deneyin.',
     'chat_expired' => 'Bu sayfanın süresi doldu. Sayfayı yenileyip tekrar deneyin.',
     'chat_unavailable' => 'Sohbet kullanılamıyor.',
     'chat_back' => 'Geri',
-    'footer' => 'WASLA ile gönderildi',
+    'footer' => 'Beni Bul ile gönderildi',
 ];

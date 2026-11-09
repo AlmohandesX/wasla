@@ -91,7 +91,7 @@ it('shows a translated plain 403, 500 and 503', function (int $status, string $k
 it('serves a minimal translated WASLA page at the root instead of the framework welcome page', function () {
     $tr = $this->get('/', TURKISH)->assertOk();
     assertPlainPage($tr);
-    $tr->assertSee('WASLA')->assertSee(__('pages.home_body', [], 'tr'));
+    $tr->assertSee('Beni Bul')->assertSee(__('pages.home_body', [], 'tr'));
 
     // No preference, or an unsupported language, gets English.
     $this->get('/', ['Accept-Language' => ''])->assertOk()->assertSee(__('pages.home_body', [], 'en'));

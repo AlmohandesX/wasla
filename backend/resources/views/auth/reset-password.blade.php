@@ -5,13 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
     <meta name="referrer" content="no-referrer">
-    <meta name="theme-color" content="#4169E1">
-    <title>{{ __('wasla.reset_page_title') }} - WASLA</title>
+    <meta name="theme-color" content="#14213D">
+    <title>{{ __('wasla.reset_page_title') }} - Beni Bul</title>
     <link rel="stylesheet" href="/css/visitor.css">
     <link rel="stylesheet" href="/css/reset-password.css">
 </head>
 <body>
     <main class="note">
+        <img class="brand" src="/img/beni-bul-logo.svg" alt="Beni Bul" width="288" height="216">
         <h1 class="message quiet">{{ $done ? __('wasla.password_reset') : __('wasla.reset_page_title') }}</h1>
 
         @if ($done)

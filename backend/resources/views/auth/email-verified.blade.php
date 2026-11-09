@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ __('wasla.email_verified_title') }} - WASLA</title>
+    <title>{{ __('wasla.email_verified_title') }} - Beni Bul</title>
     <link rel="stylesheet" href="{{ asset('css/auth.css') }}">
 </head>
 <body>

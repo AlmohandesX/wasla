@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'title' => 'WASLA',
+    'title' => 'Beni Bul',
     'note_label' => 'A note from this car',
     'message_owner' => 'Message the owner',
     'message_hint' => 'Your phone number is not shared. The chat is anonymous.',
@@ -15,8 +15,8 @@ return [
     'neutral_title' => 'This tag is not active',
     'neutral_body' => 'There is nothing to show here.',
     'unclaimed_title' => 'This tag has not been set up yet',
-    'unclaimed_body' => 'This WASLA tag has no owner yet. If this is your car, you can set the tag up in a few minutes.',
-    'unclaimed_step_1' => 'Download the WASLA app on your phone.',
+    'unclaimed_body' => 'This Beni Bul tag has no owner yet. If this is your car, you can set the tag up in a few minutes.',
+    'unclaimed_step_1' => 'Download the Beni Bul app on your phone.',
     'unclaimed_step_2' => 'Create an account and verify your email.',
     'unclaimed_step_3' => 'Scan the tag and link it to your car.',
     'chat_label' => 'Anonymous chat',
@@ -32,12 +32,12 @@ return [
     'chat_owner' => 'Owner',
     'chat_report' => 'Report',
     'chat_reported' => 'Reported',
-    'chat_report_confirm' => 'Report this message to WASLA? Our team will review it.',
+    'chat_report_confirm' => 'Report this message to Beni Bul? Our team will review it.',
     'chat_removed' => 'Removed by a moderator',
     'chat_error' => 'The message could not be sent. Please try again.',
     'chat_limited' => 'Too many messages. Please wait a few minutes and try again.',
     'chat_expired' => 'This page has expired. Reload it and try again.',
     'chat_unavailable' => 'Chat is not available.',
     'chat_back' => 'Back',
-    'footer' => 'Sent with WASLA',
+    'footer' => 'Sent with Beni Bul',
 ];

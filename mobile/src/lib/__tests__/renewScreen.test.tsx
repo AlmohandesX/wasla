@@ -264,7 +264,7 @@ test('the legal line carries the draft marker and opens the privacy notice', asy
   await act(async () =>
     tree.root.findAll((n) => n.props.accessibilityRole === 'button' && n.props.accessibilityState?.expanded === false)[0].props.onPress(),
   );
-  expect(textOf(tree)).toContain('Wasla');
+  expect(textOf(tree)).toContain('Beni Bul');
 });
 
 describe('an abandoned checkout', () => {

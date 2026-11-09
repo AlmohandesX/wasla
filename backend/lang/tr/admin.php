@@ -99,7 +99,7 @@ return [
         'flag_reviewed_at' => 'İşaret incelendi',
         'national_id' => 'T.C. kimlik no',
         'refund' => 'İade et',
-        'refund_confirm' => "Bu işlem iadeyi yalnızca WASLA'da kaydeder. Bu ödeme bir etiketi uzattıysa o etiketin süresi bir yıl kısalır. Para iade etmez: parayı müşteriye sağlayıcının panelinden iade edin.",
+        'refund_confirm' => "Bu işlem iadeyi yalnızca Beni Bul'da kaydeder. Bu ödeme bir etiketi uzattıysa o etiketin süresi bir yıl kısalır. Para iade etmez: parayı müşteriye sağlayıcının panelinden iade edin.",
         'refunded' => 'İade kaydedildi. Kısaltılan etiket: :tag.',
         'no_tag' => 'yok',
         'mark_reviewed' => 'İşareti incelendi yap',

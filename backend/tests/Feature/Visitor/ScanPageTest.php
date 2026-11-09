@@ -130,7 +130,7 @@ it('sets no cookie on neutral and unclaimed pages', function () {
 });
 
 it('explains how to claim an unclaimed tag', function () {
-    $this->get('/t/'.tagFixture()->token)->assertOk()->assertSee('WASLA')->assertDontSee('/chat');
+    $this->get('/t/'.tagFixture()->token)->assertOk()->assertSee('Beni Bul')->assertDontSee('/chat');
 });
 
 it('returns 404 for an unknown or malformed token', function () {

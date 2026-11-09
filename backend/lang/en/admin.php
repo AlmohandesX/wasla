@@ -99,7 +99,7 @@ return [
         'flag_reviewed_at' => 'Flag reviewed',
         'national_id' => 'National ID',
         'refund' => 'Refund',
-        'refund_confirm' => "This records the refund in WASLA only. If this payment extended a tag, that tag loses one year. It does not return any money: refund the customer in the provider's panel.",
+        'refund_confirm' => "This records the refund in Beni Bul only. If this payment extended a tag, that tag loses one year. It does not return any money: refund the customer in the provider's panel.",
         'refunded' => 'Refund recorded. Tag shortened: :tag.',
         'no_tag' => 'none',
         'mark_reviewed' => 'Mark flag reviewed',
