@@ -60,8 +60,8 @@ describe('chat screen', () => {
     expect(mockPush).toHaveBeenCalledWith({ pathname: '/cars/[id]/expired', params: { id: '7' } });
   });
 
-  test('a blacklisted word is sent as *** and the input still clears', async () => {
-    const send = jest.fn(async () => true);
+  test('sends the text as typed, leaving moderation to the server, and keeps it when refused', async () => {
+    const send = jest.fn(async () => false); // the server refused it (e.g. 422 message_blocked)
     mockThread = { ...base, send, meta: { id: 1, car: { id: 7, model: 'Clio', linked: true, chats_paused: false, subscription_active: true } } };
     let tree!: ReturnType<typeof create>;
     await act(async () => {
@@ -72,8 +72,8 @@ describe('chat screen', () => {
     const sendButton = tree.root.findAll((n) => n.props.accessibilityRole === 'button' && n.props.accessibilityLabel === 'Send')[0];
     await act(async () => sendButton.props.onPress());
 
-    expect(send).toHaveBeenCalledWith('you ***');
-    expect(input().props.value).toBe('');
+    expect(send).toHaveBeenCalledWith('you badword_en');
+    expect(input().props.value).toBe('  you badword_en  ');
   });
 
   test('an active car shows no Renew button', async () => {
