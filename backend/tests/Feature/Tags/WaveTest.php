@@ -65,7 +65,7 @@ it('formats serials as W001-000123', function () {
     expect(Tag::where('serial', 'W001-000123')->exists())->toBeTrue();
 });
 
-it('builds a package whose CSV has one row per tag and a QR svg per serial', function () {
+it('builds a package whose CSV has one row per tag and a QR svg and a sticker per serial', function () {
     config(['wasla.tag_base_url' => 'https://wasla.example/t']);
     $wave = makeWave(25);
 
@@ -84,8 +84,19 @@ it('builds a package whose CSV has one row per tag and a QR svg per serial', fun
         expect($url)->toBe('https://wasla.example/t/'.$tags[$serial]->token);
         $svg = $zip->getFromName("qr/{$serial}.svg");
         expect($svg)->toBeString()->toContain('<svg');
+
+        // The sticker holds the very same QR code, placed in its box, and no placeholder or serial is left on it.
+        $sticker = $zip->getFromName("stickers/{$serial}.svg");
+        preg_match('/<path[^>]*class="qr-data-dark[^"]*"[^>]*d="([^"]+)"/', $svg, $dark);
+        expect($sticker)->toBeString()
+            ->toContain('width="74mm" height="74mm"')
+            ->toContain('<svg x="15" y="21" width="40" height="40"')
+            ->toContain($dark[1])
+            ->toContain('id="CutContour"')
+            ->not->toContain('<!--QR-->')
+            ->not->toContain($serial);
     }
-    expect($zip->numFiles)->toBe(26);
+    expect($zip->numFiles)->toBe(51);
     $zip->close();
 });
 

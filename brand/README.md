@@ -43,9 +43,15 @@ The plain SVGs keep the wordmark as live Manrope text, which Figma imports with 
 
 `backend/public/css/visitor.css` and the visitor, plain and reset-password layouts: Manrope self-hosted as four subset woff2 files (about 16 KB each, Latin + Turkish, `backend/public/fonts/manrope-*.woff2`), the orange rule on top, and the outlined logo from `backend/public/img/`.
 
+## Sticker
+
+- 70 x 70 mm square, 4.5 mm rounded corners (approved 2026-11-09): navy band with the white logo, the QR code in the middle, "Okut, sahibine ulaş" under it. No serial on the face; the owner sees it in the app.
+- Every wave package now has `stickers/<serial>.svg` next to `qr/<serial>.svg` and `tags.csv`. Each sticker is print-ready: 74 x 74 mm artboard with 2 mm bleed, all text outlined, and the die line on a separate `CutContour` layer (magenta, not printed).
+- The template is `backend/resources/stickers/sticker-70.svg`, made by `brand/scripts/outline-logo.py`; `App\Services\Tags\StickerRenderer` places each QR in it. `brand/sticker/sample-70mm.svg` is a sample with a dummy link.
+- Ask the printer: is the sticker stuck inside the glass and read from outside (then it is printed on the adhesive side, usually mirrored), and where does the NFC chip sit so it is not under the QR?
+
 ## Still to do
 
-- Sticker layout: logo next to the QR code at real size
 - Admin panel (Filament) colors and logo
-- Native Turkish speaker to check the renamed strings ("Beni Bul'da", "Beni Bul'a")
+- Native Turkish speaker to check the renamed strings ("Beni Bul'da", "Beni Bul'a") and the sticker line "Okut, sahibine ulaş"
 - Brand guidelines page

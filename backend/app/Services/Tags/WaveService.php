@@ -28,7 +28,7 @@ class WaveService
     private const INSERT_BATCH = 1000;
 
     /**
-     * QR SVGs (about 25 KB each) are staged as files and added to the zip in chunks of this size. Each chunk closes the
+     * QR SVGs (about 30 KB each) and stickers (about 55 KB each) are staged as files and added to the zip in chunks of this size. Each chunk closes the
      * zip, which rewrites it, so a 50k wave rewrites it 10 times; staging on disk keeps memory flat whatever the size.
      */
     private const PACKAGE_CHUNK = 5000;
@@ -181,13 +181,14 @@ class WaveService
         }
 
         $qrOptions = self::qrOptions();
+        $stickers = app(StickerRenderer::class);
 
         $csv = fopen($csvPath, 'wb');
         fwrite($csv, "serial,url\n");
 
         try {
             Tag::query()->where('wave_id', $wave->id)->select(['id', 'serial', 'token'])
-                ->chunkById(self::PACKAGE_CHUNK, function ($tags) use ($qrOptions, $csv, $workZip, $stage) {
+                ->chunkById(self::PACKAGE_CHUNK, function ($tags) use ($qrOptions, $stickers, $csv, $workZip, $stage) {
                     $zip = new ZipArchive;
                     if ($zip->open($workZip, ZipArchive::CREATE) !== true) {
                         throw new RuntimeException('Cannot open the wave package for writing.');
@@ -195,11 +196,16 @@ class WaveService
                     foreach ($tags as $tag) {
                         $url = $tag->publicUrl();
                         fwrite($csv, $tag->serial.','.$url."\n");
+                        $qr = (new QRCode($qrOptions))->render($url);
                         $file = $stage.'/'.$tag->serial.'.svg';
-                        if (file_put_contents($file, (new QRCode($qrOptions))->render($url)) === false) {
+                        $stickerFile = $stage.'/'.$tag->serial.'.sticker.svg';
+                        if (file_put_contents($file, $qr) === false
+                            || file_put_contents($stickerFile, $stickers->render($qr)) === false) {
                             throw new RuntimeException('Cannot stage a QR code.');
                         }
                         $zip->addFile($file, "qr/{$tag->serial}.svg");
+                        // Print-ready 70 x 70 mm sticker with bleed and die line (resources/stickers/sticker-70.svg).
+                        $zip->addFile($stickerFile, "stickers/{$tag->serial}.svg");
                     }
                     // The staged files are read during the close, so they can only go after it.
                     if (! $zip->close()) {
