@@ -16,7 +16,8 @@ class ChatMessageResource extends JsonResource
             'thread_id' => $this->thread_id,
             'sender' => $this->sender,
             // A message a moderator removed keeps its place in the thread, without its text.
-            'body' => $this->isHidden() ? '' : $this->body,
+            // A quick message comes in the app's language (Accept-Language).
+            'body' => $this->displayBody(),
             'hidden' => $this->isHidden(),
             'read' => $this->read_at !== null,
             // Lists load this with withExists('report as reported'); a single message falls back to a query.

@@ -12,6 +12,7 @@ use App\Http\Requests\Visitor\ReportVisitorMessageRequest;
 use App\Http\Requests\Visitor\SendVisitorMessageRequest;
 use App\Http\Resources\VisitorMessageResource;
 use App\Models\Car;
+use App\Models\ChatMessage;
 use App\Models\ChatThread;
 use App\Models\Tag;
 use App\Models\VisitorSession;
@@ -64,6 +65,8 @@ class VisitorChatController extends Controller
             'token' => $tag->token,
             'paused' => $paused,
             'consentRequired' => (bool) config('wasla.chat.consent_required'),
+            // The one-tap list opens a new conversation; once one exists the page is a normal chat.
+            'quickMessages' => $thread === null ? ChatMessage::QUICK_PRESETS : [],
         ]);
     }
 
@@ -104,7 +107,10 @@ class VisitorChatController extends Controller
         $consented = ! config('wasla.chat.consent_required') || $request->boolean('consent');
 
         try {
-            $message = $this->chat->send($thread, 'visitor', $request->validated('body'), $consented);
+            $preset = $request->validated('preset');
+            $message = $preset !== null
+                ? $this->chat->sendQuick($thread, $preset)
+                : $this->chat->send($thread, 'visitor', $request->validated('body'), $consented);
         } catch (MessageBlocked $e) {
             // A thread that only ever held a refused message must not show up in the owner's list.
             if ($thread->wasRecentlyCreated) {

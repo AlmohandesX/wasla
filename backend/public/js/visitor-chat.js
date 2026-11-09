@@ -6,6 +6,7 @@
     var list = chat.querySelector('.thread');
     var empty = chat.querySelector('.empty');
     var form = chat.querySelector('.composer');
+    var quick = chat.querySelector('.quick');
     var box = form.querySelector('textarea');
     var button = form.querySelector('button');
     var errorBox = chat.querySelector('.error');
@@ -36,6 +37,7 @@
         stopped = true;
         window.clearTimeout(timer);
         form.hidden = true;
+        if (quick) { quick.hidden = true; }
         empty.hidden = true;
         showError(text);
     }
@@ -165,6 +167,51 @@
         });
     }
 
+    function send(payload) {
+        errorBox.hidden = true;
+        return request(form.getAttribute('action'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+            body: JSON.stringify(payload)
+        }).then(function (message) {
+            render(message);
+            list.lastElementChild.scrollIntoView({ block: 'nearest' });
+            return message;
+        });
+    }
+
+    // From the one-tap list to the normal text box: after the first message, or when the visitor picks "Other".
+    // Only "Other" moves focus to the box: after a one-tap send, a keyboard popping up would be in the way.
+    function openComposer(focus) {
+        if (quick) { quick.hidden = true; }
+        form.hidden = false;
+        if (focus === true) { box.focus(); }
+    }
+
+    if (quick) {
+        Array.prototype.forEach.call(quick.querySelectorAll('.quick-option'), function (option) {
+            option.addEventListener('click', function () {
+                if (!option.dataset.preset) {
+                    option.setAttribute('aria-expanded', 'true');
+                    openComposer(true);
+                    return;
+                }
+                if (quick.getAttribute('aria-busy') === 'true') { return; }
+
+                // A quick message needs no consent: its text is ours and is never sent to the outside checker.
+                var label = option.textContent;
+                quick.setAttribute('aria-busy', 'true');
+                option.textContent = chat.dataset.sending;
+                send({ preset: option.dataset.preset }).then(function () { openComposer(false); }).catch(function (error) {
+                    option.textContent = label;
+                    failure(error);
+                }).then(function () {
+                    quick.removeAttribute('aria-busy');
+                });
+            });
+        });
+    }
+
     form.addEventListener('submit', function (event) {
         event.preventDefault();
         var body = box.value.trim();
@@ -172,20 +219,14 @@
 
         button.disabled = true;
         button.textContent = chat.dataset.sending;
-        errorBox.hidden = true;
 
         var payload = { body: body };
         var consent = form.querySelector('[name="consent"]');
         if (consent) { payload.consent = consent.checked; }
 
-        request(form.getAttribute('action'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
-            body: JSON.stringify(payload)
-        }).then(function (message) {
+        send(payload).then(function () {
             box.value = '';
-            render(message);
-            list.lastElementChild.scrollIntoView({ block: 'nearest' });
+            if (quick) { quick.hidden = true; }
         }).catch(failure).then(function () {
             button.disabled = false;
             button.textContent = chat.dataset.send;

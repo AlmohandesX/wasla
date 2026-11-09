@@ -12,6 +12,9 @@ use App\Filament\Resources\TagResource;
 use App\Filament\Resources\UserResource;
 use App\Filament\Resources\WaveResource;
 use App\Filament\Support\InitialsAvatarProvider;
+use App\Filament\Widgets\StatsOverview;
+use App\Filament\Widgets\TagActivationsChart;
+use App\Filament\Widgets\UserRegistrationsChart;
 use App\Http\Middleware\SecurityHeaders;
 use Filament\FontProviders\LocalFontProvider;
 use Filament\Http\Middleware\Authenticate;
@@ -64,6 +67,7 @@ class AdminPanelProvider extends PanelProvider
                 BlacklistTermResource::class, ModerationEventResource::class, ReportedMessageResource::class,
             ])
             ->pages([Dashboard::class, Settings::class])
+            ->widgets([StatsOverview::class, UserRegistrationsChart::class, TagActivationsChart::class])
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

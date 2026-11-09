@@ -9,6 +9,7 @@ use App\Models\ChatMessage;
 use App\Models\ChatThread;
 use App\Services\Moderation\ModerationPipeline;
 use Illuminate\Support\Facades\Cache;
+use InvalidArgumentException;
 
 class ChatService
 {
@@ -29,11 +30,35 @@ class ChatService
             throw new MessageBlocked;
         }
 
-        $message = $thread->messages()->create([
+        return $this->store($thread, [
             'sender' => $sender,
             'body' => $body,
             'moderation_status' => $result->decision === ModerationDecision::AllowFlagged ? 'flagged' : 'passed',
         ]);
+    }
+
+    /**
+     * A visitor's one-tap message. The text is ours, so it skips moderation (and the outside provider, which is why
+     * it needs no consent). The Turkish text is stored as the body for anything that reads the column directly;
+     * readers get it in their own language through ChatMessage::displayBody().
+     */
+    public function sendQuick(ChatThread $thread, string $preset): ChatMessage
+    {
+        if (! in_array($preset, ChatMessage::QUICK_PRESETS, true)) {
+            throw new InvalidArgumentException("Unknown quick message [$preset].");
+        }
+
+        return $this->store($thread, [
+            'sender' => 'visitor',
+            'body' => __('wasla.quick_messages.'.$preset, [], 'tr'),
+            'preset_key' => $preset,
+            'moderation_status' => 'passed',
+        ]);
+    }
+
+    private function store(ChatThread $thread, array $attributes): ChatMessage
+    {
+        $message = $thread->messages()->create($attributes);
         $thread->touch();
         ChatMessageCreated::dispatch($message);
 

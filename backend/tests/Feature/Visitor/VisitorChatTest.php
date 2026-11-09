@@ -431,3 +431,54 @@ it('blocks a visitor message with a vowelled Arabic blacklist term and saves not
 
     expect(ChatMessage::count())->toBe(0)->and(ModerationEvent::where('kind', 'blocked')->count())->toBe(1);
 });
+
+it('sends a quick message in one tap: no consent, no outside check, shown in the visitor language', function () {
+    config(['wasla.chat.consent_required' => true]);
+    $tag = chatTag();
+
+    asVisitor();
+    $this->postJson("/t/{$tag->token}/chat/messages", ['preset' => 'blocking'], ['X-Wasla-Lang' => 'en'])
+        ->assertCreated()
+        ->assertJsonPath('body', 'Your car is blocking mine.');
+
+    $message = ChatMessage::sole();
+    expect($message->preset_key)->toBe('blocking')
+        ->and($message->body)->toBe('Aracınız aracımın önünü kapatıyor.')
+        ->and($message->moderation_status)->toBe('passed');
+    Http::assertNothingSent();
+});
+
+it('takes either a quick message or typed text, and only a known quick message', function (array $payload) {
+    asVisitor();
+    $this->postJson('/t/'.chatTag()->token.'/chat/messages', $payload)->assertStatus(422);
+
+    expect(ChatMessage::count())->toBe(0)->and(ChatThread::count())->toBe(0);
+})->with([
+    'unknown preset' => [['preset' => 'fire']],
+    'both' => [['preset' => 'alarm', 'body' => 'Alarm calıyor']],
+    'neither' => [[]],
+]);
+
+it('applies the block cooldown to quick messages too', function () {
+    $tag = chatTag();
+    sendVisitor($tag, 'Merhaba')->assertCreated();
+    app(ChatService::class)->block(ChatThread::sole());
+
+    asVisitor();
+    $this->postJson("/t/{$tag->token}/chat/messages", ['preset' => 'alarm'])->assertForbidden();
+});
+
+it('offers the quick messages on a new conversation only, in the page language', function () {
+    $tag = chatTag();
+
+    $page = $this->get("/t/{$tag->token}/chat")->assertOk()
+        ->assertSee('Hızlı mesaj gönderin')
+        ->assertSeeInOrder(['data-preset="blocking"', 'data-preset="alarm"', 'data-preset="window_open"', 'data-preset="lights_on"', 'data-preset="unlocked"', 'Diğer: kendi mesajınızı yazın'], false);
+    // The text box waits behind "Other".
+    expect($page->getContent())->toMatch('/<form class="composer" id="chat-composer"[^>]*\shidden\s*>/');
+    $this->get("/t/{$tag->token}/chat?lang=en")->assertSee('Your car alarm is going off.');
+
+    $cookie = cookieOf(sendVisitor($tag));
+    asVisitor($cookie);
+    $this->get("/t/{$tag->token}/chat")->assertOk()->assertDontSee('data-preset', false);
+});

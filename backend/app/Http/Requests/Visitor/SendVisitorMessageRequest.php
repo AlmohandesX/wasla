@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests\Visitor;
 
+use App\Models\ChatMessage;
 use App\Rules\MeaningfulText;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class SendVisitorMessageRequest extends FormRequest
 {
@@ -15,7 +17,9 @@ class SendVisitorMessageRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'body' => ['required', 'string', 'max:500', new MeaningfulText],
+            // Either a quick message or typed text, never both.
+            'preset' => ['required_without:body', 'prohibits:body', 'string', Rule::in(ChatMessage::QUICK_PRESETS)],
+            'body' => ['required_without:preset', 'string', 'max:500', new MeaningfulText],
             'consent' => ['sometimes', 'boolean'],
         ];
     }

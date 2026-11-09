@@ -191,4 +191,18 @@ return [
         'save' => 'Save',
         'saved' => 'Price saved: :price TRY.',
     ],
+
+    'dashboard' => [
+        'users' => 'Registered users',
+        'activated_tags' => 'Activated tags',
+        'open_reports' => 'Open reports',
+        'this_week' => '+:count in the last 7 days',
+        'needs_review' => 'Waiting for review',
+        'all_clear' => 'Nothing to review',
+        'registrations_heading' => 'New users',
+        'activations_heading' => 'Tag activations',
+        'last_30_days' => 'Per day, last 30 days',
+        'new_users' => 'New users',
+        'activations' => 'Activations',
+    ],
 ];

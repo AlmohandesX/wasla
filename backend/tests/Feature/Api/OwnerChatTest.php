@@ -412,3 +412,14 @@ it('blocks an owner message sent straight to the API when a word starts with a p
 
     expect($thread->messages()->where('body', 'zibidiler')->exists())->toBeFalse();
 });
+
+it('shows a quick message in the app language and typed text as written', function () {
+    $user = owner();
+    $thread = chatThread(linkedCar($user), 'typed text');
+    app(ChatService::class)->sendQuick($thread, 'window_open');
+
+    $this->getJson("/api/v1/chats/{$thread->id}/messages", bearer($user) + ['Accept-Language' => 'en'])
+        ->assertOk()->assertJsonPath('data.*.body', ['typed text', 'Your car window is open.']);
+    $this->getJson("/api/v1/chats/{$thread->id}/messages", bearer($user) + ['Accept-Language' => 'tr'])
+        ->assertJsonPath('data.1.body', 'Aracınızın camı açık kalmış.');
+});

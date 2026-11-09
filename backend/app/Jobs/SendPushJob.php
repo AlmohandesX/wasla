@@ -14,12 +14,16 @@ class SendPushJob implements ShouldQueue
 
     public int $tries = 3;
 
-    /** @param array<string, scalar> $data */
+    /**
+     * @param  array<string, scalar>  $data  sent with the push, and available to the texts as placeholders
+     * @param  array<string, scalar>  $replace  placeholders for the texts only, never put in the push data
+     */
     public function __construct(
         public readonly int $userId,
         public readonly string $titleKey,
         public readonly string $bodyKey,
         public readonly array $data = [],
+        public readonly array $replace = [],
     ) {}
 
     /** @return list<int> */
@@ -37,8 +41,8 @@ class SendPushJob implements ShouldQueue
         }
 
         $locale = $user->preferredLocale();
-        $title = __($this->titleKey, $this->data, $locale);
-        $body = __($this->bodyKey, $this->data, $locale);
+        $title = __($this->titleKey, $this->replace + $this->data, $locale);
+        $body = __($this->bodyKey, $this->replace + $this->data, $locale);
 
         $dead = $expo->send(array_map(fn (string $token) => [
             'to' => $token,

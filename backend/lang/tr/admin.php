@@ -191,4 +191,18 @@ return [
         'save' => 'Kaydet',
         'saved' => 'Ücret kaydedildi: :price TL.',
     ],
+
+    'dashboard' => [
+        'users' => 'Kayıtlı kullanıcılar',
+        'activated_tags' => 'Etkinleştirilen etiketler',
+        'open_reports' => 'Açık bildirimler',
+        'this_week' => 'Son 7 günde +:count',
+        'needs_review' => 'İnceleme bekliyor',
+        'all_clear' => 'İncelenecek bir şey yok',
+        'registrations_heading' => 'Yeni kullanıcılar',
+        'activations_heading' => 'Etiket etkinleştirmeleri',
+        'last_30_days' => 'Günlük, son 30 gün',
+        'new_users' => 'Yeni kullanıcılar',
+        'activations' => 'Etkinleştirmeler',
+    ],
 ];

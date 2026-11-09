@@ -15,7 +15,7 @@ class VisitorMessageResource extends JsonResource
         return [
             'id' => $this->id,
             'sender' => $this->sender,
-            'body' => $this->isHidden() ? '' : $this->body,
+            'body' => $this->displayBody(),
             'hidden' => $this->isHidden(),
             'created_at' => $this->created_at->toIso8601String(),
         ];

@@ -2,7 +2,7 @@
 <html lang="{{ app()->getLocale() }}">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="robots" content="noindex, nofollow">
     <meta name="referrer" content="no-referrer">
     <meta name="theme-color" content="#14213D">
@@ -11,8 +11,11 @@
     <link rel="stylesheet" href="/css/reset-password.css">
 </head>
 <body>
+    <header class="band">
+        <img class="brand" src="/img/beni-bul-logo-white.svg" alt="Beni Bul" width="288" height="216">
+    </header>
+    <div class="page">
     <main class="note">
-        <img class="brand" src="/img/beni-bul-logo.svg" alt="Beni Bul" width="288" height="216">
         <h1 class="message quiet">{{ $done ? __('wasla.password_reset') : __('wasla.reset_page_title') }}</h1>
 
         @if ($done)
@@ -50,5 +53,6 @@
             <a class="back" href="{{ $appLink }}">{{ __('wasla.reset_open_app') }}</a>
         @endif
     </main>
+    </div>
 </body>
 </html>

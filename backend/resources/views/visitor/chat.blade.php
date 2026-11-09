@@ -30,9 +30,23 @@
              data-expired="{{ __('visitor.chat_expired') }}"
              data-unavailable="{{ __('visitor.chat_unavailable') }}">
             <ol class="thread" aria-live="polite" aria-label="{{ __('visitor.chat_title') }}"></ol>
-            <p class="hint empty">{{ __('visitor.chat_empty') }}</p>
+            <p class="hint empty" @if ($quickMessages) hidden @endif>{{ __('visitor.chat_empty') }}</p>
 
-            <form class="composer" method="post" action="/t/{{ $token }}/chat/messages">
+            {{-- A new conversation starts with one tap; "Other" opens the text box below. --}}
+            @if ($quickMessages)
+                <section class="quick" aria-labelledby="quick-title">
+                    <h2 id="quick-title">{{ __('visitor.quick_title') }}</h2>
+                    <p class="hint">{{ __('visitor.quick_hint') }}</p>
+                    <ul>
+                        @foreach ($quickMessages as $preset)
+                            <li><button type="button" class="quick-option" data-preset="{{ $preset }}">{{ __('wasla.quick_messages.'.$preset) }}</button></li>
+                        @endforeach
+                        <li><button type="button" class="quick-option other" aria-controls="chat-composer" aria-expanded="false">{{ __('visitor.quick_other') }}</button></li>
+                    </ul>
+                </section>
+            @endif
+
+            <form class="composer" id="chat-composer" method="post" action="/t/{{ $token }}/chat/messages" @if ($quickMessages) hidden @endif>
                 <label class="field" for="chat-body">{{ __('visitor.chat_field') }}</label>
                 <textarea id="chat-body" name="body" rows="3" maxlength="500" required></textarea>
                 @if ($consentRequired)

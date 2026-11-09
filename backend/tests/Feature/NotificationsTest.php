@@ -7,6 +7,7 @@ use App\Models\ModerationEvent;
 use App\Models\Reminder;
 use App\Models\VisitorSession;
 use App\Services\Auth\UserAdminService;
+use App\Services\Chat\ChatService;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\Request;
@@ -104,18 +105,56 @@ it('sends expiry reminders at 30, 7 and 1 days', function () {
     expect(collect(expoMessages())->pluck('data.days')->sort()->values()->all())->toBe([1, 7, 30]);
 });
 
-it('notifies the owner of a new visitor message without its text', function () {
+it('pushes the text of a typed message that passed moderation, with the plate in the title only', function () {
     [$user, $car] = pushOwner();
-    $thread = chatThread($car, 'gizli mesaj govdesi');
+    $thread = chatThread($car, 'Aracinizin isigi acik kalmis');
 
     ChatMessageCreated::dispatch($thread->messages()->first());
 
     $messages = expoMessages();
     expect($messages)->toHaveCount(1)
         ->and($messages[0]['to'])->toBe($user->deviceTokens()->first()->token)
-        ->and($messages[0]['data']['thread_id'])->toBe($thread->id)
-        ->and(json_encode($messages))->not->toContain('gizli mesaj govdesi');
+        ->and($messages[0]['title'])->toBe('Yeni mesaj · '.$car->plate)
+        ->and($messages[0]['body'])->toBe('Aracinizin isigi acik kalmis')
+        // The payload data stays free of the text and the plate.
+        ->and($messages[0]['data'])->toBe(['thread_id' => $thread->id, 'car_id' => $car->id]);
 });
+
+it('keeps flagged or hidden text out of the push and sends the generic line', function (array $attrs) {
+    [, $car] = pushOwner();
+    $message = chatThread($car)->messages()->create(['sender' => 'visitor', 'body' => 'gizli mesaj govdesi'] + $attrs);
+
+    ChatMessageCreated::dispatch($message);
+
+    $messages = expoMessages();
+    expect($messages[0]['body'])->toBe('Aracınız için yeni bir mesajınız var.')
+        ->and(json_encode($messages))->not->toContain('gizli mesaj govdesi');
+})->with([
+    'flagged by the provider' => [['moderation_status' => 'flagged']],
+    'hidden by a moderator' => [['moderation_status' => 'passed', 'hidden_at' => now()]],
+]);
+
+it('cuts a long message to 100 characters on one line', function () {
+    [, $car] = pushOwner();
+    $body = "Merhaba,\n\n".str_repeat('çok uzun mesaj ', 20);
+    $message = chatThread($car)->messages()->create(['sender' => 'visitor', 'body' => $body, 'moderation_status' => 'passed']);
+
+    ChatMessageCreated::dispatch($message);
+
+    $pushed = expoMessages()[0]['body'];
+    expect(mb_strlen($pushed))->toBeLessThanOrEqual(100)->toBeGreaterThan(95)
+        ->and($pushed)->toStartWith('Merhaba, çok uzun mesaj')->toEndWith('…')->not->toContain("\n");
+});
+
+it('pushes a quick message in full, in the owner language', function (string $locale, string $expected) {
+    [, $car] = pushOwner(null, $locale);
+    app(ChatService::class)->sendQuick(chatThread($car), 'lights_on');
+
+    expect(collect(expoMessages())->last()['body'])->toBe($expected);
+})->with([
+    'Turkish owner' => ['tr', 'Aracınızın farları açık kalmış.'],
+    'English owner' => ['en', 'Your car lights are on.'],
+]);
 
 it('does not push for an owner reply', function () {
     [, $car] = pushOwner();
