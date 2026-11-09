@@ -413,3 +413,12 @@ it('puts the cooldown on the IP the blocked session last used', function () {
     sendVisitor($tag, 'Yeni cerez', null, '10.8.0.2')->assertForbidden()->assertJsonPath('code', 'chat_unavailable');
     sendVisitor($tag, 'Eski ag baska biri', null, '10.8.0.1')->assertCreated();
 });
+
+it('blocks a visitor message with a vowelled Arabic blacklist term and saves nothing', function () {
+    BlacklistTerm::create(['term' => 'أحمق', 'language' => 'ar', 'match_mode' => 'word']);
+    $tag = linkedCar(owner())->tag;
+
+    sendVisitor($tag, 'انت أَحْـمَق')->assertStatus(422)->assertJsonPath('code', 'message_blocked');
+
+    expect(ChatMessage::count())->toBe(0)->and(ModerationEvent::where('kind', 'blocked')->count())->toBe(1);
+});

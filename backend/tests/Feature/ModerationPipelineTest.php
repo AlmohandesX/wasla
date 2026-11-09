@@ -186,3 +186,45 @@ it('seeds the blacklist idempotently through the database seeder', function () {
 
     expect($count)->toBeGreaterThan(20)->and(BlacklistTerm::count())->toBe($count);
 });
+
+it('blocks words that start with a prefix-mode term, so suffixed forms are caught', function () {
+    Http::fake();
+    BlacklistTerm::create(['term' => 'kötü', 'match_mode' => 'prefix']);
+
+    foreach (['çok kötü', 'kötüler geldi', 'KÖTÜSÜN', 'k0tuyum'] as $text) {
+        expect(pipeline()->check($text, [], false)->decision)->toBe(ModerationDecision::Block);
+    }
+    // Only the start of a word counts: the term in the middle of another word is left alone.
+    expect(pipeline()->check('ekotüm', [], false)->decision)->toBe(ModerationDecision::Allow);
+    Http::assertNothingSent();
+});
+
+it('blocks an Arabic term however it is vowelled, stretched or spelled', function () {
+    Http::fake();
+    BlacklistTerm::create(['term' => 'أحمق', 'language' => 'ar', 'match_mode' => 'word']);
+
+    foreach (['انت احمق', 'انت أَحْمَق', 'انت احـمـق', 'انت إحمق'] as $text) {
+        expect(pipeline()->check($text, [], false)->decision)->toBe(ModerationDecision::Block);
+    }
+    expect(pipeline()->check('انت لطيف', [], false)->decision)->toBe(ModerationDecision::Allow);
+});
+
+it('checks every term whatever its language, since a message language is not known', function () {
+    Http::fake();
+    BlacklistTerm::create(['term' => 'zibidi', 'language' => 'en', 'match_mode' => 'word']);
+
+    expect(pipeline()->check('bu bir zibidi', [], false)->decision)->toBe(ModerationDecision::Block);
+});
+
+it('groups the seeded starter list by language', function () {
+    Http::fake();
+    $this->seed(\Database\Seeders\BlacklistSeeder::class);
+
+    expect(BlacklistTerm::where('term', 'fuck')->value('language'))->toBe('en')
+        ->and(BlacklistTerm::where('term', 'siktir')->value('language'))->toBe('tr');
+
+    // A row left on the old Turkish default is corrected on the next run.
+    BlacklistTerm::where('term', 'fuck')->update(['language' => 'tr']);
+    $this->seed(\Database\Seeders\BlacklistSeeder::class);
+    expect(BlacklistTerm::where('term', 'fuck')->value('language'))->toBe('en');
+});

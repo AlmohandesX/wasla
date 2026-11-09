@@ -370,3 +370,14 @@ it('does not show an old thread to the new owner of a reclaimed tag, but still t
     app('auth')->forgetGuards();
     $this->getJson("/api/v1/chats/{$thread->id}", bearer($old))->assertOk()->assertJsonPath('car.linked', false);
 });
+
+it('blocks an owner message sent straight to the API when a word starts with a prefix term', function () {
+    BlacklistTerm::create(['term' => 'zibidi', 'language' => 'tr', 'match_mode' => 'prefix']);
+    $user = owner();
+    $thread = chatThread(linkedCar($user));
+
+    $this->postJson("/api/v1/chats/{$thread->id}/messages", ['body' => 'zibidiler'], bearer($user))
+        ->assertUnprocessable()->assertJsonPath('code', 'message_blocked');
+
+    expect($thread->messages()->where('body', 'zibidiler')->exists())->toBeFalse();
+});

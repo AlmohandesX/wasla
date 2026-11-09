@@ -115,7 +115,7 @@ Public, no login, `noindex`, works on any phone browser.
 
 **Moderation pipeline, on the server, for both chat directions and public status text:**
 
-1. Normalize text with correct Turkish casing (`I/ı`, `İ/i`) and common letter substitutions, then check the local blacklist. A hit blocks the message and OpenAI is not called.
+1. Normalize text with correct Turkish casing (`I/ı`, `İ/i`), common letter substitutions, and Arabic folding (short vowels and tatweel removed; alef, ya, ta marbuta and hamza-seat variants unified), then check the local blacklist. Each term has a language (Arabic, English or Turkish) for the admin list, but every term is checked against every message, and matches as a whole word, a word start (catches suffixes), or anywhere. A hit blocks the message and OpenAI is not called. Owner decision (2026-11-08): keep blocking rather than censoring; the list stays admin-managed.
 2. Call OpenAI `omni-moderation-latest` server-side. Block if any category passes its configured threshold.
 3. If OpenAI fails, times out or the daily call cap is reached, the message passes on the blacklist result alone and is flagged for admin review (builder's call). Reasoning: someone may be trying to report a blocked car or an emergency, so an outage must not silence them.
 

@@ -7,10 +7,15 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['term', 'match_mode', 'active'])]
+#[Fillable(['term', 'language', 'match_mode', 'active'])]
 class BlacklistTerm extends Model
 {
-    protected $attributes = ['match_mode' => 'word', 'active' => true];
+    public const LANGUAGES = ['ar', 'en', 'tr'];
+
+    /** word: the whole word; prefix: a word starting with the term (catches suffixes); substring: anywhere. */
+    public const MATCH_MODES = ['word', 'prefix', 'substring'];
+
+    protected $attributes = ['language' => 'tr', 'match_mode' => 'word', 'active' => true];
 
     protected function casts(): array
     {

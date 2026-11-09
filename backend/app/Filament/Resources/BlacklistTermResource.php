@@ -18,6 +18,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 
@@ -60,8 +61,11 @@ class BlacklistTermResource extends Resource
                         $fail(__('admin.blacklist.duplicate'));
                     }
                 }),
+            Select::make('language')->label(__('admin.blacklist.language'))->required()->default('tr')
+                ->options(self::languageOptions()),
             Select::make('match_mode')->label(__('admin.blacklist.match_mode'))->required()->default('word')->live()
-                ->options(['word' => __('admin.blacklist.word'), 'substring' => __('admin.blacklist.substring')]),
+                ->options(self::matchModeOptions())
+                ->helperText(__('admin.blacklist.match_mode_help')),
             Toggle::make('active')->label(__('admin.blacklist.active'))->default(true),
         ]);
     }
@@ -71,13 +75,31 @@ class BlacklistTermResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('term')->label(__('admin.blacklist.term'))->searchable(),
+                TextColumn::make('language')->label(__('admin.blacklist.language'))
+                    ->formatStateUsing(fn ($state) => __('admin.blacklist.languages.'.$state))->sortable(),
                 TextColumn::make('match_mode')->label(__('admin.blacklist.match_mode'))
                     ->formatStateUsing(fn ($state) => __('admin.blacklist.'.$state)),
                 IconColumn::make('active')->label(__('admin.blacklist.active'))->boolean(),
             ])
+            ->filters([
+                SelectFilter::make('language')->label(__('admin.blacklist.language'))->options(self::languageOptions()),
+                SelectFilter::make('match_mode')->label(__('admin.blacklist.match_mode'))->options(self::matchModeOptions()),
+            ])
             ->defaultSort('id', 'desc')
             ->headerActions([CreateAction::make()])
             ->recordActions([EditAction::make(), DeleteAction::make()]);
+    }
+
+    /** @return array<string, string> */
+    private static function languageOptions(): array
+    {
+        return collect(BlacklistTerm::LANGUAGES)->mapWithKeys(fn (string $l) => [$l => __('admin.blacklist.languages.'.$l)])->all();
+    }
+
+    /** @return array<string, string> */
+    private static function matchModeOptions(): array
+    {
+        return collect(BlacklistTerm::MATCH_MODES)->mapWithKeys(fn (string $m) => [$m => __('admin.blacklist.'.$m)])->all();
     }
 
     public static function getPages(): array

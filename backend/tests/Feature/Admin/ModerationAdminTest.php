@@ -104,3 +104,19 @@ it('translates the moderation surface and source', function () {
     Livewire::test(ManageModerationEvents::class)
         ->assertSee(__('admin.moderation.surfaces.default_message'))->assertSee(__('admin.moderation.sources.fallback'));
 });
+
+it('adds an Arabic prefix term from the admin panel and blocks suffixed forms', function () {
+    Livewire::test(ManageBlacklistTerms::class)
+        ->callAction(TestAction::make('create')->table(), ['term' => 'غبي', 'language' => 'ar', 'match_mode' => 'prefix', 'active' => true])
+        ->assertHasNoActionErrors();
+
+    $term = BlacklistTerm::firstOrFail();
+    expect($term->language)->toBe('ar')->and($term->match_mode)->toBe('prefix')
+        ->and(app(ModerationPipeline::class)->check('انت غبيه', [], false)->blocked())->toBeTrue();
+});
+
+it('rejects an unknown language or match mode', function () {
+    Livewire::test(ManageBlacklistTerms::class)
+        ->callAction(TestAction::make('create')->table(), ['term' => 'kotu', 'language' => 'fr', 'match_mode' => 'regex', 'active' => true])
+        ->assertHasActionErrors(['language', 'match_mode']);
+});

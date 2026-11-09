@@ -59,9 +59,13 @@ class ModerationPipeline
                 continue;
             }
 
-            $matches = $term->match_mode === 'substring'
-                ? str_contains($normalizedText, $term->normalized)
-                : preg_match('/(?<![\p{L}\p{N}])'.preg_quote($term->normalized, '/').'(?![\p{L}\p{N}])/u', $normalizedText) === 1;
+            $quoted = preg_quote($term->normalized, '/');
+            $matches = match ($term->match_mode) {
+                'substring' => str_contains($normalizedText, $term->normalized),
+                // A word that starts with the term, so suffixed forms (Turkish "kötüler", "kötüsün") match too.
+                'prefix' => preg_match('/(?<![\p{L}\p{N}])'.$quoted.'/u', $normalizedText) === 1,
+                default => preg_match('/(?<![\p{L}\p{N}])'.$quoted.'(?![\p{L}\p{N}])/u', $normalizedText) === 1,
+            };
 
             if ($matches) {
                 return $term->term;
