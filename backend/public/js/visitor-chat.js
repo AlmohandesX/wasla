@@ -54,12 +54,17 @@
         who.textContent = (mine ? chat.dataset.you : chat.dataset.owner) + ' · ' + clock(message.created_at);
 
         var text = document.createElement('p');
-        text.textContent = message.body;
+        if (message.hidden) {
+            text.className = 'removed';
+            text.textContent = chat.dataset.removed;
+        } else {
+            text.textContent = message.body;
+        }
 
         item.appendChild(who);
         item.appendChild(text);
 
-        if (!mine) {
+        if (!mine && !message.hidden) {
             var report = document.createElement('button');
             report.type = 'button';
             report.className = 'report';
@@ -146,6 +151,7 @@
     });
 
     function reportMessage(id, control) {
+        if (!window.confirm(chat.dataset.reportConfirm)) { return; }
         control.disabled = true;
         request(chat.dataset.reportUrl.replace(':id', id), {
             method: 'POST',

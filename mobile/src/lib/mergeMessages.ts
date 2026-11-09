@@ -5,11 +5,13 @@ export type Message = {
   body: string;
   read: boolean;
   reported: boolean;
+  /** Removed by a WASLA moderator: body is empty and the text is gone for both sides. */
+  hidden?: boolean;
   created_at: string;
 };
 
 const same = (a: Message, b: Message) =>
-  a.body === b.body && a.read === b.read && a.reported === b.reported && a.sender === b.sender;
+  a.body === b.body && a.read === b.read && a.reported === b.reported && !!a.hidden === !!b.hidden && a.sender === b.sender;
 
 /**
  * Folds newly fetched messages into the list: one copy per id (the newer copy wins, so a read or reported

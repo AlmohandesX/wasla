@@ -16,7 +16,19 @@ const MAX_LENGTH = 500;
 
 type Row = { kind: 'message'; key: string; message: Message } | { kind: 'pending'; key: string; pending: Pending };
 
-function Bubble({ own, label, body, status }: { own: boolean; label: string; body: string; status?: 'sending' | 'failed' }) {
+function Bubble({
+  own,
+  label,
+  body,
+  status,
+  removed,
+}: {
+  own: boolean;
+  label: string;
+  body: string;
+  status?: 'sending' | 'failed';
+  removed?: boolean;
+}) {
   return (
     <View
       accessible
@@ -24,7 +36,7 @@ function Bubble({ own, label, body, status }: { own: boolean; label: string; bod
       style={[styles.bubble, own ? styles.bubbleOwn : styles.bubbleVisitor, status === 'failed' && styles.bubbleFailed]}
     >
       <Text style={styles.who}>{own ? t('chats.you') : t('chats.visitor')}</Text>
-      <Text style={styles.body}>{body}</Text>
+      <Text style={removed ? styles.removed : styles.body}>{body}</Text>
     </View>
   );
 }
@@ -113,16 +125,18 @@ export default function ChatThread() {
     const { message } = item;
     const own = message.sender === 'owner';
     const time = formatDateTime(message.created_at);
+    const body = message.hidden ? t('chat.removed') : message.body;
     return (
       <View style={own ? styles.rowOwn : styles.rowVisitor}>
         <Bubble
           own={own}
-          body={message.body}
-          label={`${t('chat.messageLabel', { who: own ? t('chats.you') : t('chats.visitor'), time, body: message.body })}${message.reported ? ` ${t('chat.reportedSuffix')}` : ''}`}
+          body={body}
+          removed={message.hidden}
+          label={`${t('chat.messageLabel', { who: own ? t('chats.you') : t('chats.visitor'), time, body })}${message.reported ? ` ${t('chat.reportedSuffix')}` : ''}`}
         />
         <View style={styles.inline}>
           <Text style={styles.meta}>{time}</Text>
-          {!own ? (
+          {!own && !message.hidden ? (
             message.reported ? (
               <Text style={styles.meta}>{t('chat.reported')}</Text>
             ) : (
@@ -245,6 +259,7 @@ const styles = StyleSheet.create({
   bubbleFailed: { borderColor: colors.danger, borderStyle: 'dashed' },
   who: { fontSize: fontSize.small, fontWeight: '700', color: colors.primaryDark, marginBottom: 2 },
   body: { fontSize: fontSize.body, color: colors.text },
+  removed: { fontSize: fontSize.body, color: colors.textMuted, fontStyle: 'italic' },
   inline: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
   meta: { fontSize: fontSize.small, color: colors.textMuted },
   pendingActions: { alignItems: 'flex-end' },

@@ -198,6 +198,7 @@
   "chat.report": "Bildir",
   "chat.reportLabel": "Bu mesajı bildir: {body}",
   "chat.reported": "Bildirildi",
+  "chat.removed": "Moderatör tarafından kaldırıldı",
   "chat.reportTitle": "Bu mesaj bildirilsin mi?",
   "chat.reportBody": "Mesaj incelenmek üzere işaretlenir. Bu işlem geri alınamaz.",
   "chat.reportConfirm": "Mesajı bildir",

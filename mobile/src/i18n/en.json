@@ -198,6 +198,7 @@
   "chat.report": "Report",
   "chat.reportLabel": "Report this message: {body}",
   "chat.reported": "Reported",
+  "chat.removed": "Removed by a moderator",
   "chat.reportTitle": "Report this message?",
   "chat.reportBody": "The message is flagged for review. This cannot be undone.",
   "chat.reportConfirm": "Report message",

@@ -3,6 +3,7 @@
 use App\Models\BlacklistTerm;
 use App\Models\Car;
 use App\Models\ChatMessage;
+use App\Models\MessageReport;
 use App\Models\ModerationEvent;
 use App\Services\Chat\ChatService;
 use Illuminate\Support\Facades\Cache;
@@ -36,7 +37,7 @@ it('forbids another user on every chat route', function (string $method, string 
 
     expect($thread->messages()->count())->toBe(1)
         ->and($thread->fresh()->blocked_at)->toBeNull()
-        ->and($message->fresh()->reported_at)->toBeNull();
+        ->and($message->fresh()->report)->toBeNull();
 })->with([
     'messages' => ['GET', '/api/v1/chats/{thread}/messages', []],
     'send' => ['POST', '/api/v1/chats/{thread}/messages', ['body' => 'hello']],
@@ -221,12 +222,42 @@ it('reports a message once and keeps the first report time', function () {
 
     $this->postJson("/api/v1/messages/{$message->id}/report", [], bearer($user))
         ->assertOk()->assertJsonPath('reported', true);
-    $first = $message->fresh()->reported_at;
+    $first = $message->fresh()->report;
 
     $this->travel(5)->minutes();
-    $this->postJson("/api/v1/messages/{$message->id}/report", [], bearer($user))->assertOk();
+    $this->postJson("/api/v1/messages/{$message->id}/report", [], bearer($user))->assertOk()->assertJsonPath('reported', true);
 
-    expect($message->fresh()->reported_at->equalTo($first))->toBeTrue();
+    expect(MessageReport::count())->toBe(1)
+        ->and($message->fresh()->report->created_at->equalTo($first->created_at))->toBeTrue()
+        ->and($first->reporter_type)->toBe('owner')
+        ->and($first->reporter_user_id)->toBe($user->id)
+        ->and($first->reporter_visitor_session_id)->toBeNull();
+});
+
+it('does not let an owner report their own reply', function () {
+    $user = owner();
+    $thread = chatThread(linkedCar($user));
+    $reply = $thread->messages()->create(['sender' => 'owner', 'body' => 'my reply']);
+
+    $this->postJson("/api/v1/messages/{$reply->id}/report", [], bearer($user))->assertForbidden();
+
+    expect(MessageReport::count())->toBe(0);
+});
+
+it('shows a hidden message without its text, and lists which messages are reported', function () {
+    $user = owner();
+    $thread = chatThread(linkedCar($user));
+    $reported = $thread->messages()->first();
+    $this->postJson("/api/v1/messages/{$reported->id}/report", [], bearer($user))->assertOk();
+    $hidden = $thread->messages()->create(['sender' => 'visitor', 'body' => 'nasty words', 'hidden_at' => now()]);
+
+    $response = $this->getJson("/api/v1/chats/{$thread->id}/messages", bearer($user))->assertOk()
+        ->assertJsonPath('data.0.reported', true)->assertJsonPath('data.0.hidden', false)
+        ->assertJsonPath('data.1.reported', false)->assertJsonPath('data.1.hidden', true)->assertJsonPath('data.1.body', '');
+    expect($response->getContent())->not->toContain('nasty words');
+
+    $this->getJson('/api/v1/chats', bearer($user))
+        ->assertJsonPath('data.0.last_message.id', $hidden->id)->assertJsonPath('data.0.last_message.body', '');
 });
 
 it('hard stops every chat route on an expired car', function (string $method, string $uri, array $body) {
@@ -240,7 +271,7 @@ it('hard stops every chat route on an expired car', function (string $method, st
 
     expect($thread->messages()->count())->toBe(1)
         ->and($thread->fresh()->blocked_at)->toBeNull()
-        ->and($message->fresh()->reported_at)->toBeNull();
+        ->and($message->fresh()->report)->toBeNull();
 })->with([
     'messages' => ['GET', '/api/v1/chats/{thread}/messages', []],
     'send' => ['POST', '/api/v1/chats/{thread}/messages', ['body' => 'hello']],

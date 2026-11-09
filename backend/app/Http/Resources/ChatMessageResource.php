@@ -15,9 +15,12 @@ class ChatMessageResource extends JsonResource
             'id' => $this->id,
             'thread_id' => $this->thread_id,
             'sender' => $this->sender,
-            'body' => $this->body,
+            // A message a moderator removed keeps its place in the thread, without its text.
+            'body' => $this->isHidden() ? '' : $this->body,
+            'hidden' => $this->isHidden(),
             'read' => $this->read_at !== null,
-            'reported' => $this->reported_at !== null,
+            // Lists load this with withExists('report as reported'); a single message falls back to a query.
+            'reported' => (bool) ($this->resource->getAttribute('reported') ?? $this->resource->report()->exists()),
             'created_at' => $this->created_at->toIso8601String(),
         ];
     }

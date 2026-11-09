@@ -92,10 +92,13 @@ it('lists messages reported through the owner and the visitor endpoints', functi
     $this->postJson("/t/{$tag->token}/chat/messages/{$ownerMessage->id}/report")->assertOk();
 
     $this->actingAs($this->admin);
+    expect($clean->report)->toBeNull();
     Livewire::test(ManageReportedMessages::class)
-        ->assertCanSeeTableRecords([$visitorMessage, $ownerMessage])
-        ->assertCanNotSeeTableRecords([$clean])
-        ->assertSee(__('admin.reported.visitor'))->assertSee(__('admin.reported.owner'));
+        ->assertCanSeeTableRecords([$visitorMessage->report, $ownerMessage->report])
+        ->assertSee(__('admin.reported.visitor'))->assertSee(__('admin.reported.owner'))
+        // Who reported each one: the owner's account for the visitor message, the visitor session for the reply.
+        ->assertSee($ownerUser->email)
+        ->assertSee(__('admin.reported.visitor_session', ['id' => $visitorMessage->thread->visitor_session_id]));
 });
 
 it('translates the moderation surface and source', function () {

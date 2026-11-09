@@ -16,6 +16,7 @@ use App\Models\ChatThread;
 use App\Models\Tag;
 use App\Models\VisitorSession;
 use App\Services\Chat\ChatService;
+use App\Services\Chat\MessageReportService;
 use App\Services\Chat\VisitorSessionResolver;
 use App\Services\Tags\PublicTagStateResolver;
 use App\Services\Tags\TokenGenerator;
@@ -121,14 +122,14 @@ class VisitorChatController extends Controller
         return (new VisitorMessageResource($message))->response()->setStatusCode(201);
     }
 
-    public function report(ReportVisitorMessageRequest $request, string $token, string $message): JsonResponse
+    public function report(ReportVisitorMessageRequest $request, string $token, string $message, MessageReportService $reports): JsonResponse
     {
-        [, , $thread] = $this->context($request, $token);
+        [, $session, $thread] = $this->context($request, $token);
         abort_if($thread === null, 404);
 
         $found = $thread->messages()->where('sender', 'owner')->find((int) $message);
         abort_if($found === null, 404);
-        $found->update(['reported_at' => $found->reported_at ?? now()]);
+        $reports->reportByVisitor($found, $session);
 
         return response()->json(['reported' => true]);
     }

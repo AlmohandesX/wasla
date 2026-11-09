@@ -148,7 +148,7 @@ Admin panel in a desktop browser (Task 15; the build only confirmed that `/admin
 38. Waves: generate a wave (the worker must run), watch it become ready, download the package (signed link): the CSV of serials and URLs and the QR images open, URLs use the final domain. Mark sold by wave and by serial range; check the statistics (pending, sold, activated).
 39. Tags: replace, revoke and force-release a tag; each is audited and the expiry moves exactly as the spec says (replacement never adds time).
 40. Users: view and suspend/unsuspend a user. Payments: list, open one, see the national ID masked, download the sales export (audited) and open it in Excel. Fraud-review rows are visible and stay pending. Manually extend a subscription (an audit record is written).
-41. Blacklist: add, deactivate and edit a term and confirm the effect on a visitor message. Moderation review: blocked and flagged events and reported messages appear, with actions working.
+41. Blacklist: add, deactivate and edit a term and confirm the effect on a visitor message. Moderation review: blocked and flagged events appear, with actions working. Report a message from the app and from the visitor page, then in Reported messages check the reporter column, and that Dismiss, Hide message, Block visitor and Suspend owner each close the report; a hidden message reads "Removed by a moderator" in the app and on the visitor page after reopening the chat.
 42. Everything in the panel is readable in Turkish and English with no raw translation keys.
 
 ## What is verified, and what is not

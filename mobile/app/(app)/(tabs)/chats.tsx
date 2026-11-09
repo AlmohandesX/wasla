@@ -75,7 +75,7 @@ export default function Chats() {
     const car = cars.get(item.car_id)?.model ?? t('chats.unknownCar');
     const last = item.last_message;
     const who = last ? (last.sender === 'owner' ? t('chats.you') : t('chats.visitor')) : '';
-    const preview = last ? last.body : t('chats.noMessages');
+    const preview = last ? (last.hidden ? t('chat.removed') : last.body) : t('chats.noMessages');
     const unread = item.unread_count > 0 ? t('chats.unread', { count: item.unread_count }) : t('chats.unreadNone');
     return (
       <Pressable

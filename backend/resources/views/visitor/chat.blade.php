@@ -21,6 +21,8 @@
              data-owner="{{ __('visitor.chat_owner') }}"
              data-report="{{ __('visitor.chat_report') }}"
              data-reported="{{ __('visitor.chat_reported') }}"
+             data-report-confirm="{{ __('visitor.chat_report_confirm') }}"
+             data-removed="{{ __('visitor.chat_removed') }}"
              data-sending="{{ __('visitor.chat_sending') }}"
              data-send="{{ __('visitor.chat_send') }}"
              data-error="{{ __('visitor.chat_error') }}"

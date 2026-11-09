@@ -76,6 +76,25 @@ describe('chat screen', () => {
     expect(input().props.value).toBe('  you badword_en  ');
   });
 
+  test('a message a moderator hid shows as removed and cannot be reported', async () => {
+    const message = (id: number, extra: object) => ({
+      id, thread_id: 1, sender: 'visitor', body: '', read: true, reported: false, created_at: '2026-11-09T10:00:00+00:00', ...extra,
+    });
+    mockThread = {
+      ...base,
+      messages: [message(1, { hidden: true }), message(2, { body: 'Your lights are on' })],
+      meta: { id: 1, car: { id: 7, model: 'Clio', linked: true, chats_paused: false, subscription_active: true } },
+    };
+    let tree!: ReturnType<typeof create>;
+    await act(async () => {
+      tree = create(<ChatThread />);
+    });
+    const texts = tree.root.findAll((n) => typeof n.props.children === 'string').map((n) => n.props.children);
+    expect(texts).toContain('Removed by a moderator');
+    const reports = tree.root.findAll((n) => n.props.accessibilityRole === 'button' && /^Report this message/.test(n.props.accessibilityLabel ?? ''));
+    expect([...new Set(reports.map((n) => n.props.accessibilityLabel))]).toEqual(['Report this message: Your lights are on']);
+  });
+
   test('an active car shows no Renew button', async () => {
     mockThread = { ...base, meta: { id: 1, car: { id: 7, model: 'Clio', linked: true, chats_paused: false, subscription_active: true } } };
     let tree!: ReturnType<typeof create>;

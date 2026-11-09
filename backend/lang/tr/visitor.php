@@ -32,6 +32,8 @@ return [
     'chat_owner' => 'Sahibi',
     'chat_report' => 'Bildir',
     'chat_reported' => 'Bildirildi',
+    'chat_report_confirm' => "Bu mesaj WASLA'ya bildirilsin mi? Ekibimiz inceleyecek.",
+    'chat_removed' => 'Moderatör tarafından kaldırıldı',
     'chat_error' => 'Mesaj gönderilemedi. Lütfen tekrar deneyin.',
     'chat_limited' => 'Çok fazla mesaj gönderildi. Birkaç dakika bekleyip tekrar deneyin.',
     'chat_expired' => 'Bu sayfanın süresi doldu. Sayfayı yenileyip tekrar deneyin.',

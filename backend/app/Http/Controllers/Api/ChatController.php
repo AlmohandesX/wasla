@@ -12,6 +12,7 @@ use App\Http\Resources\ChatThreadResource;
 use App\Models\ChatMessage;
 use App\Models\ChatThread;
 use App\Services\Chat\ChatService;
+use App\Services\Chat\MessageReportService;
 use App\Services\Tags\SubscriptionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -30,7 +31,7 @@ class ChatController extends Controller
             ->whereHas('car', fn ($q) => $q->where('user_id', $request->user()->id)
                 ->where(fn ($q) => $q->whereDoesntHave('tag')
                     ->orWhereHas('tag', fn ($t) => $t->where('expires_at', '>', now()))))
-            ->with('lastMessage')
+            ->with(['lastMessage' => fn ($q) => $q->withExists('report as reported')])
             ->withCount(['messages as unread_count' => fn ($q) => $q->where('sender', 'visitor')->whereNull('read_at')])
             ->orderByDesc('updated_at')->orderByDesc('id')
             ->limit(self::PAGE)
@@ -44,7 +45,7 @@ class ChatController extends Controller
     {
         Gate::authorize('view', $thread);
 
-        $thread->load('lastMessage', 'car.tag');
+        $thread->load(['lastMessage' => fn ($q) => $q->withExists('report as reported'), 'car.tag']);
         $thread->loadCount(['messages as unread_count' => fn ($q) => $q->where('sender', 'visitor')->whereNull('read_at')]);
         $car = $thread->car;
 
@@ -65,7 +66,7 @@ class ChatController extends Controller
 
         $ids = $thread->messages()->where('id', '>', $after)->orderBy('id')->limit(self::PAGE)->pluck('id');
         $thread->messages()->whereIn('id', $ids)->where('sender', 'visitor')->whereNull('read_at')->update(['read_at' => now()]);
-        $messages = $thread->messages()->whereIn('id', $ids)->orderBy('id')->get();
+        $messages = $thread->messages()->whereIn('id', $ids)->withExists('report as reported')->orderBy('id')->get();
 
         return response()->json(['data' => ChatMessageResource::collection($messages)->resolve($request)]);
     }
@@ -89,10 +90,10 @@ class ChatController extends Controller
         return new ChatThreadResource($thread->refresh());
     }
 
-    public function report(ReportMessageRequest $request, ChatMessage $message): ChatMessageResource
+    public function report(ReportMessageRequest $request, ChatMessage $message, MessageReportService $reports): ChatMessageResource
     {
-        $message->update(['reported_at' => $message->reported_at ?? now()]);
+        $reports->reportByOwner($message, $request->user());
 
-        return new ChatMessageResource($message);
+        return new ChatMessageResource($message->loadExists('report as reported'));
     }
 }

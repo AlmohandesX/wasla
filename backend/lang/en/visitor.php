@@ -32,6 +32,8 @@ return [
     'chat_owner' => 'Owner',
     'chat_report' => 'Report',
     'chat_reported' => 'Reported',
+    'chat_report_confirm' => 'Report this message to WASLA? Our team will review it.',
+    'chat_removed' => 'Removed by a moderator',
     'chat_error' => 'The message could not be sent. Please try again.',
     'chat_limited' => 'Too many messages. Please wait a few minutes and try again.',
     'chat_expired' => 'This page has expired. Reload it and try again.',

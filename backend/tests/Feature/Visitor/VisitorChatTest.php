@@ -4,6 +4,7 @@ use App\Events\ChatMessageCreated;
 use App\Models\BlacklistTerm;
 use App\Models\ChatMessage;
 use App\Models\ChatThread;
+use App\Models\MessageReport;
 use App\Models\ModerationEvent;
 use App\Models\Tag;
 use App\Models\VisitorSession;
@@ -233,20 +234,20 @@ it('keeps a thread private to its cookie', function () {
     // Reporting a message outside the own thread is a 404, and the message stays untouched.
     asVisitor($other, '10.0.0.6');
     $this->postJson("/t/{$tag->token}/chat/messages/{$ownerMessage->id}/report")->assertNotFound();
-    expect($ownerMessage->fresh()->reported_at)->toBeNull();
+    expect($ownerMessage->fresh()->report)->toBeNull();
     expect(pollVisitor($tag, $mine)->json('data'))->toHaveCount(2);
 });
 
-it('returns only id, sender, body and created_at', function () {
+it('returns only id, sender, body, hidden and created_at', function () {
     $tag = chatTag();
     $created = sendVisitor($tag)->assertCreated();
     $cookie = cookieOf($created);
     ChatThread::sole()->messages()->create(['sender' => 'owner', 'body' => 'Tesekkurler']);
 
-    expect(array_keys($created->json()))->toBe(['id', 'sender', 'body', 'created_at']);
+    expect(array_keys($created->json()))->toBe(['id', 'sender', 'body', 'hidden', 'created_at']);
     $poll = pollVisitor($tag, $cookie)->assertOk();
     foreach ($poll->json('data') as $row) {
-        expect(array_keys($row))->toBe(['id', 'sender', 'body', 'created_at']);
+        expect(array_keys($row))->toBe(['id', 'sender', 'body', 'hidden', 'created_at']);
     }
     $first = $poll->json('data.0.id');
     expect(pollVisitor($tag, $cookie, $first)->json('data'))->toHaveCount(1);
@@ -374,7 +375,15 @@ it('lets the visitor report an owner message and nothing else', function () {
     $this->postJson("/t/{$tag->token}/chat/messages/{$visitorMessage->id}/report")->assertNotFound();
     $this->postJson("/t/{$tag->token}/chat/messages/{$ownerMessage->id}/report")->assertOk()->assertExactJson(['reported' => true]);
 
-    expect($ownerMessage->fresh()->reported_at)->not->toBeNull()->and($visitorMessage->fresh()->reported_at)->toBeNull();
+    $report = $ownerMessage->fresh()->report;
+    expect($report->reporter_type)->toBe('visitor')
+        ->and($report->reporter_visitor_session_id)->toBe($ownerMessage->thread->visitor_session_id)
+        ->and($report->reporter_user_id)->toBeNull()
+        ->and($visitorMessage->fresh()->report)->toBeNull();
+
+    // Reporting again keeps the single report.
+    $this->postJson("/t/{$tag->token}/chat/messages/{$ownerMessage->id}/report")->assertOk();
+    expect(MessageReport::count())->toBe(1);
 });
 
 it('rejects empty, blank and over-long bodies', function (mixed $body) {
