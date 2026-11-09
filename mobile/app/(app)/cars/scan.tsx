@@ -131,7 +131,7 @@ export default function Scan() {
   if (already) {
     return (
       <Screen>
-        <ErrorBanner tone="info" message={t('scan.alreadyYours', { model: already.model })} />
+        <ErrorBanner tone="info" message={t('scan.alreadyYours', { model: already.model, serial: already.serial_number ?? '' })} />
         <View style={styles.stack}>
           <Button
             label={t('scan.open')}

@@ -11,7 +11,7 @@ import { useSession } from '../src/auth/session';
 export default function Index() {
   const access = accessFor(useSession());
 
-  if (access === 'app') return <Redirect href="/cars" />;
+  if (access === 'app') return <Redirect href="/home" />;
   if (access === 'verify') return <Redirect href="/verify-email" />;
   return <Redirect href="/login" />;
 }

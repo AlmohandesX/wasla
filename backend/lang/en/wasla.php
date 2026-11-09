@@ -30,6 +30,13 @@ return [
     'reset_mail_action' => 'Reset password',
     'reset_mail_outro' => 'This link is valid for 60 minutes. If you did not ask for it, ignore this email.',
     'verify_mail_outro' => 'This link is valid for 24 hours. If you did not create an account, ignore this email.',
+    // The app's quick statuses, stored as a key and shown in the reader's language.
+    'status_presets' => [
+        'back_soon' => 'Back in 5 minutes.',
+        'loading' => 'Loading or unloading.',
+        'at_pharmacy' => 'At the pharmacy.',
+        'call_me' => 'Call me.',
+    ],
     'default_message' => 'The owner is not available right now.',
     'error_tag_not_found' => 'This tag was not found.',
     'error_tag_revoked' => 'This tag is no longer valid.',

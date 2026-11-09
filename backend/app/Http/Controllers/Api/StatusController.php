@@ -32,11 +32,20 @@ class StatusController extends Controller
 
     public function set(SetStatusRequest $request, Car $car): CarResource
     {
-        $text = $request->string('text')->toString();
-        $this->moderator->assertAllowed($request->user(), $text, 'status');
+        $preset = $request->validated('preset');
+        if ($preset !== null) {
+            // Our own wording, so there is nothing to moderate. The Turkish text is kept as a plain fallback.
+            $key = $preset;
+            $text = __('wasla.status_presets.'.$preset, [], 'tr');
+        } else {
+            $key = null;
+            $text = $request->string('text')->toString();
+            $this->moderator->assertAllowed($request->user(), $text, 'status');
+        }
 
         $car->update([
             'status_text' => $text,
+            'status_key' => $key,
             'status_expires_at' => now()->addMinutes($request->integer('duration_minutes')),
         ]);
 
@@ -45,7 +54,7 @@ class StatusController extends Controller
 
     public function clear(OwnerRequest $request, Car $car): CarResource
     {
-        $car->update(['status_text' => null, 'status_expires_at' => null]);
+        $car->update(['status_text' => null, 'status_key' => null, 'status_expires_at' => null]);
 
         return $this->respond($car);
     }

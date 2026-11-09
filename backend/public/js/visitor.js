@@ -20,7 +20,7 @@
 
         fetch(button.dataset.url, {
             method: 'POST',
-            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json', 'X-Wasla-Lang': document.documentElement.lang },
             credentials: 'omit'
         }).then(function (response) {
             if (!response.ok) {

@@ -11,6 +11,15 @@
     <link rel="stylesheet" href="/css/visitor.css">
 </head>
 <body>
+    <nav class="lang" aria-label="{{ __('visitor.language') }}">
+        @foreach (\App\Http\Middleware\VisitorPageHeaders::LOCALES as $locale)
+            @if (! $loop->first)<span aria-hidden="true">|</span>@endif
+            {{-- Relative, so the page carries no token or address: neutral pages stay identical for every tag. --}}
+            <a href="?lang={{ $locale }}"
+               lang="{{ $locale }}" hreflang="{{ $locale }}"
+               @if (app()->getLocale() === $locale) aria-current="true" @endif>{{ strtoupper($locale) }}</a>
+        @endforeach
+    </nav>
     <main class="note">
         <img class="brand" src="/img/beni-bul-logo.svg" alt="Beni Bul" width="288" height="216">
         @yield('content')

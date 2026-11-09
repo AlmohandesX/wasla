@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Car;
+use App\Services\Cars\PhotoResizer;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
@@ -29,11 +30,50 @@ function photoUrl(Car $car): string
     return "/api/v1/cars/{$car->id}/photo";
 }
 
-it('stores a file of exactly 1048576 bytes locally', function () {
+/**
+ * Makes the resizer hand back exactly these sizes, one per upload, so the disk rule is tested on the stored size.
+ * Bound before the first request: the controller, and the store in it, is reused for the rest of the test.
+ */
+function resizedTo(int ...$sizes): void
+{
+    app()->instance(PhotoResizer::class, new class($sizes) extends PhotoResizer
+    {
+        public function __construct(private array $sizes) {}
+
+        public function toJpeg(string $path): string
+        {
+            return str_repeat('x', count($this->sizes) > 1 ? array_shift($this->sizes) : $this->sizes[0]);
+        }
+    });
+}
+
+/** A real image of the given size and type, written to a temporary upload. */
+function photoOfDimensions(int $width, int $height, string $type = 'png', bool $transparent = false): UploadedFile
+{
+    $img = imagecreatetruecolor($width, $height);
+    if ($transparent) {
+        imagesavealpha($img, true);
+        imagefill($img, 0, 0, imagecolorallocatealpha($img, 0, 0, 0, 127));
+    } else {
+        imagefill($img, 0, 0, imagecolorallocate($img, 200, 30, 30));
+    }
+    $path = tempnam(sys_get_temp_dir(), 'wph');
+    match ($type) {
+        'png' => imagepng($img, $path),
+        'webp' => imagewebp($img, $path),
+        default => imagejpeg($img, $path, 95),
+    };
+    $mime = ['png' => 'image/png', 'webp' => 'image/webp', 'jpg' => 'image/jpeg'][$type];
+
+    return new UploadedFile($path, "car.$type", $mime, null, true);
+}
+
+it('keeps a stored file of exactly 1048576 bytes locally', function () {
     $user = owner();
     $car = linkedCar($user);
+    resizedTo(1048576);
 
-    $this->postJson(photoUrl($car), ['photo' => photoOfSize(1048576)], bearer($user))->assertOk();
+    $this->postJson(photoUrl($car), ['photo' => photoOfSize(2000)], bearer($user))->assertOk();
 
     $car->refresh();
     expect($car->photo_disk)->toBe('photos');
@@ -41,11 +81,12 @@ it('stores a file of exactly 1048576 bytes locally', function () {
     Storage::disk('s3')->assertMissing($car->photo_path);
 });
 
-it('stores a file of 1048577 bytes in object storage', function () {
+it('puts a stored file of 1048577 bytes in object storage', function () {
     $user = owner();
     $car = linkedCar($user);
+    resizedTo(1048577);
 
-    $this->postJson(photoUrl($car), ['photo' => photoOfSize(1048577)], bearer($user))->assertOk();
+    $this->postJson(photoUrl($car), ['photo' => photoOfSize(2000)], bearer($user))->assertOk();
 
     $car->refresh();
     expect($car->photo_disk)->toBe('s3');
@@ -79,16 +120,17 @@ it('generates a random filename, never the client name', function () {
 
     $path = $car->refresh()->photo_path;
     expect($path)->not->toContain('secret')->not->toContain('34ABC123')
-        ->and($path)->toMatch('/^car-photos\/[A-Za-z0-9]{40}\.png$/');
+        ->and($path)->toMatch('/^car-photos\/[A-Za-z0-9]{40}\.jpg$/');
 });
 
 it('removes the old file when replacing', function () {
     $user = owner();
     $car = linkedCar($user);
+    resizedTo(2000, 1048577);
     $this->postJson(photoUrl($car), ['photo' => photoOfSize(2000)], bearer($user))->assertOk();
     $old = $car->refresh()->photo_path;
 
-    $this->postJson(photoUrl($car), ['photo' => photoOfSize(1048577)], bearer($user))->assertOk();
+    $this->postJson(photoUrl($car), ['photo' => photoOfSize(2000)], bearer($user))->assertOk();
 
     Storage::disk('photos')->assertMissing($old);
     Storage::disk('s3')->assertExists($car->refresh()->photo_path);
@@ -209,4 +251,52 @@ it('keeps the photo file when the car delete fails', function () {
 
     Storage::disk('photos')->assertExists($path);
     expect(Car::find($car->id))->not->toBeNull();
+});
+
+it('scales a large photo down to 1024 px wide, keeping its 16:9 shape, and stores a compact JPEG', function (string $type) {
+    $user = owner();
+    $car = linkedCar($user);
+    $upload = photoOfDimensions(4000, 2250, $type);
+
+    $this->postJson(photoUrl($car), ['photo' => $upload], bearer($user))->assertOk();
+
+    $stored = Storage::disk('photos')->get($car->refresh()->photo_path);
+    $info = getimagesizefromstring($stored);
+    expect([$info[0], $info[1], $info[2]])->toBe([1024, 576, IMAGETYPE_JPEG])
+        ->and(strlen($stored))->toBeLessThan(200_000)
+        ->and($car->photo_disk)->toBe('photos');
+})->with(['png', 'jpg', 'webp']);
+
+it('keeps the shape of a portrait photo and never enlarges a small one', function () {
+    $user = owner();
+    $car = linkedCar($user);
+
+    $this->postJson(photoUrl($car), ['photo' => photoOfDimensions(1500, 3000, 'jpg')], bearer($user))->assertOk();
+    $info = getimagesizefromstring(Storage::disk('photos')->get($car->refresh()->photo_path));
+    expect([$info[0], $info[1]])->toBe([512, 1024]);
+
+    $this->postJson(photoUrl($car), ['photo' => photoOfDimensions(640, 360, 'jpg')], bearer($user))->assertOk();
+    $info = getimagesizefromstring(Storage::disk('photos')->get($car->refresh()->photo_path));
+    expect([$info[0], $info[1]])->toBe([640, 360]);
+});
+
+it('flattens a transparent PNG onto white', function () {
+    $user = owner();
+    $car = linkedCar($user);
+
+    $this->postJson(photoUrl($car), ['photo' => photoOfDimensions(32, 18, 'png', transparent: true)], bearer($user))->assertOk();
+
+    $img = imagecreatefromstring(Storage::disk('photos')->get($car->refresh()->photo_path));
+    $rgb = imagecolorsforindex($img, imagecolorat($img, 16, 9));
+    expect($rgb['red'])->toBeGreaterThan(245)->and($rgb['green'])->toBeGreaterThan(245)->and($rgb['blue'])->toBeGreaterThan(245);
+});
+
+it('refuses an image with too many pixels to resize safely', function () {
+    $user = owner();
+    $car = linkedCar($user);
+
+    // 5100 x 5000 = 25.5 megapixels, in a small file.
+    $this->postJson(photoUrl($car), ['photo' => photoOfDimensions(5100, 5000, 'png')], bearer($user))
+        ->assertUnprocessable()->assertJsonValidationErrors('photo');
+    expect($car->refresh()->photo_path)->toBeNull();
 });

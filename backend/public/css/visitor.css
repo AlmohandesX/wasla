@@ -53,6 +53,28 @@ body {
     overflow-wrap: anywhere;
 }
 
+/* TR | EN: the visitor's language, top right. The current one is bold and not underlined. */
+.lang {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.5rem 1rem 0;
+    font-size: 0.9375rem;
+    color: var(--muted);
+}
+.lang a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    color: var(--ink);
+    font-weight: 600;
+}
+.lang a[aria-current] { font-weight: 800; text-decoration: none; color: var(--navy); }
+.lang a:focus-visible { outline: 3px solid var(--signal); outline-offset: 2px; border-radius: 4px; }
+
 /* The note: a single column, the message first. The orange rule, like the logo's connector, is the only ornament. */
 .note {
     flex: 1;
@@ -82,6 +104,14 @@ body {
     line-height: 1.1;
     letter-spacing: -0.015em;
     color: var(--ink);
+}
+
+/* When the owner's status runs out: right under the note, before the actions. */
+.until {
+    margin: -1.25rem 0 2rem;
+    color: var(--navy-dark);
+    font-size: 1.0625rem;
+    font-weight: 600;
 }
 
 .message.quiet { font-size: clamp(1.625rem, 7vw, 2.25rem); }

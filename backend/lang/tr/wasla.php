@@ -30,6 +30,13 @@ return [
     'reset_mail_action' => 'Şifreyi sıfırla',
     'reset_mail_outro' => 'Bu bağlantı 60 dakika geçerlidir. Bu isteği siz yapmadıysanız bu e-postayı yok sayabilirsiniz.',
     'verify_mail_outro' => 'Bu bağlantı 24 saat geçerlidir. Hesabı siz açmadıysanız bu e-postayı yok sayabilirsiniz.',
+    // The app's quick statuses, stored as a key and shown in the reader's language.
+    'status_presets' => [
+        'back_soon' => '5 dakika içinde dönerim.',
+        'loading' => 'Yükleme veya boşaltma yapıyorum.',
+        'at_pharmacy' => 'Eczanedeyim.',
+        'call_me' => 'Beni arayın.',
+    ],
     'default_message' => 'Araç sahibi şu an müsait değil.',
     'error_tag_not_found' => 'Bu etiket bulunamadı.',
     'error_tag_revoked' => 'Bu etiket artık geçerli değil.',

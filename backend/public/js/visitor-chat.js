@@ -86,7 +86,8 @@
     function request(url, options) {
         options = options || {};
         options.credentials = 'same-origin';
-        options.headers = Object.assign({ 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, options.headers || {});
+        // The page's TR | EN choice, so error messages from the server come back in the same language.
+        options.headers = Object.assign({ 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-Wasla-Lang': document.documentElement.lang }, options.headers || {});
         return fetch(url, options).then(function (response) {
             return response.json().catch(function () { return {}; }).then(function (data) {
                 if (!response.ok) {

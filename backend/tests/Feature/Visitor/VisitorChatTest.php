@@ -110,14 +110,14 @@ it('shows the automated checks notice before the first message', function () {
     $tag = chatTag();
     asVisitor();
 
-    $this->get("/t/{$tag->token}/chat", ['Accept-Language' => 'en'])
+    $this->get("/t/{$tag->token}/chat?lang=en")
         ->assertOk()
         ->assertSee('checked by an automated service outside Turkey')
         ->assertSee('/js/visitor-chat.js', false)
         ->assertDontSee('name="consent"', false)
         ->assertDontSee('34 ABC 123');
 
-    $this->get("/t/{$tag->token}/chat", ['Accept-Language' => 'tr'])->assertSee('Türkiye dışındaki');
+    $this->get("/t/{$tag->token}/chat")->assertSee('Türkiye dışındaki');
 });
 
 it('asks for consent only when configured', function () {
@@ -178,11 +178,11 @@ it('answers a stealthed car, an expired car and a blocked session identically', 
 
     // The chat page gives one shared copy for every reason, and it is not the scan page's "tag not active" text.
     asVisitor(null, '10.9.9.3');
-    $html = $this->get("/t/{$stealth->token}/chat", ['Accept-Language' => 'en'])->assertOk()->getContent();
+    $html = $this->get("/t/{$stealth->token}/chat?lang=en")->assertOk()->getContent();
     expect($html)->toContain('Chat is not available')->not->toContain('This tag is not active')
-        ->and($this->get("/t/{$expired->token}/chat", ['Accept-Language' => 'en'])->getContent())->toBe($html);
+        ->and($this->get("/t/{$expired->token}/chat?lang=en")->getContent())->toBe($html);
     asVisitor($cookie);
-    expect($this->get("/t/{$blockedTag->token}/chat", ['Accept-Language' => 'en'])->getContent())->toBe($html);
+    expect($this->get("/t/{$blockedTag->token}/chat?lang=en")->getContent())->toBe($html);
 
     // A cooldown IP on a live tag sees the same page.
     asVisitor(null, '10.9.9.9');
@@ -190,8 +190,8 @@ it('answers a stealthed car, an expired car and a blocked session identically', 
     sendVisitor($other, 'x', null, '10.9.9.9')->assertCreated();
     app(ChatService::class)->block(ChatThread::where('car_id', $other->car_id)->sole());
     asVisitor(null, '10.9.9.9');
-    expect($this->get("/t/{$other->token}/chat", ['Accept-Language' => 'en'])->getContent())->toBe($html);
-    $this->get("/t/{$stealth->token}/chat", ['Accept-Language' => 'tr'])->assertSee('Sohbet kullanılamıyor');
+    expect($this->get("/t/{$other->token}/chat?lang=en")->getContent())->toBe($html);
+    $this->get("/t/{$stealth->token}/chat")->assertSee('Sohbet kullanılamıyor');
 });
 
 it('treats an unclaimed tag as unavailable and a malformed token as not found', function () {
@@ -319,10 +319,10 @@ it('refuses new threads when paused and keeps existing ones working', function (
 
     // The page keeps its chat entry: new visitors get the paused notice, existing ones the form.
     asVisitor(null, '10.5.5.5');
-    $this->get("/t/{$tag->token}/chat", ['Accept-Language' => 'en'])->assertOk()
+    $this->get("/t/{$tag->token}/chat?lang=en")->assertOk()
         ->assertSee('not accepting new messages')->assertDontSee('<form', false);
     asVisitor($cookie);
-    $this->get("/t/{$tag->token}/chat", ['Accept-Language' => 'en'])->assertOk()
+    $this->get("/t/{$tag->token}/chat?lang=en")->assertOk()
         ->assertDontSee('not accepting new messages')->assertSee('<form', false);
     $this->get("/t/{$tag->token}")->assertSee('href="/t/'.$tag->token.'/chat"', false);
 });

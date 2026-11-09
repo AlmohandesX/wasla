@@ -21,6 +21,7 @@ const CAR: Car = {
   stealth_enabled: false,
   chats_paused: false,
   linked: true,
+  serial_number: 'W001-000123',
   subscription: { active: true, expires_at: '2027-11-05T10:00:00Z' },
 };
 
@@ -86,4 +87,20 @@ test('an expired CarCard can be opened, which leads to the renewal hard stop', (
   expect(open.props.disabled).toBeFalsy();
   act(() => open.props.onPress());
   expect(onOpen).toHaveBeenCalledTimes(1);
+});
+
+test('CarCard shows the linked tag serial, and none for a car without a tag', () => {
+  expect(texts(render().root)).toContain('Tag serial: W001-000123');
+
+  let tree!: ReturnType<typeof create>;
+  act(() => {
+    tree = create(
+      <CarCard
+        car={{ ...CAR, linked: false, serial_number: null, subscription: { active: false, expires_at: null } }}
+        onOpen={() => {}}
+        onToggleStealth={() => {}}
+      />,
+    );
+  });
+  expect(texts(tree.root)).not.toContain('Tag serial');
 });

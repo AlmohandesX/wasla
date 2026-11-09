@@ -24,11 +24,14 @@ class CarResource extends JsonResource
             'default_message' => $car->default_message,
             'current_message' => $car->currentMessage(),
             'status' => $car->hasActiveStatus()
-                ? ['text' => $car->status_text, 'expires_at' => $car->status_expires_at->toIso8601ZuluString()]
+                ? ['text' => $car->statusText(), 'preset' => $car->status_key, 'expires_at' => $car->status_expires_at->toIso8601ZuluString()]
                 : null,
             'stealth_enabled' => $car->stealth_enabled,
             'chats_paused' => $car->chats_paused,
             'linked' => $tag !== null,
+            // Printed next to the QR on the sticker sheet. The owner quotes it to replace or revoke a lost tag;
+            // the QR itself only carries the secret token, which is never sent back.
+            'serial_number' => $tag?->serial,
             'subscription' => [
                 'active' => $tag !== null && app(SubscriptionService::class)->isActive($tag),
                 'expires_at' => $tag?->expires_at?->toIso8601ZuluString(),

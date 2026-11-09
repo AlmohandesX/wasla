@@ -6,7 +6,7 @@ import { carPhotoUrl } from '../../../../src/api/cars';
 import { getToken } from '../../../../src/auth/token';
 import { useCar } from '../../../../src/cars/useCar';
 import { useStealth } from '../../../../src/cars/useServerSwitch';
-import { Button } from '../../../../src/components/Button';
+import { CarActionBar, type CarAction } from '../../../../src/components/CarActionBar';
 import { CarCard, isExpired } from '../../../../src/components/CarCard';
 import { ErrorBanner } from '../../../../src/components/ErrorBanner';
 import { Screen } from '../../../../src/components/Screen';
@@ -34,6 +34,8 @@ function CarPhoto({ carId, version }: { carId: number; version: number }) {
       // The photo is owner-only, so the request carries the bearer token; the query keeps a replaced photo fresh.
       source={{ uri: `${carPhotoUrl(carId)}?v=${version}`, headers: { Authorization: `Bearer ${token}` } }}
       onError={() => setFailed(true)}
+      // Fills the 16:9 frame without stretching; a photo of another shape (an older upload) is trimmed to fit.
+      resizeMode="cover"
       style={styles.photo}
     />
   );
@@ -52,7 +54,7 @@ function GoToExpired({ carId }: { carId: number }) {
   );
 }
 
-type Target = '/cars/[id]/reminders' | '/cars/[id]/status' | '/cars/[id]/settings' | '/cars/[id]/transfer';
+type Target = '/cars/[id]/reminders' | '/cars/[id]/status' | '/cars/[id]/settings';
 
 export default function CarDetail() {
   useLocale();
@@ -73,39 +75,47 @@ export default function CarDetail() {
     );
   }
 
-  const usable = !isExpired(car);
-  if (!usable) return <GoToExpired carId={car.id} />;
+  if (isExpired(car)) return <GoToExpired carId={car.id} />;
   const go = (pathname: Target) => () => router.push({ pathname, params: { id: String(car.id) } });
 
+  // Transferring the tag lives in Settings: it is rare and hard to undo, so it does not need a place here.
+  const actions: CarAction[] = [
+    { key: 'status', icon: 'megaphone-outline', label: t('carNav.status'), accessibilityLabel: t('detail.status'), onPress: go('/cars/[id]/status') },
+    { key: 'chats', icon: 'chatbubbles-outline', label: t('detail.chats'), onPress: () => router.push('/chats') },
+    { key: 'reminders', icon: 'alarm-outline', label: t('detail.reminders'), onPress: go('/cars/[id]/reminders') },
+    { key: 'settings', icon: 'settings-outline', label: t('carNav.settings'), accessibilityLabel: t('detail.settings'), onPress: go('/cars/[id]/settings') },
+  ];
+
   return (
-    <Screen>
-      {error ? <ErrorBanner message={error} /> : null}
-      <CarPhoto carId={car.id} version={photoVersion} />
-      <CarCard
-        car={car}
-        stealthPendingValue={stealth.pendingValue}
-        stealthError={stealth.error}
-        onToggleStealth={() => stealth.toggle(car)}
-        onOpen={() => {}}
-        onLinkTag={() => router.push({ pathname: '/cars/scan', params: { carId: String(car.id) } })}
-      />
-      {usable ? (
-        <View style={styles.actions}>
-          <Button label={t('detail.status')} onPress={go('/cars/[id]/status')} />
-          <Button label={t('detail.chats')} variant="secondary" onPress={() => router.push('/chats')} />
-          <Button label={t('detail.reminders')} variant="secondary" onPress={go('/cars/[id]/reminders')} />
-          <Button label={t('detail.settings')} variant="secondary" onPress={go('/cars/[id]/settings')} />
-          {car.linked ? <Button label={t('detail.transfer')} variant="secondary" onPress={go('/cars/[id]/transfer')} /> : null}
+    <View style={styles.page}>
+      <Screen tabbed>
+        <View style={styles.content}>
+          {error ? <ErrorBanner message={error} /> : null}
+          <CarPhoto carId={car.id} version={photoVersion} />
+          <CarCard
+            car={car}
+            stealthPendingValue={stealth.pendingValue}
+            stealthError={stealth.error}
+            onToggleStealth={() => stealth.toggle(car)}
+            onOpen={() => {}}
+            onLinkTag={() => router.push({ pathname: '/cars/scan', params: { carId: String(car.id) } })}
+          />
         </View>
-      ) : null}
-    </Screen>
+      </Screen>
+      <CarActionBar actions={actions} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  photo: { width: '100%', height: 200, borderRadius: radius, marginBottom: spacing.md, backgroundColor: colors.primaryTint },
+  page: { flex: 1, backgroundColor: colors.background },
+  // A readable column on tablets and the web, centred; on a phone it is simply the full width.
+  content: { width: '100%', maxWidth: 560, alignSelf: 'center' },
+  // The same 16:9 shape the picker crops to (PHOTO_ASPECT), at any screen width.
+  photo: { width: '100%', aspectRatio: 16 / 9, borderRadius: radius, marginBottom: spacing.md, backgroundColor: colors.primaryTint },
   photoEmpty: {
-    height: 120,
+    width: '100%',
+    aspectRatio: 16 / 9,
     borderRadius: radius,
     marginBottom: spacing.md,
     backgroundColor: colors.primaryTint,
@@ -113,5 +123,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   photoEmptyText: { fontFamily: font.regular, fontSize: fontSize.small, color: colors.textMuted },
-  actions: { gap: spacing.sm },
 });

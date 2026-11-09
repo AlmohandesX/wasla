@@ -27,6 +27,7 @@ const CAR: Car = {
   stealth_enabled: false,
   chats_paused: false,
   linked: true,
+  serial_number: 'W001-000123',
   subscription: { active: true, expires_at: '2027-11-05T10:00:00Z' },
 };
 

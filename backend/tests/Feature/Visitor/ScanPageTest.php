@@ -4,6 +4,7 @@ use App\Models\EmergencyContact;
 use App\Models\Tag;
 use App\Models\User;
 use App\Services\Tags\TagClaimer;
+use Carbon\CarbonImmutable;
 
 beforeEach(fn () => $this->travelTo(now()->startOfSecond()));
 
@@ -147,14 +148,46 @@ it('sends noindex', function () {
     $this->get('/t/'.tagFixture()->token)->assertHeader('X-Robots-Tag', 'noindex, nofollow');
 });
 
-it('uses English by default and Turkish on Accept-Language tr', function () {
+it('opens in Turkish whatever the browser or the owner uses, and switches to English on request', function () {
+    $tag = scanTag();
+    $tag->car->user->update(['locale' => 'en']);
+
+    foreach (['', 'en-GB,en;q=0.9', 'de', 'ar'] as $browser) {
+        $this->get("/t/{$tag->token}", ['Accept-Language' => $browser])
+            ->assertSee('Sahibine mesaj gönder')->assertSee('<html lang="tr">', false);
+    }
+    $this->get("/t/{$tag->token}?lang=en")->assertSee('Message the owner')->assertSee('<html lang="en">', false);
+    $this->get("/t/{$tag->token}?lang=EN")->assertSee('Message the owner');
+    $this->get("/t/{$tag->token}?lang=tr", ['Accept-Language' => 'en'])->assertSee('Sahibine mesaj gönder');
+    $this->get("/t/{$tag->token}?lang=fr")->assertSee('Sahibine mesaj gönder');
+    // The chat page's background requests carry the choice in a header instead.
+    $this->get("/t/{$tag->token}", ['X-Wasla-Lang' => 'en'])->assertSee('Message the owner');
+});
+
+it('shows a TR | EN switch and keeps the choice on the way to the chat', function () {
     $tag = scanTag();
 
-    $this->get("/t/{$tag->token}", ['Accept-Language' => ''])->assertSee('Message the owner')->assertSee('<html lang="en">', false);
-    $this->get("/t/{$tag->token}", ['Accept-Language' => 'tr-TR,tr;q=0.9,en;q=0.8'])
-        ->assertSee('Sahibine mesaj gönder')->assertSee('<html lang="tr">', false);
-    $this->get("/t/{$tag->token}", ['Accept-Language' => 'de'])->assertSee('Message the owner');
-    $this->get("/t/{$tag->token}", ['Accept-Language' => 'ar'])->assertSee('Message the owner');
+    $tr = $this->get("/t/{$tag->token}")->assertOk();
+    $tr->assertSee('<a href="?lang=en"', false)->assertSee('<a href="?lang=tr"', false)
+        ->assertSee('href="/t/'.$tag->token.'/chat"', false);
+    expect($tr->getContent())->toMatch('/href="\?lang=tr"[^>]*aria-current="true"/');
+
+    $en = $this->get("/t/{$tag->token}?lang=en")->assertOk();
+    $en->assertSee('href="/t/'.$tag->token.'/chat?lang=en"', false);
+    expect($en->getContent())->toMatch('/href="\?lang=en"[^>]*aria-current="true"/');
+
+    $this->get("/t/{$tag->token}/chat?lang=en")->assertSee('href="/t/'.$tag->token.'?lang=en"', false);
+    expect($tr->headers->getCookies())->toBeEmpty();
+});
+
+it('shows a quick status in the visitor language and an owner-typed status as written', function () {
+    $tag = scanTag(['status_text' => 'Eczanedeyim.', 'status_key' => 'at_pharmacy', 'status_expires_at' => now()->addHour()]);
+
+    $this->get("/t/{$tag->token}")->assertSee('Eczanedeyim.');
+    $this->get("/t/{$tag->token}?lang=en")->assertSee('At the pharmacy.')->assertDontSee('Eczanedeyim.');
+
+    $tag->car->update(['status_text' => 'Kapıdayım, 2 dk', 'status_key' => null]);
+    $this->get("/t/{$tag->token}?lang=en")->assertSee('Kapıdayım, 2 dk');
 });
 
 it('escapes owner text', function () {
@@ -179,12 +212,47 @@ it('shows only the plain neutral copy and no tag data on a neutral page', functi
     scanContact($tag, 'Gizli Etiket');
     $tag->car->update(['stealth_enabled' => true]);
 
-    foreach (['en-GB,en;q=0.8' => 'This tag is not active', '' => 'This tag is not active', 'tr' => 'Bu etiket etkin değil'] as $lang => $title) {
-        $html = $this->get("/t/{$tag->token}", ['Accept-Language' => $lang])->assertOk()->getContent();
+    foreach (['?lang=en' => 'This tag is not active', '' => 'Bu etiket etkin değil', '?lang=tr' => 'Bu etiket etkin değil'] as $lang => $title) {
+        $html = $this->get("/t/{$tag->token}{$lang}")->assertOk()->getContent();
 
         expect($html)->toContain($title)
             ->not->toContain('34 ABC 123')->not->toContain('Mehmet')->not->toContain('Yilmaz')
             ->not->toContain('Gizli')->not->toContain($tag->token)->not->toContain('5321234567')
             ->not->toContain('cannot be reached')->not->toContain('ulaşılamıyor');
     }
+});
+
+it('shows when the status runs out, in Istanbul time, with the time left', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-11-09 13:23:00', 'Europe/Istanbul'));
+    $tag = scanTag(['status_text' => 'Eczanedeyim.', 'status_key' => 'at_pharmacy', 'status_expires_at' => now()->addMinutes(45)]);
+
+    $this->get("/t/{$tag->token}?lang=en")->assertSee('Until 14:08 · 45 min left')
+        ->assertSee('<time datetime="2026-11-09T14:08:00+03:00">', false);
+    $this->get("/t/{$tag->token}")->assertSee('Bitiş: 14:08 · 45 dk kaldı');
+
+    $tag->car->update(['status_expires_at' => now()->addMinutes(150)]);
+    $this->get("/t/{$tag->token}?lang=en")->assertSee('Until 15:53 · 2 h 30 min left');
+    $tag->car->update(['status_expires_at' => now()->addHours(2)]);
+    $this->get("/t/{$tag->token}")->assertSee('Bitiş: 15:23 · 2 sa kaldı');
+
+    // A part minute counts as a whole one, so it never reads "0 min".
+    $tag->car->update(['status_expires_at' => now()->addSeconds(20)]);
+    $this->get("/t/{$tag->token}?lang=en")->assertSee('1 min left');
+});
+
+it('adds the date when the status runs out on a later day', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-11-09 22:00:00', 'Europe/Istanbul'));
+    $tag = scanTag(['status_text' => 'Tatildeyim', 'status_expires_at' => now()->addDays(3)]);
+
+    $this->get("/t/{$tag->token}?lang=en")->assertSee('Until 12 Nov, 22:00 · 3 days left');
+    $this->get("/t/{$tag->token}")->assertSee('Bitiş: 12 Kas, 22:00 · 3 gün kaldı');
+});
+
+it('shows no end time without a status or once it has run out', function () {
+    $tag = scanTag(['default_message' => 'Hemen donerim']);
+    $this->get("/t/{$tag->token}?lang=en")->assertSee('Hemen donerim')->assertDontSee('left')->assertDontSee('class="until"', false);
+
+    $tag->car->update(['status_text' => 'Market', 'status_expires_at' => now()->addMinutes(10)]);
+    $this->travel(11)->minutes();
+    $this->get("/t/{$tag->token}?lang=en")->assertSee('Hemen donerim')->assertDontSee('class="until"', false);
 });

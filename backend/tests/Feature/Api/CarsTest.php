@@ -34,8 +34,23 @@ it('claims a tag into a new car and returns subscription info', function () {
         ->assertJsonPath('model', 'Renault Clio')
         ->assertJsonPath('subscription.active', true)
         ->assertJsonPath('linked', true)
+        ->assertJsonPath('serial_number', $tag->serial)
         ->assertJsonMissingPath('user_id');
     expect($tag->refresh()->car_id)->not->toBeNull();
+});
+
+it('lists and shows each car with its tag serial, never the token, and null once the tag is released', function () {
+    $user = owner();
+    $car = linkedCar($user);
+    $serial = $car->tag->serial;
+
+    $list = $this->getJson('/api/v1/cars', bearer($user))->assertOk()->assertJsonPath('data.0.serial_number', $serial);
+    $this->getJson("/api/v1/cars/{$car->id}", bearer($user))->assertOk()->assertJsonPath('serial_number', $serial);
+    expect($list->getContent())->not->toContain($car->tag->token);
+
+    $this->postJson("/api/v1/cars/{$car->id}/unlink", [], bearer($user))->assertSuccessful();
+    $this->getJson("/api/v1/cars/{$car->id}", bearer($user))->assertOk()
+        ->assertJsonPath('linked', false)->assertJsonPath('serial_number', null);
 });
 
 it('renders claim errors as code and message JSON', function () {
@@ -147,6 +162,51 @@ it('reverts to the default message at status expiry', function () {
 
     $this->deleteJson("/api/v1/cars/{$car->id}/status", [], bearer($user))->assertOk();
     expect(Car::find($car->id)->status_text)->toBeNull();
+});
+
+it('stores a quick status as a key, unmoderated, and shows it in the reader language', function () {
+    Http::fake(); // a preset is our own wording: no moderation call
+    $user = owner(['locale' => 'en']);
+    $car = linkedCar($user);
+
+    $this->putJson("/api/v1/cars/{$car->id}/status", ['preset' => 'at_pharmacy', 'duration_minutes' => 30], bearer($user) + ['Accept-Language' => 'en'])
+        ->assertOk()
+        ->assertJsonPath('status.text', 'At the pharmacy.')
+        ->assertJsonPath('status.preset', 'at_pharmacy')
+        ->assertJsonPath('current_message', 'At the pharmacy.');
+    Http::assertNothingSent();
+
+    $car->refresh();
+    expect($car->status_key)->toBe('at_pharmacy')->and($car->status_text)->toBe('Eczanedeyim.');
+    app()->setLocale('tr');
+    expect($car->currentMessage())->toBe('Eczanedeyim.');
+
+    // Typing a status afterwards drops the key; clearing drops both.
+    $this->putJson("/api/v1/cars/{$car->id}/status", ['text' => 'Market, 10 dk', 'duration_minutes' => 30], bearer($user))
+        ->assertOk()->assertJsonPath('status.preset', null);
+    expect($car->refresh()->status_key)->toBeNull();
+    $this->putJson("/api/v1/cars/{$car->id}/status", ['preset' => 'call_me', 'duration_minutes' => 30], bearer($user))->assertOk();
+    $this->deleteJson("/api/v1/cars/{$car->id}/status", [], bearer($user))->assertOk();
+    expect($car->refresh()->status_key)->toBeNull()->and($car->status_text)->toBeNull();
+});
+
+it('refuses an unknown preset and a status with neither text nor preset', function () {
+    $user = owner();
+    $car = linkedCar($user);
+
+    $this->putJson("/api/v1/cars/{$car->id}/status", ['preset' => 'on_the_moon', 'duration_minutes' => 30], bearer($user))
+        ->assertUnprocessable()->assertJsonValidationErrors('preset');
+    $this->putJson("/api/v1/cars/{$car->id}/status", ['duration_minutes' => 30], bearer($user))
+        ->assertUnprocessable()->assertJsonValidationErrors('text');
+    expect($car->refresh()->status_text)->toBeNull();
+});
+
+it('has every quick status in both languages', function () {
+    foreach (Car::STATUS_PRESETS as $key) {
+        foreach (['en', 'tr'] as $locale) {
+            expect(__("wasla.status_presets.$key", [], $locale))->not->toBe("wasla.status_presets.$key");
+        }
+    }
 });
 
 it('falls back to the translated default when no default message is set', function () {

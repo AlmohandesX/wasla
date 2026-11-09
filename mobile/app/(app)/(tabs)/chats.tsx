@@ -123,9 +123,6 @@ export default function Chats() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} colors={[colors.primary]} />}
           ListHeaderComponent={
             <View>
-              <Text accessibilityRole="header" style={styles.title}>
-                {t('chats.title')}
-              </Text>
               {error ? <ErrorBanner message={`${t('chats.loadError')} ${error}`} /> : null}
               {error && threads === null ? <Button label={t('common.retry')} onPress={load} /> : null}
               {user ? <PushPrompt userId={user.id} /> : null}
@@ -142,7 +139,6 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   content: { padding: spacing.lg, flexGrow: 1 },
-  title: { fontSize: fontSize.title, fontFamily: font.bold, color: colors.text, marginBottom: spacing.lg },
   empty: { fontFamily: font.regular, fontSize: fontSize.body, color: colors.text, marginVertical: spacing.lg },
   row: {
     minHeight: touchTarget,

@@ -1,6 +1,8 @@
 import { act, create } from 'react-test-renderer';
 
-import Cars from '../../../app/(app)/(tabs)/cars';
+import Cars from '../../../app/(app)/cars/index';
+import Home from '../../../app/(app)/(tabs)/home';
+import Services from '../../../app/(app)/services';
 
 const mockPush = jest.fn();
 let mockUser: { id: number; email: string; name: string } | null = null;
@@ -11,7 +13,10 @@ jest.mock('expo-secure-store', () => ({
   deleteItemAsync: jest.fn(async () => undefined),
 }));
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
-jest.mock('react-native-safe-area-context', () => ({ SafeAreaView: ({ children }: { children: unknown }) => children }));
+jest.mock('react-native-safe-area-context', () => ({
+  SafeAreaView: ({ children }: { children: unknown }) => children,
+  useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 34, left: 0 }),
+}));
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush, replace: jest.fn() }),
   useFocusEffect: () => undefined,
@@ -23,13 +28,16 @@ jest.mock('../../auth/session', () => ({ useSession: () => ({ user: mockUser, si
 const textOf = (tree: ReturnType<typeof create>) =>
   tree.root.findAll((n) => (n.type as unknown) === 'Text').map((n) => n.children.join('')).join('|');
 
-async function render() {
+async function render(Screen: () => React.ReactElement = Home) {
   let tree!: ReturnType<typeof create>;
   await act(async () => {
-    tree = create(<Cars />);
+    tree = create(<Screen />);
   });
   return tree;
 }
+
+const buttonLabels = (tree: ReturnType<typeof create>) =>
+  [...new Set(tree.root.findAll((n) => n.props.accessibilityRole === 'button').map((n) => String(n.props.accessibilityLabel ?? '')))];
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -48,8 +56,27 @@ describe('home screen', () => {
     expect(text).not.toContain('Hello,');
   });
 
-  test('the floating scan button opens the scanner', async () => {
+  test('is a dashboard: a Cars card and a Services card, and no car list', async () => {
     const tree = await render();
+    expect(buttonLabels(tree)).toEqual(['Cars', 'Services']);
+    expect(tree.root.findAll((n) => n.props.testID === 'car-card')).toHaveLength(0);
+    expect(textOf(tree)).toContain('Coming soon');
+
+    const press = (label: string) =>
+      act(() => tree.root.findAll((n) => n.props.accessibilityRole === 'button' && n.props.accessibilityLabel === label)[0].props.onPress());
+    press('Cars');
+    press('Services');
+    expect(mockPush.mock.calls).toEqual([['/cars'], ['/services']]);
+  });
+
+  test('the services screen says it is coming soon', async () => {
+    expect(textOf(await render(Services))).toContain('Coming soon');
+  });
+});
+
+describe('my cars screen', () => {
+  test('the floating scan button opens the scanner and keeps clear of the home indicator', async () => {
+    const tree = await render(Cars);
     const fab = tree.root.findAll(
       (n) => n.props.accessibilityRole === 'button' && n.props.accessibilityLabel === 'Scan a tag to add a car',
     )[0];
@@ -57,7 +84,12 @@ describe('home screen', () => {
     expect(textOf(tree)).toContain('Add car');
     act(() => fab.props.onPress());
     expect(mockPush).toHaveBeenCalledWith('/cars/scan');
+    const style = fab.props.style({ pressed: false });
+    expect(style).toEqual(expect.arrayContaining([{ bottom: 16 + 34 }]));
   });
+});
+
+describe('home screen, what stays elsewhere', () => {
 
   test('has no Sign out, Chats or Account buttons (they live in the tab bar and Account tab)', async () => {
     const labels = (await render()).root

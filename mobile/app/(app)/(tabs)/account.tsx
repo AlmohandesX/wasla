@@ -67,7 +67,7 @@ export default function Account() {
   };
 
   return (
-    <Screen title={t('account.title')} tabbed>
+    <Screen tabbed>
       {user ? <Text style={styles.email}>{t('account.signedInAs', { email: user.email })}</Text> : null}
       <Text accessibilityRole="header" style={styles.section}>
         {t('language.label')}

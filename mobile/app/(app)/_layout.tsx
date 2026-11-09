@@ -1,11 +1,12 @@
 import { Stack, usePathname, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
 
 import { setExpiredHandler } from '../../src/api/client';
 import { useSession } from '../../src/auth/session';
 import { t, useLocale } from '../../src/i18n';
 import { enablePush, listenForChatTaps } from '../../src/push/register';
-import { colors, font } from '../../src/theme';
+import { colors, navyHeader } from '../../src/theme';
 
 export default function AppLayout() {
   useLocale();
@@ -43,30 +44,29 @@ export default function AppLayout() {
   );
 
   return (
-    <Stack
-      screenOptions={{
-        // A solid white header with the screen laid out below it. On iOS 26+ the native header is otherwise a
-        // see-through "Liquid Glass" bar that screens draw underneath, which put chat text behind the Back
-        // button and the status bar. Setting both options keeps the opaque bar on every iOS version.
-        headerTransparent: false,
-        headerStyle: { backgroundColor: colors.surface },
-        headerShadowVisible: true,
-        contentStyle: { backgroundColor: colors.background },
-        headerTintColor: colors.primaryDark,
-        headerTitleStyle: { color: colors.text, fontFamily: font.bold },
-        headerBackTitle: t('common.back'),
-      }}
-    >
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="chats/[id]" options={{ title: t('chat.title') }} />
-      <Stack.Screen name="cars/scan" options={{ title: t('scan.title') }} />
-      <Stack.Screen name="cars/[id]/index" options={{ title: t('cars.title') }} />
-      <Stack.Screen name="cars/[id]/settings" options={{ title: t('detail.settings') }} />
-      <Stack.Screen name="cars/[id]/status" options={{ title: t('detail.status') }} />
-      <Stack.Screen name="cars/[id]/reminders" options={{ title: t('reminders.title') }} />
-      <Stack.Screen name="cars/[id]/transfer" options={{ title: t('detail.transfer') }} />
-      <Stack.Screen name="cars/[id]/expired" options={{ title: '' }} />
-      <Stack.Screen name="cars/[id]/renew" options={{ title: t('renew.title') }} />
-    </Stack>
+    <>
+      {/* Every signed-in screen has a navy top (a header or Home's band), so the status bar is white. */}
+      <StatusBar style="light" />
+      <Stack
+        screenOptions={{
+          ...navyHeader,
+          contentStyle: { backgroundColor: colors.background },
+          headerBackTitle: t('common.back'),
+        }}
+      >
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="cars/index" options={{ title: t('cars.title') }} />
+        <Stack.Screen name="services" options={{ title: t('home.services') }} />
+        <Stack.Screen name="chats/[id]" options={{ title: t('chat.title') }} />
+        <Stack.Screen name="cars/scan" options={{ title: t('scan.title') }} />
+        <Stack.Screen name="cars/[id]/index" options={{ title: t('cars.title') }} />
+        <Stack.Screen name="cars/[id]/settings" options={{ title: t('detail.settings') }} />
+        <Stack.Screen name="cars/[id]/status" options={{ title: t('detail.status') }} />
+        <Stack.Screen name="cars/[id]/reminders" options={{ title: t('reminders.title') }} />
+        <Stack.Screen name="cars/[id]/transfer" options={{ title: t('detail.transfer') }} />
+        <Stack.Screen name="cars/[id]/expired" options={{ title: '' }} />
+        <Stack.Screen name="cars/[id]/renew" options={{ title: t('renew.title') }} />
+      </Stack>
+    </>
   );
 }

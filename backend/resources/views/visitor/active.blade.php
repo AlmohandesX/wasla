@@ -3,8 +3,11 @@
 @section('content')
     <p class="label">{{ __('visitor.note_label') }}</p>
     <h1 class="message">{{ $message }}</h1>
+    @if ($until)
+        <p class="until"><time datetime="{{ $until['iso'] }}">{{ $until['text'] }}</time></p>
+    @endif
 
-    <a class="action" href="/t/{{ $token }}/chat">{{ __('visitor.message_owner') }}</a>
+    <a class="action" href="{{ \App\Http\Middleware\VisitorPageHeaders::link('/t/'.$token.'/chat') }}">{{ __('visitor.message_owner') }}</a>
     <p class="hint">{{ __('visitor.message_hint') }}</p>
 
     @if ($contacts->isNotEmpty())

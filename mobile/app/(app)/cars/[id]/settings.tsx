@@ -13,7 +13,7 @@ import {
 } from '../../../../src/api/cars';
 import { ApiError, fieldError, toApiError } from '../../../../src/api/errors';
 import { useCar } from '../../../../src/cars/useCar';
-import { pickPhoto } from '../../../../src/cars/pickPhoto';
+import { CameraPermissionDenied, pickPhoto, type PhotoSource } from '../../../../src/cars/pickPhoto';
 import { useChatsPaused } from '../../../../src/cars/useServerSwitch';
 import { Button } from '../../../../src/components/Button';
 import { ErrorBanner } from '../../../../src/components/ErrorBanner';
@@ -105,6 +105,16 @@ function PhotoSection({ carId }: { carId: number }) {
     }
   };
 
+  const choose = async (source: PhotoSource) => {
+    const photo = await pickPhoto(source).catch((e: unknown) => {
+      if (e instanceof CameraPermissionDenied) throw new ApiError(0, 'camera_denied', t('settings.photoCameraDenied'));
+      throw new ApiError(0, 'unreadable', t('settings.photoUnreadable'));
+    });
+    if (!photo) return null;
+    await uploadPhoto(carId, photo);
+    return t('settings.photoDone');
+  };
+
   return (
     <View>
       <Text accessibilityRole="header" style={styles.heading}>
@@ -114,21 +124,8 @@ function PhotoSection({ carId }: { carId: number }) {
       {error ? <ErrorBanner message={fieldError(error, 'photo') ?? error.message} /> : null}
       {done ? <ErrorBanner tone="info" message={done} /> : null}
       <View style={styles.stack}>
-        <Button
-          label={t('settings.photoPick')}
-          variant="secondary"
-          loading={busy}
-          onPress={() =>
-            run(async () => {
-              const photo = await pickPhoto().catch(() => {
-                throw new ApiError(0, 'unreadable', t('settings.photoUnreadable'));
-              });
-              if (!photo) return null;
-              await uploadPhoto(carId, photo);
-              return t('settings.photoDone');
-            })
-          }
-        />
+        <Button label={t('settings.photoPick')} variant="secondary" loading={busy} onPress={() => run(() => choose('library'))} />
+        <Button label={t('settings.photoTake')} variant="secondary" disabled={busy} onPress={() => run(() => choose('camera'))} />
         <Button
           label={t('settings.photoRemove')}
           variant="secondary"
@@ -271,6 +268,26 @@ function ChatsSection({ carId }: { carId: number }) {
   );
 }
 
+/** Releasing the tag for its next owner. Moved here from the car screen: it is rare and cannot be undone. */
+function TransferSection({ carId }: { carId: number }) {
+  const router = useRouter();
+  const { car } = useCar(carId);
+  if (!car?.linked) return null;
+  return (
+    <View style={styles.section}>
+      <Text accessibilityRole="header" style={styles.heading}>
+        {t('settings.transferTitle')}
+      </Text>
+      <Text style={styles.note}>{t('settings.transferHint')}</Text>
+      <Button
+        label={t('detail.transfer')}
+        variant="secondary"
+        onPress={() => router.push({ pathname: '/cars/[id]/transfer', params: { id: String(carId) } })}
+      />
+    </View>
+  );
+}
+
 function RemoveSection({ carId }: { carId: number }) {
   const router = useRouter();
   const { car } = useCar(carId);
@@ -300,6 +317,7 @@ export default function Settings() {
       <View style={styles.section}>
         <Contacts carId={carId} />
       </View>
+      <TransferSection carId={carId} />
       <View style={styles.section}>
         <RemoveSection carId={carId} />
       </View>

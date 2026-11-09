@@ -1,10 +1,10 @@
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { listCars, type Car } from '../../../src/api/cars';
 import { toApiError } from '../../../src/api/errors';
-import { useSession } from '../../../src/auth/session';
 import { useStealth } from '../../../src/cars/useServerSwitch';
 import { Button } from '../../../src/components/Button';
 import { CarCard, isExpired } from '../../../src/components/CarCard';
@@ -12,7 +12,6 @@ import { ErrorBanner } from '../../../src/components/ErrorBanner';
 import { Fab, FAB_HEIGHT } from '../../../src/components/Fab';
 import { Screen } from '../../../src/components/Screen';
 import { t, useLocale } from '../../../src/i18n';
-import { firstName } from '../../../src/lib/firstName';
 import { colors, font, fontSize, spacing } from '../../../src/theme';
 
 function CarRow({ car, onUpdated }: { car: Car; onUpdated: (car: Car) => void }) {
@@ -32,11 +31,11 @@ function CarRow({ car, onUpdated }: { car: Car; onUpdated: (car: Car) => void })
   );
 }
 
+/** "My cars": every car with its tag and stealth switch, opened from the Cars card on Home. */
 export default function Cars() {
   useLocale();
   const router = useRouter();
-  const { user } = useSession();
-  const name = firstName(user?.name);
+  const insets = useSafeAreaInsets();
   const [cars, setCars] = useState<Car[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -66,8 +65,8 @@ export default function Cars() {
 
   return (
     <View style={styles.flex}>
-      <Screen logo title={t('cars.title')} tabbed bottomSpace={FAB_HEIGHT + spacing.md}>
-        <Text style={styles.greeting}>{name ? t('home.title', { name }) : t('home.titleNoName')}</Text>
+      {/* The title is in the navy header above, set in app/(app)/_layout.tsx. */}
+      <Screen bottomSpace={FAB_HEIGHT + spacing.md + insets.bottom}>
         {error ? <ErrorBanner message={`${t('cars.loadError')} ${error}`} /> : null}
         {cars === null && loading ? (
           <ActivityIndicator size="large" color={colors.primary} accessibilityLabel={t('common.loading')} />
@@ -81,6 +80,7 @@ export default function Cars() {
         label={t('cars.addShort')}
         accessibilityLabel={t('cars.add')}
         onPress={() => router.push('/cars/scan')}
+        bottomInset={insets.bottom}
       />
     </View>
   );
@@ -88,6 +88,5 @@ export default function Cars() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  greeting: { fontSize: fontSize.body + 2, fontFamily: font.semibold, color: colors.text, marginBottom: spacing.sm },
   empty: { fontFamily: font.regular, fontSize: fontSize.body, color: colors.text, marginVertical: spacing.lg },
 });

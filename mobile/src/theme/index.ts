@@ -36,3 +36,16 @@ export const radius = 12;
 export const touchTarget = 48;
 
 export const fontSize = { small: 14, body: 16, title: 26 } as const;
+
+/**
+ * The app's header: navy with white title, back arrow and icons (15.6:1), shared by the stack screens and the
+ * Chats and Account tabs. headerTransparent false keeps it opaque on iOS 26+, where the native header is
+ * otherwise a see-through "Liquid Glass" bar that screens draw underneath.
+ */
+export const navyHeader = {
+  headerTransparent: false,
+  headerStyle: { backgroundColor: colors.primary },
+  headerShadowVisible: false,
+  headerTintColor: colors.surface,
+  headerTitleStyle: { color: colors.surface, fontFamily: font.bold },
+} as const;

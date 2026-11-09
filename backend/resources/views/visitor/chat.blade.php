@@ -47,7 +47,7 @@
         </div>
     @endif
 
-    <a class="back" href="/t/{{ $token }}">{{ __('visitor.chat_back') }}</a>
+    <a class="back" href="{{ \App\Http\Middleware\VisitorPageHeaders::link('/t/'.$token) }}">{{ __('visitor.chat_back') }}</a>
 @endsection
 
 @section('scripts')

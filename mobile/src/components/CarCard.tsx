@@ -45,6 +45,11 @@ export function CarCard({ car, onOpen, onToggleStealth, onLinkTag, stealthPendin
       >
         <Text style={[styles.model, stealth && styles.textStealth]}>{car.model}</Text>
         <Text style={[styles.plate, stealth && styles.textStealth]}>{car.plate}</Text>
+        {car.serial_number ? (
+          <Text selectable style={[styles.serial, stealth && styles.textStealth]}>
+            {t('card.serial', { serial: car.serial_number })}
+          </Text>
+        ) : null}
       </Pressable>
 
       {status ? (
@@ -114,6 +119,7 @@ const styles = StyleSheet.create({
   head: { minHeight: touchTarget, justifyContent: 'center' },
   model: { fontSize: fontSize.body + 2, fontFamily: font.bold, color: colors.text },
   plate: { fontFamily: font.regular, fontSize: fontSize.body, color: colors.textMuted, marginTop: spacing.xs },
+  serial: { fontFamily: font.regular, fontSize: fontSize.small, color: colors.textMuted, marginTop: spacing.xs },
   textStealth: { color: colors.surface },
   status: { fontFamily: font.regular, fontSize: fontSize.small, color: colors.text, marginTop: spacing.sm },
   notice: { marginTop: spacing.sm },

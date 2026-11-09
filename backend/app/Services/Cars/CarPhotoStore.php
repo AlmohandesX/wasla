@@ -11,22 +11,20 @@ use Throwable;
 
 class CarPhotoStore
 {
-    /** Files up to and including this size stay on the local private disk; larger ones go to object storage. */
+    /** Stored files up to and including this size stay on the local private disk; larger ones go to object storage. */
     public const LOCAL_MAX_BYTES = 1048576;
 
+    public function __construct(private readonly PhotoResizer $resizer) {}
+
+    /** Every photo is stored resized and re-encoded as JPEG (see PhotoResizer), whatever was uploaded. */
     public function store(Car $car, UploadedFile $file): void
     {
-        $disk = $file->getSize() <= self::LOCAL_MAX_BYTES ? 'photos' : 's3';
-        // Extension comes from the detected content, never from the client's name.
-        $ext = match (getimagesize($file->getRealPath())[2] ?? null) {
-            IMAGETYPE_PNG => 'png',
-            IMAGETYPE_WEBP => 'webp',
-            default => 'jpg',
-        };
-        $path = 'car-photos/'.Str::random(40).'.'.$ext;
+        $bytes = $this->resizer->toJpeg($file->getRealPath());
+        $disk = strlen($bytes) <= self::LOCAL_MAX_BYTES ? 'photos' : 's3';
+        $path = 'car-photos/'.Str::random(40).'.jpg';
 
         // Disks run with throw=false, so a failed write returns false: nothing may change until it succeeds.
-        if (Storage::disk($disk)->put($path, $file->get()) === false) {
+        if (Storage::disk($disk)->put($path, $bytes) === false) {
             throw new RuntimeException('Car photo could not be written to the '.$disk.' disk.');
         }
 

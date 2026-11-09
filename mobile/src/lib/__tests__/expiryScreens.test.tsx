@@ -119,12 +119,12 @@ describe('account screen', () => {
     try {
       await act(async () => option('Türkçe').props.onPress());
       expect(textOf(tree)).toContain('Dil');
-      expect(textOf(tree)).toContain('Hesap');
+      expect(textOf(tree)).toContain('Çıkış yap'); // the screen title now sits in the navy header
       expect(option('Türkçe').props.accessibilityState).toEqual({ selected: true });
     } finally {
       await act(async () => option('English').props.onPress());
     }
-    expect(textOf(tree)).toContain('Account');
+    expect(textOf(tree)).toContain('Sign out');
   });
 
   async function openDelete() {

@@ -136,7 +136,7 @@ Each item needs an automated test where testable.
 | Input | Form Requests on every write. Output escaped by default. Eloquent or bound queries only |
 | Rate limits | Named limits on every API route, tighter on login, claim, chat and contact reveal |
 | Spend caps | Daily call cap for moderation, plus any cap offered by provider dashboards |
-| Uploads | Only the owner's private car photo in v1. JPEG, PNG or WebP, checked by content, 10 MB limit. Files above 1 MB go to object storage, others to local storage |
+| Uploads | Only the owner's private car photo in v1. JPEG, PNG or WebP, checked by content, 10 MB limit. Stored resized: at most 1024 px on the longer side, re-encoded as JPEG (quality 80); the app crops to 16:9 first. Stored files above 1 MB go to object storage, others to local storage |
 | Network | HTTPS forced, HSTS, CSP and security headers, CSRF on web routes, secure HttpOnly SameSite cookies, CORS limited to known origins |
 
 ## 8. Payments

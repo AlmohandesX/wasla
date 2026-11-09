@@ -1,8 +1,14 @@
 <?php
 
 return [
+    'language' => 'Dil',
     'title' => 'Beni Bul',
     'note_label' => 'Bu araçtan bir not',
+    'status_until' => 'Bitiş: :time · :left',
+    'left_minutes' => ':m dk kaldı',
+    'left_hours' => ':h sa kaldı',
+    'left_hours_minutes' => ':h sa :m dk kaldı',
+    'left_days' => ':d gün kaldı',
     'message_owner' => 'Sahibine mesaj gönder',
     'message_hint' => 'Telefon numarası paylaşılmaz. Mesajlaşma anonimdir.',
     'contacts_title' => 'Acil durum kişileri',

@@ -32,7 +32,10 @@ it('shows a translated 404 for an unknown or malformed token', function () {
     assertErrorPage($tr);
     $tr->assertSee(__('pages.404_title', [], 'tr'));
 
-    $en = $this->get('/t/short', ['Accept-Language' => 'en-GB,en;q=0.8'])->assertNotFound();
+    // Under /t/ the visitor's TR | EN choice decides, not the browser: Turkish unless ?lang=en.
+    $default = $this->get('/t/short', ['Accept-Language' => 'en-GB,en;q=0.8'])->assertNotFound();
+    $default->assertSee(__('pages.404_title', [], 'tr'));
+    $en = $this->get('/t/short?lang=en')->assertNotFound();
     assertErrorPage($en);
     $en->assertSee(__('pages.404_title', [], 'en'));
 });
@@ -49,11 +52,11 @@ it('shows a translated 429 with the visitor and security headers when the scan l
         $this->get("/t/{$tag->token}");
     }
 
-    $r = $this->get("/t/{$tag->token}", ['Accept-Language' => 'en'])->assertStatus(429);
+    $r = $this->get("/t/{$tag->token}?lang=en")->assertStatus(429);
     assertErrorPage($r);
     $r->assertSee(__('pages.429_title', [], 'en'));
     expect($r->headers->has('Retry-After'))->toBeTrue()
-        ->and($r->headers->get('Vary'))->toContain('Accept-Language');
+        ->and($r->headers->get('Vary'))->toContain('X-Wasla-Lang');
 });
 
 it('keeps JSON answers for the API and the reveal endpoint', function () {

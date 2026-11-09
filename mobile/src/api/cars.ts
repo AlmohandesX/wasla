@@ -1,7 +1,8 @@
 import { apiRequest } from './client';
 import { getApiBaseUrl } from './config';
 
-export type CarStatus = { text: string; expires_at: string };
+/** `preset` is set when the status is one of the ready-made messages; `text` is then in the app's language. */
+export type CarStatus = { text: string; preset?: string | null; expires_at: string };
 
 export type Car = {
   id: number;
@@ -14,6 +15,8 @@ export type Car = {
   chats_paused: boolean;
   /** False when no tag is attached (a car whose tag was released, awaiting a new one). */
   linked: boolean;
+  /** The linked tag's serial, e.g. W001-000123; null when no tag is linked. Quoted to replace a lost tag. */
+  serial_number: string | null;
   subscription: { active: boolean; expires_at: string | null };
 };
 
@@ -58,8 +61,10 @@ export function setChatsPaused(id: number, paused: boolean): Promise<Car> {
 
 export const MAX_STATUS_LENGTH = 140;
 
-export function setStatus(id: number, text: string, durationMinutes: number): Promise<Car> {
-  return apiRequest<Car>(`cars/${id}/status`, { method: 'PUT', body: { text, duration_minutes: durationMinutes } });
+/** With `preset`, the server stores the key and ignores `text`, so each reader sees it in their own language. */
+export function setStatus(id: number, text: string, durationMinutes: number, preset?: string): Promise<Car> {
+  const body = preset ? { preset, duration_minutes: durationMinutes } : { text, duration_minutes: durationMinutes };
+  return apiRequest<Car>(`cars/${id}/status`, { method: 'PUT', body });
 }
 
 export function clearStatus(id: number): Promise<Car> {

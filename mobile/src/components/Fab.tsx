@@ -13,16 +13,18 @@ type Props = {
   /** Full description for screen readers when the visible label is shortened. */
   accessibilityLabel?: string;
   onPress: () => void;
+  /** Extra distance from the bottom, e.g. the phone's home indicator on a screen without a tab bar. */
+  bottomInset?: number;
 };
 
-/** The screen's main action, floating in the bottom-right corner just above the tab bar. */
-export function Fab({ icon, label, accessibilityLabel, onPress }: Props) {
+/** The screen's main action, floating in the bottom-right corner (above the tab bar or the home indicator). */
+export function Fab({ icon, label, accessibilityLabel, onPress, bottomInset = 0 }: Props) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       onPress={onPress}
-      style={({ pressed }) => [styles.fab, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.fab, bottomInset ? { bottom: spacing.md + bottomInset } : null, pressed && styles.pressed]}
     >
       <Ionicons name={icon} size={24} color={colors.primary} />
       <Text style={styles.label}>{label}</Text>

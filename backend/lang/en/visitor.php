@@ -1,8 +1,14 @@
 <?php
 
 return [
+    'language' => 'Language',
     'title' => 'Beni Bul',
     'note_label' => 'A note from this car',
+    'status_until' => 'Until :time · :left',
+    'left_minutes' => ':m min left',
+    'left_hours' => ':h h left',
+    'left_hours_minutes' => ':h h :m min left',
+    'left_days' => ':d days left',
     'message_owner' => 'Message the owner',
     'message_hint' => 'Your phone number is not shared. The chat is anonymous.',
     'contacts_title' => 'Emergency contacts',
