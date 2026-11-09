@@ -45,7 +45,7 @@ The plain SVGs keep the wordmark as live Manrope text, which Figma imports with 
 
 ## Sticker
 
-- 70 x 70 mm square, 4.5 mm rounded corners (approved 2026-11-09): navy band with the white logo, the QR code in the middle, "Okut, sahibine ulaş" under it. No serial on the face; the owner sees it in the app.
+- 70 x 70 mm square, 4.5 mm rounded corners (approved 2026-11-09): navy frame and band with the white logo, a white panel with the QR code, "Okut, sahibine ulaş" under it. No serial on the face; the owner sees it in the app.
 - Every wave package now has `stickers/<serial>.svg` next to `qr/<serial>.svg` and `tags.csv`. Each sticker is print-ready: 74 x 74 mm artboard with 2 mm bleed, all text outlined, and the die line on a separate `CutContour` layer (magenta, not printed).
 - The template is `backend/resources/stickers/sticker-70.svg`, made by `brand/scripts/outline-logo.py`; `App\Services\Tags\StickerRenderer` places each QR in it. `brand/sticker/sample-70mm.svg` is a sample with a dummy link.
 - Ask the printer: is the sticker stuck inside the glass and read from outside (then it is printed on the adhesive side, usually mirrored), and where does the NFC chip sit so it is not under the QR?
