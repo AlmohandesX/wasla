@@ -43,7 +43,14 @@ return [
         // Block when any category score reaches its threshold. Add per-category overrides by name,
         // for example 'harassment/threatening' => 0.5.
         'threshold' => 0.7,
-        'thresholds' => [],
+        // Stricter for insults and threats aimed at the owner (owner's call, 2026-11-11). Ordinary parking messages
+        // scored 0.03 or less here, while "يا ابن الكلب" scored 0.40. Violence stays at the default 0.7 on purpose:
+        // honest accident reports ("a car hit yours, the window is broken") scored up to 0.35.
+        'thresholds' => [
+            'harassment' => 0.35,
+            'harassment/threatening' => 0.3,
+            'hate' => 0.4,
+        ],
         // Provider calls per Istanbul day; past it, messages pass on the blacklist alone and are flagged.
         'daily_cap' => (int) env('MODERATION_DAILY_CAP', 5000),
         // Owner texts (status, default message, contact labels) one owner may have checked per Istanbul day; past it
