@@ -6,15 +6,20 @@
   "build": {
     "preview": {
       "distribution": "internal",
-      "android": { "buildType": "apk" },
+      "android": {
+        "buildType": "apk"
+      },
       "env": {
         "EXPO_PUBLIC_API_URL": "http://192.168.1.164:8000",
         "EXPO_PUBLIC_TAG_BASE_URL": "http://192.168.1.164:8000/t",
-        "EXPO_PUBLIC_ALLOW_LOCAL_HTTP": "1"
+        "EXPO_PUBLIC_ALLOW_LOCAL_HTTP": "1",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "1013193564179-qao6irvhn621i01e37gfsp8tdaj56ou1.apps.googleusercontent.com"
       }
     },
     "production": {
-      "android": { "buildType": "app-bundle" }
+      "android": {
+        "buildType": "app-bundle"
+      }
     }
   }
 }
