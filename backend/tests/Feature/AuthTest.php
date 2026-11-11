@@ -67,7 +67,7 @@ it('does not lock a shared IP address after failures on other accounts', functio
         login("user{$i}@example.com", 'wrong-password', '10.0.0.9')->assertUnauthorized();
     }
     $this->travel(1)->minutes();
-    login("user6@example.com", 'wrong-password', '10.0.0.9')->assertUnauthorized()
+    login('user6@example.com', 'wrong-password', '10.0.0.9')->assertUnauthorized()
         ->assertJsonPath('code', 'invalid_credentials');
 
     login($user->email, PW, '10.0.0.9')->assertOk();

@@ -4,6 +4,8 @@ use App\Enums\ModerationDecision;
 use App\Models\BlacklistTerm;
 use App\Models\ModerationEvent;
 use App\Services\Moderation\ModerationPipeline;
+use Database\Seeders\BlacklistSeeder;
+use Database\Seeders\DatabaseSeeder;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Cache;
@@ -169,7 +171,7 @@ it('skips the provider when useProvider is false', function () {
 
 it('seeds a starter blacklist that leaves everyday Turkish words alone', function () {
     Http::fake();
-    $this->seed(\Database\Seeders\BlacklistSeeder::class);
+    $this->seed(BlacklistSeeder::class);
 
     expect(BlacklistTerm::count())->toBeGreaterThan(20)
         ->and(pipeline()->check('amca geldi', [], false)->decision)->toBe(ModerationDecision::Allow)
@@ -178,11 +180,10 @@ it('seeds a starter blacklist that leaves everyday Turkish words alone', functio
         ->and(pipeline()->check('fuuuck you', [], false)->decision)->toBe(ModerationDecision::Block);
 });
 
-
 it('seeds the blacklist idempotently through the database seeder', function () {
-    $this->seed(\Database\Seeders\DatabaseSeeder::class);
+    $this->seed(DatabaseSeeder::class);
     $count = BlacklistTerm::count();
-    $this->seed(\Database\Seeders\BlacklistSeeder::class);
+    $this->seed(BlacklistSeeder::class);
 
     expect($count)->toBeGreaterThan(20)->and(BlacklistTerm::count())->toBe($count);
 });
@@ -218,13 +219,13 @@ it('checks every term whatever its language, since a message language is not kno
 
 it('groups the seeded starter list by language', function () {
     Http::fake();
-    $this->seed(\Database\Seeders\BlacklistSeeder::class);
+    $this->seed(BlacklistSeeder::class);
 
     expect(BlacklistTerm::where('term', 'fuck')->value('language'))->toBe('en')
         ->and(BlacklistTerm::where('term', 'siktir')->value('language'))->toBe('tr');
 
     // A row left on the old Turkish default is corrected on the next run.
     BlacklistTerm::where('term', 'fuck')->update(['language' => 'tr']);
-    $this->seed(\Database\Seeders\BlacklistSeeder::class);
+    $this->seed(BlacklistSeeder::class);
     expect(BlacklistTerm::where('term', 'fuck')->value('language'))->toBe('en');
 });
