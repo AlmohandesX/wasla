@@ -7,8 +7,11 @@
     "icon": "./assets/images/icon.png",
     "scheme": "wasla",
     "userInterfaceStyle": "light",
+    "ios": {
+      "bundleIdentifier": "com.benibul.app"
+    },
     "android": {
-      "package": "com.wasla.app",
+      "package": "com.benibul.app",
       "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#14213D",
