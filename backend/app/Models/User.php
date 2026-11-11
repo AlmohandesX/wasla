@@ -18,7 +18,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['name', 'email', 'password', 'locale'])]
-#[Hidden(['password', 'remember_token'])]
+#[Hidden(['password', 'remember_token', 'google_id'])]
 class User extends Authenticatable implements FilamentUser, HasLocalePreference, MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
@@ -34,9 +34,30 @@ class User extends Authenticatable implements FilamentUser, HasLocalePreference,
         return $this->isAdmin() && ! $this->isSuspended();
     }
 
+    /** super_admin and admin both run the web panel; only a super_admin manages admin accounts. */
+    public const ADMIN_ROLES = ['super_admin', 'admin'];
+
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return in_array($this->role, self::ADMIN_ROLES, true);
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === 'super_admin';
+    }
+
+    /** Admin usernames: 3-32 lowercase letters, digits, dot, dash or underscore. */
+    public const USERNAME_PATTERN = '/^[a-z0-9._-]{3,32}$/';
+
+    public static function normalizeUsername(string $username): string
+    {
+        return mb_strtolower(trim($username));
+    }
+
+    public function hasPassword(): bool
+    {
+        return $this->password !== null;
     }
 
     public function isSuspended(): bool

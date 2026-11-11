@@ -208,7 +208,8 @@ it('does not reset expiry when a deleted account tag is reclaimed', function () 
 it('refuses to delete an admin through this route', function () {
     $admin = User::factory()->create(['role' => 'admin', 'password' => PW, 'email_verified_at' => now()]);
 
-    requestAccountDeletion($admin)->assertForbidden()->assertJsonPath('code', 'admin_account_protected');
+    // Panel accounts are refused by the whole app API before the route runs.
+    requestAccountDeletion($admin)->assertForbidden()->assertJsonPath('code', 'admin_account');
 
     expect(User::find($admin->id))->not->toBeNull();
 });

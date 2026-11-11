@@ -41,8 +41,9 @@ class UserResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('name')->label(__('admin.users.name'))->searchable(),
-                TextColumn::make('email')->label(__('admin.users.email'))->searchable(),
-                TextColumn::make('role')->label(__('admin.users.role'))->badge(),
+                TextColumn::make('email')->label(__('admin.users.email'))->searchable()->placeholder('—'),
+                TextColumn::make('role')->label(__('admin.users.role'))->badge()
+                    ->formatStateUsing(fn (string $state) => __('admin.roles.'.$state)),
                 TextColumn::make('suspended_at')->label(__('admin.users.suspended_at'))
                     ->dateTime(timezone: 'Europe/Istanbul')->placeholder(__('admin.users.active')),
                 TextColumn::make('created_at')->label(__('admin.users.created_at'))

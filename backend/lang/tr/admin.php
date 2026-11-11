@@ -9,6 +9,31 @@ return [
     'tag_never_activated' => 'Bu etiket hiç etkinleştirilmemiş.',
     'expiry_in_past' => 'Yeni bitiş tarihi gelecekte olmalı.',
     'cannot_suspend_self' => 'Kendi hesabınızı askıya alamazsınız.',
+    'needs_super_admin' => 'Bir yönetici hesabında bunu yalnızca süper yönetici yapabilir.',
+
+    'login' => [
+        'username' => 'Kullanıcı adı',
+    ],
+
+    'roles' => [
+        'super_admin' => 'Süper yönetici',
+        'admin' => 'Yönetici',
+        'owner' => 'Araç sahibi',
+    ],
+
+    'admins' => [
+        'label' => 'Yönetici',
+        'plural' => 'Yöneticiler',
+        'name' => 'Ad',
+        'username' => 'Kullanıcı adı',
+        'username_help' => '3–32 karakter: küçük harf, rakam, nokta, tire veya alt çizgi. Buraya giriş için kullanılır.',
+        'username_invalid' => '3–32 küçük harf, rakam, nokta, tire veya alt çizgi kullanın.',
+        'username_taken' => 'Bu kullanıcı adı zaten kullanılıyor.',
+        'password' => 'Şifre',
+        'password_confirmation' => 'Şifre (tekrar)',
+        'role' => 'Rol',
+        'created' => 'Yönetici oluşturuldu. Artık bu kullanıcı adı ve şifreyle giriş yapabilir.',
+    ],
 
     'payment_not_refundable' => 'Yalnızca ödenmiş bir ödeme iade edilebilir.',
     'flag_not_reviewable' => 'Bu ödemenin incelenmemiş bir işareti yok.',

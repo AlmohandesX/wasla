@@ -2,72 +2,49 @@
 
 namespace App\Console\Commands;
 
-use App\Models\AuditLog;
 use App\Models\User;
+use App\Services\Auth\AdminAccountService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Validator;
 
+/** Creates a web panel account, or resets the name, password and role of the one with that username. */
 class MakeAdmin extends Command
 {
-    protected $signature = 'wasla:make-admin {email}';
+    protected $signature = 'wasla:make-admin {username} {--super : Make it a super admin, who can create admins} {--name= : Display name}';
 
-    protected $description = 'Create an admin account, or promote an existing user to admin';
+    protected $description = 'Create a web panel admin (username + password), or reset an existing one';
 
-    public function handle(): int
+    public function handle(AdminAccountService $accounts): int
     {
-        $email = mb_strtolower(trim($this->argument('email')));
-        if (Validator::make(['email' => $email], ['email' => 'required|email'])->fails()) {
-            $this->error('Invalid email address.');
+        $username = User::normalizeUsername((string) $this->argument('username'));
+        if (preg_match(User::USERNAME_PATTERN, $username) !== 1) {
+            $this->error('Usernames are 3 to 32 lowercase letters, digits, dots, dashes or underscores.');
 
             return self::FAILURE;
         }
 
-        $user = User::where('email', $email)->first();
-        if ($user) {
-            $this->promote($user);
+        $existing = User::where('username', $username)->first();
+        if ($existing !== null && ! $existing->isAdmin()) {
+            $this->error('That username belongs to an owner account.');
 
-            return self::SUCCESS;
+            return self::FAILURE;
         }
 
-        $password = (string) $this->secret('Password (min 12 characters)');
-        if (strlen($password) < 12) {
+        $password = (string) $this->secret('Password (min '.AdminAccountService::MIN_PASSWORD.' characters)');
+        if (strlen($password) < AdminAccountService::MIN_PASSWORD) {
             $this->error('Password too short.');
 
             return self::FAILURE;
         }
 
-        User::create(['name' => 'Admin', 'email' => $email, 'password' => $password])
-            ->forceFill(['role' => 'admin', 'email_verified_at' => now()])->save();
-        $this->info("Admin {$email} created.");
-
-        return self::SUCCESS;
-    }
-
-    private function promote(User $user): void
-    {
-        $wasAdmin = $user->isAdmin();
-
-        if ($user->isSuspended()) {
+        $role = $this->option('super') ? 'super_admin' : 'admin';
+        $name = (string) ($this->option('name') ?: $existing?->name ?: ($role === 'super_admin' ? 'Super Admin' : 'Admin'));
+        if ($existing?->isSuspended()) {
             $this->warn('This account was suspended. It is being reinstated.');
         }
-        if (! $wasAdmin) {
-            $this->warn('This account was an owner. It now has admin access.');
-        }
 
-        $user->forceFill(['role' => 'admin', 'suspended_at' => null, 'email_verified_at' => $user->email_verified_at ?? now()])->save();
+        $accounts->upsert($role, $name, $username, $password);
+        $this->info(($existing ? 'Updated' : 'Created')." {$role} [{$username}]. Sign in at /admin.");
 
-        // The command has no acting admin. An existing admin account being re-enabled is its own attribution;
-        // otherwise there is nobody to attribute it to and the warning above is the only record.
-        if ($wasAdmin) {
-            AuditLog::create([
-                'admin_id' => $user->id,
-                'action' => 'user.make_admin_command',
-                'subject_type' => 'user',
-                'subject_id' => $user->id,
-                'meta' => ['source' => 'cli'],
-            ]);
-        }
-
-        $this->info("{$user->email} is now an admin.");
+        return self::SUCCESS;
     }
 }

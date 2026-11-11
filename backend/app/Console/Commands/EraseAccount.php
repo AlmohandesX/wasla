@@ -9,15 +9,17 @@ use Illuminate\Console\Command;
 
 class EraseAccount extends Command
 {
-    protected $signature = 'wasla:erase-account {email : The owner account to erase} {--admin= : Email of the admin doing this, for the audit row}';
+    protected $signature = 'wasla:erase-account {email : The owner account to erase} {--admin= : Username (or email) of the admin doing this, for the audit row}';
 
     protected $description = 'Support route: erase an owner account, including a suspended one. Admin accounts are refused.';
 
     public function handle(AccountEraser $eraser): int
     {
-        $admin = User::query()->where('role', 'admin')->where('email', (string) $this->option('admin'))->first();
+        $who = (string) $this->option('admin');
+        $admin = $who === '' ? null : User::query()->whereIn('role', User::ADMIN_ROLES)
+            ->where(fn ($q) => $q->where('username', User::normalizeUsername($who))->orWhere('email', $who))->first();
         if ($admin === null) {
-            $this->error('Pass --admin with the email of an admin account.');
+            $this->error('Pass --admin with the username of an admin account.');
 
             return self::FAILURE;
         }

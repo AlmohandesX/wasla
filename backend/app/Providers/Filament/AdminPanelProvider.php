@@ -4,6 +4,7 @@ namespace App\Providers\Filament;
 
 use App\Filament\Pages\Auth\Login;
 use App\Filament\Pages\Settings;
+use App\Filament\Resources\AdminResource;
 use App\Filament\Resources\BlacklistTermResource;
 use App\Filament\Resources\ModerationEventResource;
 use App\Filament\Resources\PaymentResource;
@@ -63,7 +64,7 @@ class AdminPanelProvider extends PanelProvider
             ->font('Manrope', url: asset('css/admin-font.css'), provider: LocalFontProvider::class)
             ->defaultAvatarProvider(InitialsAvatarProvider::class)
             ->resources([
-                UserResource::class, TagResource::class, WaveResource::class, PaymentResource::class,
+                UserResource::class, AdminResource::class, TagResource::class, WaveResource::class, PaymentResource::class,
                 BlacklistTermResource::class, ModerationEventResource::class, ReportedMessageResource::class,
             ])
             ->pages([Dashboard::class, Settings::class])

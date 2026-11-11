@@ -5,9 +5,18 @@ use App\Models\Tag;
 use App\Models\User;
 use App\Services\Tags\TagClaimer;
 
+/** A web panel admin. Panel accounts sign in with their username; older ones may still carry an email. */
 function adminUser(array $attrs = []): User
 {
-    return owner(array_merge(['role' => 'admin', 'email_verified_at' => now()], $attrs));
+    static $n = 0;
+    $n++;
+
+    return owner(array_merge(['role' => 'admin', 'username' => 'admin'.$n.'-'.bin2hex(random_bytes(3)), 'email_verified_at' => now()], $attrs));
+}
+
+function superAdminUser(array $attrs = []): User
+{
+    return adminUser(array_merge(['role' => 'super_admin'], $attrs));
 }
 
 /** @return array{0: Tag, 1: Car, 2: User} */

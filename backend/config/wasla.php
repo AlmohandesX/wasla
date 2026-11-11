@@ -20,6 +20,19 @@ return [
     // wrong password. Keep its cost equal to BCRYPT_ROUNDS (12 in production).
     'dummy_password_hash' => '$2y$12$sjwYX806TjRZVVezGsnvZuD0epZoDxEfxQoCnRZid8R5qiiSDsEua',
 
+    // Read only by SuperAdminSeeder. Set the password for the one seeding run, then remove it from .env.
+    'super_admin' => [
+        'name' => env('SUPER_ADMIN_NAME', 'Super Admin'),
+        'username' => env('SUPER_ADMIN_USERNAME'),
+        'password' => env('SUPER_ADMIN_PASSWORD'),
+    ],
+
+    // Google Sign-In: the OAuth client IDs an ID token may be issued to (comma-separated). The app asks Google for
+    // a token with the Web client ID, so that one must be listed.
+    'google' => [
+        'client_ids' => array_values(array_filter(array_map('trim', explode(',', (string) env('GOOGLE_CLIENT_IDS', ''))))),
+    ],
+
     'tag_base_url' => env('TAG_BASE_URL', 'http://localhost:8000/t'),
 
     'moderation' => [

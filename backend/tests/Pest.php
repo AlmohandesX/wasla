@@ -33,3 +33,4 @@ require_once __DIR__.'/Helpers/tags.php';
 require_once __DIR__.'/Helpers/payments.php';
 require_once __DIR__.'/Helpers/cars.php';
 require_once __DIR__.'/Helpers/chat.php';
+require_once __DIR__.'/Helpers/google.php';

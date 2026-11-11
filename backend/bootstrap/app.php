@@ -2,6 +2,7 @@
 
 use App\Exceptions\RenewalPending;
 use App\Exceptions\TagException;
+use App\Http\Middleware\EnsureAppAccount;
 use App\Http\Middleware\EnsureCarSubscriptionActive;
 use App\Http\Middleware\EnsureEmailVerified;
 use App\Http\Middleware\EnsureNotSuspended;
@@ -36,14 +37,16 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'not.suspended' => EnsureNotSuspended::class,
+            'app.account' => EnsureAppAccount::class,
             'verified' => EnsureEmailVerified::class,
             'car.subscription' => EnsureCarSubscriptionActive::class,
         ]);
 
         // "account": signed in and not suspended; usable before the email is verified (me, logout, resend).
         // "owner": additionally requires a verified email. Every owner route uses it.
-        $middleware->group('account', ['auth:sanctum', 'not.suspended']);
-        $middleware->group('owner', ['auth:sanctum', 'not.suspended', 'verified']);
+        // Both also refuse panel accounts (app.account): admins sign in on the web only.
+        $middleware->group('account', ['auth:sanctum', 'not.suspended', 'app.account']);
+        $middleware->group('owner', ['auth:sanctum', 'not.suspended', 'app.account', 'verified']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Domain errors (tag, ownership, expiry, moderation) all render as {code, message}.

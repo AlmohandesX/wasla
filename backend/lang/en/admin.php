@@ -9,6 +9,31 @@ return [
     'tag_never_activated' => 'This tag has never been activated.',
     'expiry_in_past' => 'The new expiry must be in the future.',
     'cannot_suspend_self' => 'You cannot suspend your own account.',
+    'needs_super_admin' => 'Only a super admin can do this to an admin account.',
+
+    'login' => [
+        'username' => 'Username',
+    ],
+
+    'roles' => [
+        'super_admin' => 'Super admin',
+        'admin' => 'Admin',
+        'owner' => 'Owner',
+    ],
+
+    'admins' => [
+        'label' => 'Admin',
+        'plural' => 'Admins',
+        'name' => 'Name',
+        'username' => 'Username',
+        'username_help' => '3 to 32 characters: lowercase letters, digits, dot, dash or underscore. Used to sign in here.',
+        'username_invalid' => 'Use 3 to 32 lowercase letters, digits, dots, dashes or underscores.',
+        'username_taken' => 'This username is already in use.',
+        'password' => 'Password',
+        'password_confirmation' => 'Repeat password',
+        'role' => 'Role',
+        'created' => 'Admin created. They can now sign in with this username and password.',
+    ],
 
     'payment_not_refundable' => 'Only a paid payment can be refunded.',
     'flag_not_reviewable' => 'This payment has no unreviewed flag.',

@@ -4,12 +4,15 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\ForgotPasswordRequest;
+use App\Http\Requests\Auth\GoogleLoginRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\LogoutRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Requests\Auth\ResendVerificationRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Models\User;
+use App\Services\Auth\Google\GoogleSignIn;
+use App\Services\Auth\Google\GoogleTokenVerifier;
 use App\Services\Auth\LoginThrottle;
 use App\Services\Auth\PasswordResetter;
 use Illuminate\Auth\Events\Registered;
@@ -87,7 +90,35 @@ class AuthController extends Controller
             ], 403);
         }
 
+        // Panel accounts sign in on the web panel only.
+        if ($user->isAdmin()) {
+            return response()->json([
+                'code' => 'admin_account',
+                'message' => __('wasla.admin_account'),
+            ], 403);
+        }
+
         return response()->json($this->session($user));
+    }
+
+    /** Sign in or sign up with a Google ID token. 201 when the account was just created, 200 otherwise. */
+    public function google(GoogleLoginRequest $request, GoogleTokenVerifier $verifier, GoogleSignIn $signIn): JsonResponse
+    {
+        $identity = $verifier->verify($request->string('id_token')->toString());
+        [$user, $created] = $signIn->resolve(
+            $identity,
+            $request->boolean('privacy_consent'),
+            $request->input('locale', config('app.locale')),
+        );
+
+        if ($user->isSuspended()) {
+            return response()->json([
+                'code' => 'account_suspended',
+                'message' => __('wasla.account_suspended'),
+            ], 403);
+        }
+
+        return response()->json($this->session($user), $created ? 201 : 200);
     }
 
     public function logout(LogoutRequest $request): Response
@@ -156,6 +187,9 @@ class AuthController extends Controller
             'locale' => $user->locale,
             'role' => $user->role,
             'email_verified' => $user->hasVerifiedEmail(),
+            // Lets the app ask a Google-only owner to confirm with Google instead of a password (account deletion).
+            'has_password' => $user->hasPassword(),
+            'google_linked' => $user->google_id !== null,
         ];
     }
 }

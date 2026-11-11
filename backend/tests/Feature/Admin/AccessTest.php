@@ -8,12 +8,13 @@ use App\Models\User;
 use App\Services\Auth\UserAdminService;
 use App\Services\Tags\PublicTagStateResolver;
 use Filament\Facades\Filament;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Livewire;
 
-function adminLogin(string $email, string $password = PW)
+function adminLogin(string $username, string $password = PW)
 {
     return Livewire::test(Login::class)
-        ->set('data.email', $email)
+        ->set('data.username', $username)
         ->set('data.password', $password)
         ->call('authenticate');
 }
@@ -24,7 +25,7 @@ function signOut(): void
     app('auth')->forgetGuards();
 }
 
-dataset('admin urls', ['/admin', '/admin/users', '/admin/tags']);
+dataset('admin urls', ['/admin', '/admin/users', '/admin/tags', '/admin/admins']);
 
 it('forbids owners and guests on every admin URL', function (string $url) {
     $this->get($url)->assertRedirect('/admin/login');
@@ -42,40 +43,52 @@ it('lets an active admin in and applies the admin CSP only there', function () {
 it('forbids a suspended admin', function () {
     $suspended = adminUser(['suspended_at' => now()]);
 
-    adminLogin($suspended->email)->assertHasErrors(['data.email']);
+    adminLogin($suspended->username)->assertHasErrors(['data.username']);
     expect(auth()->check())->toBeFalse();
 
     $this->actingAs($suspended)->get('/admin')->assertForbidden();
 });
 
-it('logs an admin in through the login page and rejects owners without saying why', function () {
+it('logs an admin in with username and password and rejects everyone else without saying why', function () {
     $admin = adminUser();
-    adminLogin($admin->email)->assertHasNoErrors();
+    adminLogin($admin->username)->assertHasNoErrors();
     expect(auth()->id())->toBe($admin->id);
 
     signOut();
-    $user = owner(['email' => 'owner@example.com']);
-    $wrongPassword = adminLogin($admin->email, 'nope-nope-nope')->errors()->get('data.email');
-    $ownerCorrect = adminLogin($user->email)->errors()->get('data.email');
-    $unknown = adminLogin('ghost@example.com')->errors()->get('data.email');
+    $owner = owner(['email' => 'owner@example.com']);
+    $wrongPassword = adminLogin($admin->username, 'nope-nope-nope')->errors()->get('data.username');
+    $ownerByEmail = adminLogin($owner->email)->errors()->get('data.username');
+    $adminByEmail = adminLogin($admin->email)->errors()->get('data.username');
+    $unknown = adminLogin('ghost')->errors()->get('data.username');
 
-    expect($ownerCorrect)->toBe($wrongPassword)->and($unknown)->toBe($wrongPassword)
-        ->and(auth()->check())->toBeFalse();
+    expect($ownerByEmail)->toBe($wrongPassword)->and($adminByEmail)->toBe($wrongPassword)
+        ->and($unknown)->toBe($wrongPassword)->and(auth()->check())->toBeFalse();
+});
+
+it('lets a super admin sign in to the panel', function () {
+    $super = superAdminUser();
+
+    adminLogin($super->username)->assertHasNoErrors();
+    expect(auth()->id())->toBe($super->id);
+});
+
+it('shows the username field, not email, on the login page', function () {
+    $this->get('/admin/login')->assertOk()->assertSee(__('admin.login.username'));
 });
 
 it('locks admin login after 5 failures for 15 minutes', function () {
     $admin = adminUser();
 
     foreach (range(1, 5) as $i) {
-        adminLogin($admin->email, 'wrong-password-'.$i)->assertHasErrors(['data.email']);
+        adminLogin($admin->username, 'wrong-password-'.$i)->assertHasErrors(['data.username']);
     }
 
     // Even the right password is refused during the lock.
-    adminLogin($admin->email)->assertHasErrors(['data.email']);
+    adminLogin($admin->username)->assertHasErrors(['data.username']);
     expect(auth()->check())->toBeFalse();
 
     $this->travel(16)->minutes();
-    adminLogin($admin->email)->assertHasNoErrors();
+    adminLogin($admin->username)->assertHasNoErrors();
     expect(auth()->id())->toBe($admin->id);
 });
 
@@ -84,15 +97,15 @@ it('keeps another admin able to log in while one admin account is locked', funct
     $other = adminUser();
 
     foreach (range(1, 5) as $i) {
-        adminLogin($locked->email, 'wrong-password-'.$i)->assertHasErrors(['data.email']);
+        adminLogin($locked->username, 'wrong-password-'.$i)->assertHasErrors(['data.username']);
     }
     foreach (range(1, 5) as $i) {
-        adminLogin("nobody{$i}@example.com", 'x')->assertHasErrors(['data.email']);
+        adminLogin("nobody{$i}", 'x')->assertHasErrors(['data.username']);
     }
 
     // Past the one-minute burst limit, but well inside the 15 minutes an IP lock would have lasted.
     $this->travel(61)->seconds();
-    adminLogin($other->email)->assertHasNoErrors();
+    adminLogin($other->username)->assertHasNoErrors();
     expect(auth()->id())->toBe($other->id);
 });
 
@@ -100,74 +113,95 @@ it('slows a burst of admin login attempts from one IP for a minute without locki
     $admin = adminUser();
 
     foreach (range(1, 10) as $i) {
-        adminLogin("nobody{$i}@example.com", 'x')->assertHasErrors(['data.email']);
+        adminLogin("nobody{$i}", 'x')->assertHasErrors(['data.username']);
     }
 
     // The 11th attempt in the minute is refused even with the right password, and is not counted as a failure.
-    adminLogin($admin->email)->assertHasErrors(['data.email']);
+    adminLogin($admin->username)->assertHasErrors(['data.username']);
     expect(auth()->check())->toBeFalse();
 
     // Livewire test requests cannot change the client IP, so pin that the counter is keyed by IP (not account).
-    expect(\Illuminate\Support\Facades\RateLimiter::attempts('admin-login-ip:127.0.0.1'))->toBe(10)
-        ->and(\Illuminate\Support\Facades\RateLimiter::attempts('admin-login-ip:10.9.9.9'))->toBe(0);
+    expect(RateLimiter::attempts('admin-login-ip:127.0.0.1'))->toBe(10)
+        ->and(RateLimiter::attempts('admin-login-ip:10.9.9.9'))->toBe(0);
 
     $this->travel(61)->seconds();
-    adminLogin($admin->email)->assertHasNoErrors();
+    adminLogin($admin->username)->assertHasNoErrors();
 });
 
-it('counts email spelling variants against the same account lock', function () {
-    $admin = adminUser(['email' => 'boss@example.com']);
+it('counts username spelling variants against the same account lock', function () {
+    $admin = adminUser(['username' => 'boss']);
 
-    // A zero-width variant matches the account under the column collation, but the form rejects it before any lookup.
-    adminLogin("bo\u{200D}ss@example.com")->assertHasErrors(['data.email' => 'email']);
+    // A sharp-s variant equals the name under the column collation: it never logs in (even with the right
+    // password) and its failure counts against the real account.
+    adminLogin("bo\u{DF}", PW)->assertHasErrors(['data.username']);
     expect(auth()->check())->toBeFalse();
 
-    // A sharp-s variant passes the email rule and equals the address under the collation: it never logs in
-    // (even with the right password) and its failure counts against the real account.
-    adminLogin("bo\u{DF}@example.com", PW)->assertHasErrors(['data.email']);
-    expect(auth()->check())->toBeFalse();
-
-    // A case variant also shares the account counter with the exact address: 1 + 2 + 2 = 5 failures.
+    // Case and spacing variants are the same name: 1 + 2 + 2 = 5 failures lock it.
     foreach (range(1, 2) as $i) {
-        adminLogin('BOSS@Example.com', 'wrong-password-'.$i)->assertHasErrors(['data.email']);
+        adminLogin(' BOSS ', 'wrong-password-'.$i)->assertHasErrors(['data.username']);
     }
     foreach (range(1, 2) as $i) {
-        adminLogin($admin->email, 'wrong-password-'.$i)->assertHasErrors(['data.email']);
+        adminLogin('boss', 'wrong-password-'.$i)->assertHasErrors(['data.username']);
     }
 
-    adminLogin($admin->email)->assertHasErrors(['data.email']);
+    adminLogin('boss')->assertHasErrors(['data.username']);
     expect(auth()->check())->toBeFalse();
+});
+
+it('logs an admin in with a differently cased username', function () {
+    $admin = adminUser(['username' => 'boss']);
+
+    adminLogin('Boss')->assertHasNoErrors();
+    expect(auth()->id())->toBe($admin->id);
 });
 
 it('has no public way to register an admin', function () {
     $this->get('/admin/register')->assertNotFound();
     $this->postJson('/api/v1/auth/register', [
         'name' => 'X', 'email' => 'x@example.com', 'password' => PW, 'locale' => 'tr',
-        'privacy_consent' => true, 'role' => 'admin',
+        'privacy_consent' => true, 'role' => 'admin', 'username' => 'sneaky',
     ])->assertCreated();
-    expect(User::where('email', 'x@example.com')->value('role'))->toBe('owner');
+    $user = User::where('email', 'x@example.com')->first();
+    expect($user->role)->toBe('owner')->and($user->username)->toBeNull();
 });
 
-it('creates an admin from the command', function () {
-    $this->artisan('wasla:make-admin', ['email' => 'Boss@Example.com'])
+it('creates a panel admin from the command, with a username and no email', function () {
+    $this->artisan('wasla:make-admin', ['username' => 'Ops.Team'])
         ->expectsQuestion('Password (min 12 characters)', 'a-long-password-1')
         ->assertSuccessful();
 
-    $boss = User::where('email', 'boss@example.com')->first();
-    expect($boss->role)->toBe('admin')->and($boss->canAccessPanel(Filament::getPanel('admin')))->toBeTrue();
+    $ops = User::where('username', 'ops.team')->first();
+    expect($ops->role)->toBe('admin')->and($ops->email)->toBeNull()
+        ->and($ops->canAccessPanel(Filament::getPanel('admin')))->toBeTrue();
+
+    adminLogin('ops.team', 'a-long-password-1')->assertHasNoErrors();
 });
 
-it('warns when the command reinstates a suspended account and audits a re-enabled admin', function () {
-    $suspendedAdmin = adminUser(['suspended_at' => now()]);
-    $suspendedOwner = owner(['suspended_at' => now()]);
+it('makes a super admin from the command with --super and resets an existing one', function () {
+    $this->artisan('wasla:make-admin', ['username' => 'root', '--super' => true, '--name' => 'Youssef'])
+        ->expectsQuestion('Password (min 12 characters)', 'a-long-password-1')->assertSuccessful();
+    User::where('username', 'root')->first()->forceFill(['suspended_at' => now()])->save();
 
-    $this->artisan('wasla:make-admin', ['email' => $suspendedOwner->email])
+    $this->artisan('wasla:make-admin', ['username' => 'root', '--super' => true])
+        ->expectsQuestion('Password (min 12 characters)', 'another-password-2')
         ->expectsOutputToContain('suspended')->assertSuccessful();
-    expect($suspendedOwner->fresh()->isSuspended())->toBeFalse()->and(AuditLog::count())->toBe(0);
 
-    $this->artisan('wasla:make-admin', ['email' => $suspendedAdmin->email])
-        ->expectsOutputToContain('suspended')->assertSuccessful();
-    expect(AuditLog::where('action', 'user.make_admin_command')->where('admin_id', $suspendedAdmin->id)->exists())->toBeTrue();
+    $root = User::where('username', 'root')->first();
+    expect($root->role)->toBe('super_admin')->and($root->name)->toBe('Youssef')
+        ->and($root->isSuspended())->toBeFalse()->and(User::where('username', 'root')->count())->toBe(1);
+    adminLogin('root', 'another-password-2')->assertHasNoErrors();
+});
+
+it('refuses bad usernames, short passwords and owner accounts in the command', function () {
+    owner(['username' => 'taken-owner']);
+
+    $this->artisan('wasla:make-admin', ['username' => 'no spaces'])->assertFailed();
+    $this->artisan('wasla:make-admin', ['username' => 'taken-owner'])->assertFailed();
+    $this->artisan('wasla:make-admin', ['username' => 'shorty'])
+        ->expectsQuestion('Password (min 12 characters)', 'short')->assertFailed();
+
+    expect(User::where('username', 'shorty')->exists())->toBeFalse()
+        ->and(User::where('username', 'taken-owner')->value('role'))->toBe('owner');
 });
 
 it('suspends a user, revokes their tokens and neutralizes their tags', function () {
