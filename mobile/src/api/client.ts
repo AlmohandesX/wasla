@@ -11,9 +11,12 @@ export type RequestOptions = {
   timeoutMs?: number;
 };
 
+/** Why the server ended the session. admin_account: a web panel account, which the app never serves. */
+export type SignOutReason = 'unauthenticated' | 'account_suspended' | 'admin_account';
+
 type SessionHandlers = {
   /** The session ended on the server's say-so: the token was rejected, or the account is suspended. */
-  onUnauthorized?: (reason: 'unauthenticated' | 'account_suspended') => void;
+  onUnauthorized?: (reason: SignOutReason) => void;
   onEmailNotVerified?: () => void;
 };
 
@@ -37,7 +40,7 @@ export function setSessionHandlers(next: SessionHandlers): void {
  * replaced or cleared (a late answer after sign-out or a new login) does nothing. The check and the clear
  * run with no await between them, so a sign-in cannot slip in between.
  */
-function handleUnauthorized(generationSent: number, reason: 'unauthenticated' | 'account_suspended'): Promise<void> {
+function handleUnauthorized(generationSent: number, reason: SignOutReason): Promise<void> {
   if (!signOutInFlight) {
     signOutInFlight = (async () => {
       if (tokenGeneration() !== generationSent) return;
@@ -96,8 +99,8 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     const error = errorFromResponse(response.status, json, response.headers.get('Retry-After'));
     if (token && error.status === 401 && error.code !== 'invalid_credentials') {
       await handleUnauthorized(generationSent, 'unauthenticated');
-    } else if (token && error.code === 'account_suspended') {
-      await handleUnauthorized(generationSent, 'account_suspended');
+    } else if (token && (error.code === 'account_suspended' || error.code === 'admin_account')) {
+      await handleUnauthorized(generationSent, error.code);
     } else if (error.code === 'email_not_verified') {
       handlers.onEmailNotVerified?.();
     } else if (error.code === 'subscription_expired') {

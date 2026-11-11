@@ -2,6 +2,7 @@ import { act, create } from 'react-test-renderer';
 
 import { SessionProvider, useSession, type Session } from '../session';
 import { accessFor } from '../guard';
+import { getLocale } from '../../i18n';
 import { pendingFor, rememberPending } from '../../lib/pendingRenewals';
 import { clearToken, getToken, setToken } from '../token';
 
@@ -171,7 +172,7 @@ describe('deleteAccount', () => {
     await mount();
     fetchMock.mockResolvedValueOnce(reply(204));
     await act(async () => {
-      await session.deleteAccount('secret-pass');
+      await session.deleteAccount({ password: 'secret-pass' });
     });
     const [url, init] = fetchMock.mock.calls[1];
     expect(url).toContain('/api/v1/account');
@@ -189,12 +190,68 @@ describe('deleteAccount', () => {
     fetchMock.mockResolvedValueOnce(reply(422, { code: 'invalid_password', message: 'x' }));
     let code = '';
     await act(async () => {
-      await session.deleteAccount('nope').catch((e) => (code = e.code));
+      await session.deleteAccount({ password: 'nope' }).catch((e) => (code = e.code));
     });
     expect(code).toBe('invalid_password');
     expect(session.user).toEqual(USER);
     expect(await getToken()).toBe('t');
   });
+});
+
+describe('Google', () => {
+  test('signs in with a Google ID token, sending the app language and no consent by default', async () => {
+    await mount();
+    fetchMock.mockResolvedValueOnce(reply(200, { token: 'g', user: { ...USER, has_password: false } }));
+    await act(async () => {
+      await session.signInWithGoogle('id-token', false);
+    });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain('/api/v1/auth/google');
+    expect(init.headers.Authorization).toBeUndefined();
+    expect(JSON.parse(init.body)).toEqual({ id_token: 'id-token', locale: getLocale() });
+    expect(session.user?.has_password).toBe(false);
+    expect(await getToken()).toBe('g');
+  });
+
+  test('a first-time Google user is refused until consent is sent, without signing anything in', async () => {
+    await mount();
+    fetchMock.mockResolvedValueOnce(reply(422, { code: 'privacy_consent_required', message: 'x' }));
+    let code = '';
+    await act(async () => {
+      await session.signInWithGoogle('id-token', false).catch((e) => (code = e.code));
+    });
+    expect(code).toBe('privacy_consent_required');
+    expect(session.user).toBeNull();
+    expect(await getToken()).toBeNull();
+
+    fetchMock.mockResolvedValueOnce(reply(201, { token: 'g', user: USER }));
+    await act(async () => {
+      await session.signInWithGoogle('id-token', true);
+    });
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ id_token: 'id-token', locale: getLocale(), privacy_consent: true });
+    expect(session.user).toEqual(USER);
+  });
+
+  test('a Google-only owner deletes the account with a Google ID token instead of a password', async () => {
+    await setToken('t');
+    fetchMock.mockResolvedValueOnce(reply(200, { ...USER, has_password: false }));
+    await mount();
+    fetchMock.mockResolvedValueOnce(reply(204));
+    await act(async () => {
+      await session.deleteAccount({ googleIdToken: 'fresh-id-token' });
+    });
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ google_id_token: 'fresh-id-token' });
+    expect(session.signedOutReason).toBe('account_deleted');
+  });
+});
+
+test('a web panel account is signed out of the app with its own reason', async () => {
+  await setToken('t');
+  fetchMock.mockResolvedValueOnce(reply(403, { code: 'admin_account', message: 'x' }));
+  await mount();
+  expect(session.user).toBeNull();
+  expect(session.signedOutReason).toBe('admin_account');
+  expect(await getToken()).toBeNull();
 });
 
 test('signing out forgets any payment in progress', async () => {
@@ -216,7 +273,7 @@ test('account deletion forgets any payment in progress', async () => {
   rememberPending(5, { paymentId: 9, checkoutUrl: null, expiresAt: Date.now() + 60000 });
   fetchMock.mockResolvedValueOnce(reply(204));
   await act(async () => {
-    await session.deleteAccount('secret-pass');
+    await session.deleteAccount({ password: 'secret-pass' });
   });
   expect(pendingFor(5)).toBeNull();
 });

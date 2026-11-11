@@ -3,9 +3,11 @@ import { useCallback, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { toApiError } from '../../../src/api/errors';
-import { useSession } from '../../../src/auth/session';
+import { getGoogleIdToken } from '../../../src/auth/google';
+import { useSession, type DeleteConfirmation } from '../../../src/auth/session';
 import { Button } from '../../../src/components/Button';
 import { ErrorBanner } from '../../../src/components/ErrorBanner';
+import { GoogleButton } from '../../../src/components/GoogleSignIn';
 import { LanguageSwitch } from '../../../src/components/LanguageSwitch';
 import { Screen } from '../../../src/components/Screen';
 import { TextField } from '../../../src/components/TextField';
@@ -21,6 +23,8 @@ export default function Account() {
   const [error, setError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | undefined>();
   const inFlight = useRef(false);
+  // An owner who only ever signed in with Google has no password to type: they confirm with Google instead.
+  const googleOnly = user?.has_password === false;
 
   // The password prompt never survives leaving the screen.
   useFocusEffect(
@@ -44,15 +48,23 @@ export default function Account() {
     if (inFlight.current) return;
     setError(null);
     setPasswordError(undefined);
-    if (!password) {
+    if (!googleOnly && !password) {
       setPasswordError(t('account.passwordRequired'));
       return;
     }
     inFlight.current = true;
     setBusy(true);
     try {
+      let confirmation: DeleteConfirmation;
+      if (googleOnly) {
+        const googleIdToken = await getGoogleIdToken();
+        if (!googleIdToken) return; // The Google picker was closed: nothing happens.
+        confirmation = { googleIdToken };
+      } else {
+        confirmation = { password };
+      }
       // On success the session ends and the router moves to the sign-in screen, which shows the message.
-      await deleteAccount(password);
+      await deleteAccount(confirmation);
     } catch (e) {
       const apiError = toApiError(e);
       if (apiError.code === 'invalid_password') setPasswordError(apiError.message);
@@ -86,19 +98,28 @@ export default function Account() {
             </Text>
             <Text style={styles.warningBody}>{t('account.deleteTags')}</Text>
             <ErrorBanner message={error} />
-            <TextField
-              label={t('account.deletePassword')}
-              hint={t('account.deletePasswordHint')}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoComplete="current-password"
-              textContentType="password"
-              autoCapitalize="none"
-              autoCorrect={false}
-              error={passwordError}
-            />
-            <Button label={t('account.deleteConfirm')} loading={busy} onPress={confirm} />
+            {googleOnly ? (
+              <>
+                <Text style={styles.warningBody}>{t('account.deleteGoogleHint')}</Text>
+                <GoogleButton label={t('account.deleteWithGoogle')} loading={busy} onPress={confirm} />
+              </>
+            ) : (
+              <>
+                <TextField
+                  label={t('account.deletePassword')}
+                  hint={t('account.deletePasswordHint')}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  autoComplete="current-password"
+                  textContentType="password"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  error={passwordError}
+                />
+                <Button label={t('account.deleteConfirm')} loading={busy} onPress={confirm} />
+              </>
+            )}
             <View style={styles.gap} />
             <Button label={t('account.deleteCancel')} variant="secondary" disabled={busy} onPress={cancel} />
           </>

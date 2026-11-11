@@ -1,10 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
-import { apiRequest, setSessionHandlers } from '../api/client';
+import { apiRequest, setSessionHandlers, type SignOutReason } from '../api/client';
 import { ApiError, toApiError } from '../api/errors';
 import { getLocale, loadLocale } from '../i18n';
 import { clearAllPending } from '../lib/pendingRenewals';
 import { forgetStoredToken, resetRegistration, takeStoredToken } from '../push/deviceToken';
+import { signOutOfGoogle } from './google';
 import { clearToken, getToken, setToken } from './token';
 
 export type User = {
@@ -14,7 +15,13 @@ export type User = {
   locale: 'tr' | 'en';
   role: string;
   email_verified: boolean;
+  /** False for an owner who only ever signed in with Google: account deletion then confirms with Google. */
+  has_password?: boolean;
+  google_linked?: boolean;
 };
+
+/** How the owner proves it is them before the account is deleted. */
+export type DeleteConfirmation = { password: string } | { googleIdToken: string };
 
 type SessionResponse = { token: string; user: User };
 
@@ -26,12 +33,17 @@ export type Session = {
   /** Set when the saved session could not be checked because the server was unreachable. */
   bootError: ApiError | null;
   /** Why the owner was signed out without asking to be (shown on the sign-in screen), or null. */
-  signedOutReason: 'unauthenticated' | 'account_suspended' | 'account_deleted' | null;
+  signedOutReason: SignOutReason | 'account_deleted' | null;
   signIn: (email: string, password: string) => Promise<void>;
+  /**
+   * Signs in (or up) with a Google ID token. A first-time Google user is refused with privacy_consent_required
+   * until called again with consent: true.
+   */
+  signInWithGoogle: (idToken: string, consent: boolean) => Promise<void>;
   register: (input: { name: string; email: string; password: string; consent: boolean }) => Promise<void>;
   signOut: () => Promise<void>;
-  /** Deletes the account (password required), then clears every local trace and ends the session. */
-  deleteAccount: (password: string) => Promise<void>;
+  /** Deletes the account (password, or Google for a Google-only owner), then clears every local trace and ends the session. */
+  deleteAccount: (confirmation: DeleteConfirmation) => Promise<void>;
   /** Re-reads the account (the "I've verified" check). Returns the fresh user. */
   refresh: () => Promise<User>;
   retryBoot: () => void;
@@ -110,6 +122,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [start],
   );
 
+  const signInWithGoogle = useCallback(
+    async (idToken: string, consent: boolean) => {
+      const session = await apiRequest<SessionResponse>('auth/google', {
+        method: 'POST',
+        auth: false,
+        body: { id_token: idToken, locale: getLocale(), ...(consent ? { privacy_consent: true } : {}) },
+      });
+      await start(session);
+    },
+    [start],
+  );
+
   const register = useCallback(
     async (input: { name: string; email: string; password: string; consent: boolean }) => {
       const session = await apiRequest<SessionResponse>('auth/register', {
@@ -145,15 +169,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // Ignored on purpose.
     }
     await clearToken();
+    await signOutOfGoogle();
     setSignedOutReason(null);
     setBootError(null);
     setUser(null);
   }, [user]);
 
-  const deleteAccount = useCallback(async (password: string) => {
-    await apiRequest<void>('account', { method: 'DELETE', body: { password }, timeoutMs: 30000 });
+  const deleteAccount = useCallback(async (confirmation: DeleteConfirmation) => {
+    const body = 'password' in confirmation ? { password: confirmation.password } : { google_id_token: confirmation.googleIdToken };
+    await apiRequest<void>('account', { method: 'DELETE', body, timeoutMs: 30000 });
     await forgetStoredToken();
     await clearToken();
+    await signOutOfGoogle();
     setBootError(null);
     setSignedOutReason('account_deleted');
     setUser(null);
@@ -171,8 +198,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<Session>(
-    () => ({ user, ready, bootError, signedOutReason, signIn, register, signOut, deleteAccount, refresh, retryBoot }),
-    [user, ready, bootError, signedOutReason, signIn, register, signOut, deleteAccount, refresh, retryBoot],
+    () => ({ user, ready, bootError, signedOutReason, signIn, signInWithGoogle, register, signOut, deleteAccount, refresh, retryBoot }),
+    [user, ready, bootError, signedOutReason, signIn, signInWithGoogle, register, signOut, deleteAccount, refresh, retryBoot],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
