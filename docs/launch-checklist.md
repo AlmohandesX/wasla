@@ -10,7 +10,7 @@ Nothing below has been done by the build. The automated tests, the local API jou
 - [ ] Deploy the backend following `docs/deployment.md` (TLS, `TRUSTED_PROXIES`, queue worker, cron, S3 or R2, backups). Confirm `ProductionGuard` passes and `php artisan schedule:list` shows the six jobs.
 - [ ] **Back up `APP_KEY` separately from the database.** The billing national ID is encrypted with it.
 - [ ] Keep access logging of query strings off or short-lived on Nginx and any load balancer (reset tokens are in URLs).
-- [ ] Set the renewal price (admin settings, key `renewal_price_kurus`, in kuruş) and confirm the first admin account exists (`php artisan wasla:make-admin`).
+- [ ] Set the renewal price (admin settings, key `renewal_price_kurus`, in kuruş) and confirm the first super admin exists (`php artisan wasla:make-admin <username> --super`) and can sign in at `/admin` with that username.
 - [ ] Name the **native Turkish speaker** and the **native English speaker** who will do the reviews below.
 - [ ] Compare provider fees and open **merchant accounts** with iyzico and PayTR (or pick one); see "Payment providers".
 - [ ] Apple Developer Program enrollment and a Google Play account for store submission; see "Apple".
@@ -44,7 +44,7 @@ The Turkish starter set and blacklist were written without a native speaker. The
   - Payment records and billing details: the scrub job clears billing details (including the national ID) from failed payments and from pending payments older than 7 days. Confirm 7 days is right, and the retention for paid payments' billing details. (A paid callback arriving more than 7 days late would find billing details already cleared.)
   - Chat data, moderation events and idle visitor sessions are purged after 90 days; moderation rows keep visitor text for up to 90 days even after the car is deleted. Confirm.
   - Backups: how long dumps (which hold the encrypted national ID) may be kept.
-- [ ] **Account deletion and suspended owners:** suspended owners cannot delete themselves in the app (deleting must not wipe evidence of abuse). Support erases them with `php artisan wasla:erase-account <email> --admin=<admin email>`. Decide when that must happen (KVKK requests) and the policy.
+- [ ] **Account deletion and suspended owners:** suspended owners cannot delete themselves in the app (deleting must not wipe evidence of abuse). Support erases them with `php artisan wasla:erase-account <email> --admin=<admin username>`. Decide when that must happen (KVKK requests) and the policy.
 - [ ] Audit log free-text reasons can name a person; confirm this is acceptable and how long audit rows are kept.
 - [ ] Apple/Google review texts that mention data handling (app privacy labels), derived from the above.
 
