@@ -1,0 +1,37 @@
+{
+  "status": "success",
+  "locale": "tr",
+  "systemTime": 1790000000000,
+  "conversationId": "WMADEUPREFERENCE0000000001",
+  "price": 799.00000000,
+  "paidPrice": 799.00000000,
+  "installment": 1,
+  "paymentId": "19831123",
+  "fraudStatus": 1,
+  "merchantCommissionRate": 0.00000000,
+  "merchantCommissionRateAmount": 0.00000000,
+  "iyziCommissionRateAmount": 23.17000000,
+  "iyziCommissionFee": 0.25000000,
+  "cardType": "CREDIT_CARD",
+  "cardAssociation": "MASTER_CARD",
+  "cardFamily": "Bonus",
+  "binNumber": "55287900",
+  "lastFourDigits": "0008",
+  "basketId": "WMADEUPREFERENCE0000000001",
+  "currency": "TRY",
+  "itemTransactions": [
+    {
+      "itemId": "WMADEUPREFERENCE0000000001",
+      "paymentTransactionId": "20942234",
+      "transactionStatus": 2,
+      "price": 799.00000000,
+      "paidPrice": 799.00000000
+    }
+  ],
+  "authCode": "000000",
+  "phase": "AUTH",
+  "token": "aaaaaaaa-1111-4222-8333-bbbbbbbbbbbb",
+  "callbackUrl": "https://wasla.test/payments/callback/iyzico",
+  "paymentStatus": "SUCCESS",
+  "signature": "computed-by-the-test"
+}

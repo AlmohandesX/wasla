@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -18 288 216" width="288" height="216" role="img" aria-label="beni bul">
+  <style>@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@700&amp;display=swap');</style>
+  <g fill="none" stroke="#14213D" stroke-width="16" stroke-linecap="round">
+    <line x1="14" y1="120" x2="110" y2="120"/>
+    <circle cx="44" cy="150" r="30"/>
+    <line x1="170" y1="60" x2="266" y2="60"/>
+    <circle cx="236" cy="30" r="30"/>
+  </g>
+  <line x1="127" y1="108" x2="153" y2="72" stroke="#14213D" stroke-width="5" stroke-linecap="round"/>
+  <g fill="#14213D">
+    <circle cx="127" cy="108" r="7"/>
+    <circle cx="153" cy="72" r="7"/>
+  </g>
+  <g fill="#14213D" font-family="Manrope, sans-serif" font-weight="700" font-size="52">
+    <text x="12" y="100">beni</text>
+    <text x="268" y="120" text-anchor="end">bul</text>
+  </g>
+</svg>

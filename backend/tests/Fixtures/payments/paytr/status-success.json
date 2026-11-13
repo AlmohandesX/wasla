@@ -1,0 +1,13 @@
+{
+  "status": "success",
+  "payment_amount": "799.00",
+  "payment_total": "799.00",
+  "payment_date": "2026-11-05 10:00:00",
+  "currency": "TL",
+  "taksit": "0",
+  "kart_marka": "BONUS",
+  "masked_pan": "528939****0008",
+  "odeme_tipi": "CART",
+  "test_mode": "0",
+  "returns": []
+}

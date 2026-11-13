@@ -1,0 +1,6 @@
+body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: system-ui, sans-serif; background: #fff; color: #14213D; }
+main { max-width: 28rem; padding: 2rem 1.5rem; text-align: center; }
+h1 { color: #14213D; font-size: 1.5rem; }
+p { line-height: 1.5; }
+form { margin: 0.75rem 0; }
+button { min-height: 44px; min-width: 44px; padding: 0 1.5rem; border: 0; border-radius: 0.5rem; background: #14213D; color: #fff; font: inherit; cursor: pointer; }

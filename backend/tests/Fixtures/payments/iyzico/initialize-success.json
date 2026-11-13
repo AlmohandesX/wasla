@@ -1,0 +1,11 @@
+{
+  "status": "success",
+  "locale": "tr",
+  "systemTime": 1790000000000,
+  "conversationId": "WMADEUPREFERENCE0000000001",
+  "token": "aaaaaaaa-1111-4222-8333-bbbbbbbbbbbb",
+  "tokenExpireTime": 1800,
+  "checkoutFormContent": "PGRpdj5tYWRlIHVwPC9kaXY+",
+  "paymentPageUrl": "https://sandbox-cpp.iyzipay.com?token=aaaaaaaa-1111-4222-8333-bbbbbbbbbbbb&lang=tr",
+  "signature": "computed-by-the-test"
+}

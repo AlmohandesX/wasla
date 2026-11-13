@@ -1,0 +1,323 @@
+/* Public scan page, Beni Bul brand (brand/README.md). Served as a file because the CSP forbids inline styles.
+   Manrope, self-hosted and subset to Latin + Turkish, SIL OFL 1.1: see /fonts/OFL-manrope.txt. */
+@font-face {
+    font-family: "Manrope";
+    font-weight: 400;
+    font-display: swap;
+    src: url("/fonts/manrope-400.woff2") format("woff2");
+}
+@font-face {
+    font-family: "Manrope";
+    font-weight: 600;
+    font-display: swap;
+    src: url("/fonts/manrope-600.woff2") format("woff2");
+}
+@font-face {
+    font-family: "Manrope";
+    font-weight: 700;
+    font-display: swap;
+    src: url("/fonts/manrope-700.woff2") format("woff2");
+}
+@font-face {
+    font-family: "Manrope";
+    font-weight: 800;
+    font-display: swap;
+    src: url("/fonts/manrope-800.woff2") format("woff2");
+}
+
+:root {
+    --navy: #14213D;
+    --navy-dark: #0B1428;
+    --signal: #FF6B2C;
+    --ink: #14213D;
+    --muted: #4B5563;
+    --line: #E3E6EC;
+    --wash: #F4F5F7;
+    --navy-tint: #E8EBF2;
+    --radius: 0.75rem; /* the app's 12 dp */
+    --gutter: 1.25rem;
+}
+
+* { box-sizing: border-box; }
+
+/* Navy behind everything, so the strip under the phone's status bar, Safari's tinted top bar (iOS 15+, which
+   samples the page background) and a pull-down bounce all continue the header band. The light grey page sits
+   on .page below the band. */
+html { -webkit-text-size-adjust: 100%; background-color: var(--navy); }
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--navy);
+    color: var(--ink);
+    font-family: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 1.0625rem;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+/* The navy band at the top, as on the app's Home: white logo on the left, TR | EN on the right. It reaches under
+   the notch (viewport-fit=cover) and keeps its content inside the safe area. */
+.band {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    /* The logo and the switch line up with the card's column on a wide screen. */
+    padding: calc(0.75rem + env(safe-area-inset-top))
+        max(calc(var(--gutter) + env(safe-area-inset-right)), calc((100% - 34rem) / 2))
+        1rem
+        max(calc(var(--gutter) + env(safe-area-inset-left)), calc((100% - 34rem) / 2));
+    background: var(--navy);
+    color: #fff;
+    border-radius: 0 0 1.5rem 1.5rem;
+}
+
+.brand { display: block; width: 4.5rem; height: auto; }
+
+/* TR | EN: the current one is bold and not underlined. */
+.lang { display: flex; align-items: center; gap: 0.125rem; font-size: 0.9375rem; color: rgba(255, 255, 255, 0.7); }
+.lang a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    border-radius: 0.5rem;
+    color: #fff;
+    font-weight: 600;
+}
+.lang a[aria-current] { font-weight: 800; text-decoration: none; background: rgba(255, 255, 255, 0.14); }
+.lang a:focus-visible { outline: 3px solid var(--signal); outline-offset: 2px; }
+
+/* Everything below the band: the app's light grey page, filling the rest of the screen, with white cards on it.
+   It starts just under the band's lower edge, so the band's rounded corners show against grey, as in the app. */
+.page {
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+    margin-top: -1.5rem;
+    padding-top: 1.5rem;
+    background: var(--wash);
+}
+.band { position: relative; z-index: 1; }
+
+/* The note: one white card below the band, sized to its content, like the app's dashboard cards. */
+.note {
+    width: calc(100% - 2 * var(--gutter));
+    max-width: 34rem;
+    margin: 1.25rem auto calc(1.25rem + env(safe-area-inset-bottom));
+    padding: 1.75rem 1.25rem 1.5rem;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 1.125rem; /* the app's card radius (12 dp x 1.5) */
+    box-shadow: 0 1px 2px rgba(20, 33, 61, 0.06);
+}
+
+@media (min-width: 40rem) {
+    .note { padding: 2.25rem 2rem 2rem; }
+}
+
+/* Plain links in the card (error pages, the reset page) in the brand navy, not browser blue. */
+.note a:not(.action):not(.call):not(.back) { color: var(--navy-dark); font-weight: 700; }
+
+.label {
+    margin: 0 0 0.75rem;
+    color: var(--navy-dark);
+    font-size: 0.875rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.message {
+    margin: 0 0 2rem;
+    font-size: clamp(2rem, 9vw, 3.25rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+}
+
+/* When the owner's status runs out: right under the note, before the actions. */
+.until {
+    margin: -1.25rem 0 2rem;
+    color: var(--navy-dark);
+    font-size: 1.0625rem;
+    font-weight: 600;
+}
+
+.message.quiet { font-size: clamp(1.625rem, 7vw, 2.25rem); }
+
+.body { margin: 0 0 1.5rem; color: var(--muted); }
+
+.action,
+.reveal {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 3.5rem;
+    border: 2px solid transparent;
+    border-radius: var(--radius);
+    background: var(--navy);
+    color: #fff;
+    font: inherit;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.action { width: 100%; font-size: 1.25rem; }
+
+.action:hover,
+.reveal:hover,
+.action:active,
+.reveal:active { background: var(--navy-dark); }
+
+.action:focus-visible,
+.reveal:focus-visible,
+.call:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+.hint { margin: 0.75rem 0 0; color: var(--muted); font-size: 0.9375rem; }
+
+.contacts { margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--line); }
+
+.contacts h2 { margin: 0; font-size: 1.125rem; font-weight: 800; }
+
+.contacts ul { margin: 1rem 0 0; padding: 0; list-style: none; }
+
+.contacts li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-height: 3.5rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--line);
+}
+
+.who { font-weight: 700; min-width: 0; }
+
+.reveal {
+    flex: none;
+    min-width: 8.5rem;
+    min-height: 2.75rem;
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+}
+
+.reveal[disabled] { opacity: 0.55; cursor: progress; }
+
+.call {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding: 0.5rem 1rem;
+    border: 2px solid var(--navy);
+    border-radius: var(--radius);
+    background: #fff;
+    color: var(--navy-dark);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    text-decoration: none;
+}
+
+.error { margin: 1rem 0 0; padding: 0.75rem 1rem; border-radius: var(--radius); background: #FDECEA; color: #B3261E; font-weight: 600; }
+.error[hidden] { display: none; }
+
+.steps { margin: 0; padding-left: 1.5rem; color: var(--ink); }
+.steps li { padding: 0.25rem 0; }
+
+.foot {
+    /* Pushed to the bottom of a short page. */
+    margin-top: auto;
+    padding: 0 var(--gutter) calc(1.5rem + env(safe-area-inset-bottom));
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.8125rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .action, .reveal { transition: background-color 0.15s; }
+}
+
+/* Chat */
+.notice { margin: 0 0 1.5rem; }
+
+.thread { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.75rem; }
+
+.bubble { max-width: 85%; padding: 0.625rem 0.875rem; border-radius: 0.75rem; }
+.bubble p { margin: 0; white-space: pre-wrap; }
+.bubble .meta { display: block; margin-bottom: 0.125rem; font-size: 0.8125rem; font-weight: 700; }
+.bubble.mine { align-self: flex-end; background: var(--navy-dark); color: #fff; }
+.bubble.theirs { align-self: flex-start; background: var(--navy-tint); }
+.bubble.theirs .meta { color: var(--muted); }
+
+.report {
+    margin-top: 0.25rem;
+    min-height: 2.75rem;
+    padding: 0 0.5rem;
+    border: 0;
+    background: none;
+    color: var(--navy-dark);
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 700;
+    text-decoration: underline;
+    cursor: pointer;
+}
+.removed { color: var(--muted); font-style: italic; }
+.report[disabled] { color: var(--muted); text-decoration: none; cursor: default; }
+
+.composer { margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem; }
+.composer[hidden], .empty[hidden] { display: none; }
+.field { font-weight: 700; font-size: 0.9375rem; }
+.composer textarea {
+    width: 100%;
+    min-height: 5.5rem;
+    padding: 0.75rem;
+    border: 2px solid #7C879A; /* the app's input border, 3:1 on white */
+    border-radius: var(--radius);
+    background: #fff;
+    color: var(--ink);
+    font: inherit;
+    resize: vertical;
+}
+.composer textarea:focus-visible { outline: 3px solid var(--navy); outline-offset: 2px; border-color: var(--navy); }
+.composer .action[disabled] { opacity: 0.55; cursor: progress; }
+.consent { display: flex; gap: 0.75rem; align-items: flex-start; font-size: 0.9375rem; }
+.consent input { flex: none; width: 1.5rem; height: 1.5rem; margin-top: 0.125rem; accent-color: var(--navy-dark); }
+
+/* One-tap messages that open a new conversation: big, plain targets, the first thing on the page. */
+.quick { margin-top: 0.5rem; }
+.quick[hidden] { display: none; }
+.quick h2 { margin: 0; font-size: 1.125rem; font-weight: 800; }
+.quick .hint { margin-top: 0.25rem; }
+.quick ul { margin: 1rem 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.625rem; }
+.quick-option {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 3.5rem;
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--navy);
+    border-radius: var(--radius);
+    background: #fff;
+    color: var(--navy-dark);
+    font: inherit;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.quick-option:hover, .quick-option:active { background: var(--navy-tint); }
+.quick-option:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+.quick-option.other { border-style: dashed; border-color: #7C879A; color: var(--muted); }
+.quick[aria-busy="true"] .quick-option { cursor: progress; opacity: 0.55; }
+
+.back { display: inline-flex; align-items: center; min-height: 2.75rem; margin-top: 1.5rem; color: var(--navy-dark); font-weight: 700; }

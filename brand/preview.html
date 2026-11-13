@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beni Bul logo</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root { --navy:#14213D; --signal:#FF6B2C; --mist:#F4F5F7; }
+  body { margin:0; padding:32px 16px; background:var(--mist); font-family:Manrope, sans-serif; color:var(--navy); }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px; max-width:960px; margin:0 auto; }
+  .tile { border-radius:16px; padding:32px; display:flex; flex-direction:column; align-items:center; gap:16px; }
+  .tile object { width:100%; max-width:240px; height:auto; }
+  .light { background:#fff; }
+  .dark { background:var(--navy); color:#fff; }
+  .signal { background:var(--signal); color:var(--navy); }
+  .label { font-size:14px; }
+  .sizes { display:flex; align-items:flex-end; gap:24px; }
+</style>
+</head>
+<body>
+<div class="grid">
+  <div class="tile light"><object type="image/svg+xml" data="logo/beni-bul-logo.svg" aria-label="beni bul logo" style=""></object><span class="label">beni-bul-logo.svg</span></div>
+  <div class="tile dark"><object type="image/svg+xml" data="logo/beni-bul-logo-white.svg" aria-label="beni bul logo, white" style=""></object><span class="label">beni-bul-logo-white.svg</span></div>
+  <div class="tile light"><object type="image/svg+xml" data="logo/beni-bul-logo-mono.svg" aria-label="beni bul logo, one color" style=""></object><span class="label">beni-bul-logo-mono.svg</span></div>
+  <div class="tile light"><object type="image/svg+xml" data="logo/beni-bul-mark.svg" aria-label="beni bul mark" style=""></object><span class="label">beni-bul-mark.svg</span></div>
+  <div class="tile light">
+    <div class="sizes">
+      <object type="image/svg+xml" data="logo/beni-bul-logo.svg" aria-label="" style="width:120px"></object>
+      <object type="image/svg+xml" data="logo/beni-bul-logo.svg" aria-label="" style="width:72px"></object>
+      <object type="image/svg+xml" data="logo/beni-bul-logo.svg" aria-label="" style="width:48px"></object>
+    </div>
+    <span class="label">Small sizes: 120, 72, 48 px</span>
+  </div>
+  <div class="tile light">
+    <div class="sizes">
+      <img src="../mobile/assets/images/icon.png" alt="iOS icon" style="width:120px;border-radius:27px">
+      <img src="../mobile/assets/images/icon.png" alt="" style="width:60px;border-radius:14px">
+    </div>
+    <span class="label">iOS icon: 120 and 60 px</span>
+  </div>
+  <div class="tile light">
+    <div class="sizes">
+      <img src="../mobile/assets/images/android-icon-foreground.png" alt="Android icon, circle" style="width:120px;border-radius:50%;background:var(--navy);transform:scale(1.5);clip-path:circle(33%)">
+    </div>
+    <span class="label">Android icon, circle crop</span>
+  </div>
+  <div class="tile dark" style="aspect-ratio:9/19;max-width:220px;justify-self:center;justify-content:center">
+    <img src="../mobile/assets/images/splash-icon.png" alt="Splash screen" style="width:150px">
+    <span class="label">Splash</span>
+  </div>
+</div>
+</body>
+</html>

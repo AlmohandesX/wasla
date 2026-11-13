@@ -93,7 +93,7 @@ Screens: login, register, forgot password, my cars, add car by scanning, car det
 - **Dynamic status:** presets plus custom text up to 140 characters, with a duration. Expiry is evaluated at read time, so reverting to the default message needs no scheduled job. Custom text passes moderation.
 - **Reminders:** oil change and license renewal dates per car. Sent through the Expo push service by a daily scheduled job in `Europe/Istanbul`. Remote push cannot be tested in Expo Go since SDK 53, so full push testing waits for a development build.
 - **Chat:** thread list, reply, block visitor, report. Polling every few seconds while open, and a push notification for new messages.
-- **Language:** Turkish by default, plus English, all strings translatable from day one (builder's call). Turkish copy needs review by a native speaker.
+- **Language:** English by default everywhere (app, admin, visitor pages, API replies and emails), plus Turkish, all strings translatable from day one. A visitor whose browser prefers Turkish, an app user who picks Turkish, and an owner whose saved language is Turkish get Turkish (owner decision, 2026-11-06; originally Turkish by default). Turkish copy needs review by a native speaker.
 
 ## 5. Visitor page
 
@@ -106,7 +106,7 @@ Public, no login, `noindex`, works on any phone browser.
 ## 6. Proxy chat and moderation
 
 - A visitor gets an anonymous session through a random, HttpOnly cookie, with no account. Replies are seen only by returning on the same browser while the session lasts. Polling only, no WebSocket server, to keep hosting simple (builder's call).
-- Text only, 500 characters. Owners can block a visitor session, and either side can report. Apple requires blocking and reporting for user-generated content.
+- Text only, 500 characters. Owners can block a visitor session, and either side can report. Apple requires blocking and reporting for user-generated content. Either side reports the other's messages, after a confirmation; each report records the message, who reported it (the owner's account or the visitor session) and when. Admins work a queue of open reports and close each one by dismissing it, hiding the message (its text is replaced with "Removed by a moderator" for both sides, admins still see it), blocking the visitor, or suspending the owner. Hide, block and suspend need a reason and are audited. Reports are deleted with their message (90-day purge, account erasure).
 - Limits: 10 messages per 10 minutes per session and 3 new threads per hour per IP, configurable. Limits stay loose enough for shared mobile network IPs.
 - **Against a blocked harasser (builder's calls):** a block covers the session and applies a temporary cooldown for that IP on that tag only. Owners also get a per-tag "pause new chats" switch, with stealth mode as the last resort. No device fingerprinting, which would add privacy obligations.
 - **Phone numbers:** the first anti-goal means the system never exposes an owner's number by itself. An owner may choose to type one, and it is not filtered (builder's call).
@@ -115,7 +115,7 @@ Public, no login, `noindex`, works on any phone browser.
 
 **Moderation pipeline, on the server, for both chat directions and public status text:**
 
-1. Normalize text with correct Turkish casing (`I/ı`, `İ/i`) and common letter substitutions, then check the local blacklist. A hit blocks the message and OpenAI is not called.
+1. Normalize text with correct Turkish casing (`I/ı`, `İ/i`), common letter substitutions, and Arabic folding (short vowels and tatweel removed; alef, ya, ta marbuta and hamza-seat variants unified), then check the local blacklist. Each term has a language (Arabic, English or Turkish) for the admin list, but every term is checked against every message, and matches as a whole word, a word start (catches suffixes), or anywhere. A hit blocks the message and OpenAI is not called. Owner decision (2026-11-08): keep blocking rather than censoring; the list stays admin-managed.
 2. Call OpenAI `omni-moderation-latest` server-side. Block if any category passes its configured threshold.
 3. If OpenAI fails, times out or the daily call cap is reached, the message passes on the blacklist result alone and is flagged for admin review (builder's call). Reasoning: someone may be trying to report a blocked car or an emergency, so an outage must not silence them.
 
@@ -130,13 +130,13 @@ Each item needs an automated test where testable.
 | Area | Requirement |
 |---|---|
 | Secrets | No third-party keys in mobile code. All payment and moderation calls go through Laravel |
-| Login | Lock for 15 minutes after 5 failures, tracked by account and by IP, on owner and admin login |
+| Login | Lock for 15 minutes after 5 failures, tracked by account only, on owner and admin login. No IP lock, because shared Turkish mobile networks (CGNAT) put many customers behind one address; per-IP bursts are still slowed by a one-minute rate limit of 10 attempts (`throttle:auth` on the API, an `admin-login-ip` limiter inside the admin login), which never locks (owner decision, 2026-11-06) |
 | Environment | Boot fails in production if required variables are missing, `APP_DEBUG` is true, or `APP_ENV` is wrong |
 | Authorization | Laravel policies on every owner resource. Admin routes require an admin role. Tests prove user A cannot reach user B's cars, chats or payments |
 | Input | Form Requests on every write. Output escaped by default. Eloquent or bound queries only |
 | Rate limits | Named limits on every API route, tighter on login, claim, chat and contact reveal |
 | Spend caps | Daily call cap for moderation, plus any cap offered by provider dashboards |
-| Uploads | Only the owner's private car photo in v1. JPEG, PNG or WebP, checked by content, 10 MB limit. Files above 1 MB go to object storage, others to local storage |
+| Uploads | Only the owner's private car photo in v1. JPEG, PNG or WebP, checked by content, 10 MB limit. Stored resized: at most 1024 px on the longer side, re-encoded as JPEG (quality 80); the app crops to 16:9 first. Stored files above 1 MB go to object storage, others to local storage |
 | Network | HTTPS forced, HSTS, CSP and security headers, CSRF on web routes, secure HttpOnly SameSite cookies, CORS limited to known origins |
 
 ## 8. Payments
